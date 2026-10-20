@@ -9,11 +9,12 @@
   },
   "scripts": {
     "build": "python3 build.py",
-    "check": "node --check src/worker.js && node --check test/node-check.mjs && pnpm build && git diff --exit-code -- public/",
+    "check": "node --check src/worker.js && node --check test/node-check.mjs && pnpm build && git diff --exit-code -- public/ && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "test": "node --test test/*.test.mjs",
     "test:release": "node --test .github/scripts/*.test.mjs",
     "changeset": "changeset",
     "release:version": "changeset version",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

@@ -28,7 +28,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Also fails when public/index.html wasn't rebuilt from src/.
       - run: pnpm check
+      - run: pnpm test
       - run: pnpm test:release
+      # Catches migration mistakes before a release tries them on the real database.
+      - name: Apply migrations to a local D1
+        run: pnpm exec wrangler d1 migrations apply DB --local
 
   changeset:
     name: Changeset

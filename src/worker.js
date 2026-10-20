@@ -177,6 +177,7 @@ async function parsePackage(source) {
 
 /* ---------- saved copy and incremental updates ---------- */
 // The parsed messages live in IndexedDB so the report survives reloads; aggregates are cheap to recompute.
+// The database keeps the project's original name so copies saved before the rename still load.
 const DB_NAME = 'discord-unwrapped', DB_KEY = 'package';
 function idb(mode, fn) {
   return new Promise((resolve, reject) => {

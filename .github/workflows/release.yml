@@ -103,12 +103,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm test
       - name: Deploy
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
             echo '::error::Set the CLOUDFLARE_API_TOKEN secret (run scripts/setup-ci.sh) so CI can deploy.'
             exit 1
           fi
+          # Additive migrations first, so the new Worker never reads a table that doesn't exist yet.
+          pnpm exec wrangler d1 migrations apply DB --remote
           pnpm exec wrangler deploy --message "Release $RELEASE_SHA"
       - name: Tag and publish the GitHub release
         env:
