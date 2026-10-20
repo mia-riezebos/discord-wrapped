@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src data: blob:; connect-src blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<title>Discord Unwrapped — explore your data package</title>
+<title>Discord Wrapped — explore your data package</title>
 <style>:root {
   color-scheme: light dark;
   --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
@@ -81,8 +81,9 @@ header.top .actions select { max-width: 170px; }
 @media (max-width: 1100px) { header.top .brand { display: none; } }
 @media (max-width: 760px) {
   header.top .wrap { flex-wrap: wrap; height: auto; padding-top: 8px; padding-bottom: 6px; gap: 6px; }
-  header.top .actions { width: 100%; }
-  header.top .actions label { flex: 1; }
+  header.top .actions { width: 100%; flex-wrap: wrap; }
+  header.top .actions label { flex: 1 1 100%; }
+  header.top .actions .button, header.top .actions button { flex: 1; text-align: center; }
   header.top .actions select { max-width: none; width: 100%; }
   nav.sections { order: 2; width: 100%; flex: none; }
   html { scroll-padding-top: 110px; }
@@ -159,12 +160,59 @@ details.more summary { cursor: pointer; color: var(--muted); }
 footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align: center; }
 .hidden { display: none !important; }
 #notice p { margin: 6px 0; }
+#bump-chart { overflow-x: auto; }
+#bump-chart text { font-size: 12px; font-weight: 500; cursor: default; }
+#bump-chart svg:has(.bw:hover) .bw { opacity: .18; }
+#bump-chart svg .bw:hover { opacity: 1; }
+#bump-chart .bw { transition: opacity 120ms ease-out; }
+@media (prefers-reduced-motion: reduce) { #bump-chart .bw { transition: none; } }
+
+/* sharing */
+.sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.share-btn { padding: 5px 12px; font-size: 13px; border-radius: 99px; }
+.share-tip { font-size: 13px; }
+[data-share] { cursor: text; }
+[data-share-click] { cursor: pointer; }
+.sharepop { position: fixed; z-index: 30; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 14px; }
+.sharepop.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-width: none; max-height: 85vh; border-radius: 16px 16px 0 0; }
+.sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sp-close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 8px; }
+.sp-img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); background: var(--soft); object-fit: cover; }
+.sp-label { margin: 10px 0; }
+.sp-text { min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
+.sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sp-platforms button, .sp-actions button { padding: 6px 10px; font-size: 13px; }
+.sp-step ol { margin: 10px 0 6px; padding-left: 18px; color: var(--muted); }
+.sp-step p { margin: 8px 0 0; }
+.sp-reply { display: flex; gap: 6px; margin-top: 6px; }
+.sp-reply input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
+@media (pointer: coarse) { .sp-platforms button, .sp-actions button { min-height: 40px; } }
+
+/* sponsor rails: only where there is room beside the content column */
+.rail { display: none; }
+@media (min-width: 1480px) {
+  .rail { display: flex; flex-direction: column; gap: 16px; position: fixed; top: 80px; width: 160px; z-index: 1; }
+  .rail.left { left: calc(50% - 520px - 184px); }
+  .rail.right { right: calc(50% - 520px - 184px); }
+}
+@media (max-height: 900px) { .rail .slot-square { display: none; } }
+@media print { .rail { display: none !important; } }
+.slot a { display: block; text-decoration: none; }
+.slot img { display: block; border-radius: 8px; background: var(--soft); }
+.slot.animate img { animation: ad-in 300ms ease-out; }
+@keyframes ad-in { from { opacity: 0; } }
+.ad-by { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot .ad-empty { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.ad-empty strong { color: var(--fg); font-weight: 600; }
+.ad-empty:hover { border-color: var(--accent); }
+.slot-tower .ad-empty { height: 600px; }
+.slot-square .ad-empty { height: 160px; }
 </style>
 </head>
 <body>
 <main id="landing" class="landing">
   <div class="wrap">
-    <h1>Discord Unwrapped</h1>
+    <h1>Discord Wrapped</h1>
     <p class="lede">See ten years of your Discord messages as charts: when you talk, who you talk to, what you talk about, and the single message you sent most often.</p>
     <div class="drop" id="drop">
       <strong>Drop your package.zip here</strong>
@@ -195,7 +243,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
 
 <div id="report" class="hidden">
   <header class="top"><div class="wrap">
-    <span class="brand">Discord Unwrapped</span>
+    <span class="brand">Discord Wrapped</span>
     <nav class="sections" id="nav">
       <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
     </nav>
@@ -209,10 +257,10 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
   </div></header>
 
   <div class="wrap">
-    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><div id="notice" aria-live="polite"></div></div>
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select any number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
 
     <section class="card" id="s-overview">
-      <h2>Overview</h2>
+      <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
       <div class="metrics" id="counts"></div>
       <h3>Messages per year</h3>
       <div id="year-chart"></div>
@@ -230,7 +278,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
     </section>
 
     <section class="card" id="s-rhythm">
-      <h2>Rhythm</h2>
+      <div class="sechead"><h2>Rhythm</h2><button class="share-btn" type="button" data-share-section="rhythm">Share</button></div>
       <p class="muted">When you send messages. This shows sending patterns, not sleep or time online.</p>
       <h3>Week × hour</h3>
       <div id="heat-chart"></div>
@@ -254,10 +302,10 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
     </section>
 
     <section class="card" id="s-people">
-      <h2>People &amp; servers</h2>
+      <div class="sechead"><h2>People &amp; servers</h2><button class="share-btn" type="button" data-share-section="people">Share</button></div>
       <div class="controls"><label>Period<select id="people-year"></select></label></div>
       <div class="twocol">
-        <div><h3>Direct messages</h3><div class="rank" id="dm-ranks"></div><p class="muted" id="dm-share"></p></div>
+        <div data-private><h3>Direct messages</h3><div class="rank" id="dm-ranks"></div><p class="muted" id="dm-share"></p></div>
         <div><h3>Servers</h3><div class="rank" id="server-ranks"></div><p class="muted" id="server-note"></p></div>
       </div>
       <div class="callout" data-slot="people"></div>
@@ -267,7 +315,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
     </section>
 
     <section class="card" id="s-words">
-      <h2>Words &amp; links</h2>
+      <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn" type="button" data-share-section="words">Share</button></div>
       <h3>Topics over time</h3>
       <div id="topic-chart"></div>
       <div class="legend" id="topic-legend"></div>
@@ -277,6 +325,9 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
         <textarea id="topics-input" spellcheck="false"></textarea>
         <div class="controls"><button id="topics-apply" class="primary" type="button">Update topics</button><button id="topics-reset" type="button">Restore defaults</button></div>
       </details>
+      <h3>Your top 10 words, year by year</h3>
+      <p class="muted">Each column is a year's top 10, most used at the top. Lines follow a word while it stays in the top 10. Hover a word to trace it.</p>
+      <div id="bump-chart"></div>
       <div class="twocol">
         <div><h3>Your words</h3><div class="controls"><label>Year<select id="words-year"></select></label></div><div class="rank" id="word-ranks"></div></div>
         <div><h3>Things you say most</h3><p class="muted">Whole messages of 40 characters or fewer.</p><div class="rank" id="expr-ranks"></div></div>
@@ -299,7 +350,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
       <div id="search-out" aria-live="polite"></div>
     </section>
 
-    <section class="card" id="s-channels">
+    <section class="card" id="s-channels" data-private>
       <h2>Every channel</h2>
       <div class="controls">
         <label class="grow">Channel, person or server<input id="ch-q" type="search" autocomplete="off"></label>
@@ -313,7 +364,7 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
     </section>
 
     <section class="card" id="s-fame">
-      <h2>Hall of fame</h2>
+      <div class="sechead"><h2>Hall of fame</h2><button class="share-btn" type="button" data-share-section="fame">Share</button></div>
       <div class="fame" id="fame"></div>
     </section>
 
@@ -339,9 +390,12 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
       <div id="data-quality"></div>
     </section>
   </div>
-  <footer>Everything above was computed in this tab. Close it and it's gone.</footer>
+  <footer>Everything above was computed in this tab. Close it and it's gone. · <a href="https://github.com/sponsors/mia-riezebos" target="_blank" rel="noopener">Sponsor this project</a></footer>
 </div>
+<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
+<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
 <div class="tip" id="tip" role="presentation"></div>
+<div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
 <script type="text/plain" id="worker-src">/* Parses a Discord data package and computes aggregates. Runs in a Web Worker; never touches the network. */
 const STOP = new Set(('the and you that this for with have was but not are just like what can all your about how its it i a to of in is my me on so do be at we im if as or an they he she them his her from dont thats yeah yes no oh lol lmao okay really would there get know think one some more too well good has had when now then out been will also want did much only even right than why got should could into up here any still same because make need see something actually going gonna people someone time thing things us our very though who where these those their being were am id does ive ill didnt isnt lets youre said say go doesnt wont cant ' +
   'als een het ik je de en dat die niet voor maar met ook dan wat dit er mijn mij heb zijn op om wel nog aan zo te uit kan geen hoe ben bij naar dus ja nee door doen veel weet even gewoon want tot echt gaan meer jij ze hebben al mn ff ' +
@@ -521,6 +575,7 @@ async function parsePackage(source) {
 
 /* ---------- saved copy and incremental updates ---------- */
 // The parsed messages live in IndexedDB so the report survives reloads; aggregates are cheap to recompute.
+// The database keeps the project's original name so copies saved before the rename still load.
 const DB_NAME = 'discord-unwrapped', DB_KEY = 'package';
 function idb(mode, fn) {
   return new Promise((resolve, reject) => {
@@ -1039,12 +1094,12 @@ function lines(target, labels, series, {height = 240, title, format = fmt, tickL
   });
   if (onHover) $(target).onpointerover = e => { const i = e.target.dataset?.i; if (i !== undefined) onHover(+i); };
 }
-function ranks(target, items, max = 10, label = fmt) {
+function ranks(target, items, max = 10, label = fmt, share = () => null) {
   const rows = items.slice(0, max), top = Math.max(1, ...rows.map(r => r[1]));
-  $(target).innerHTML = rows.map(([name, v], i) => `<div class="rankrow"><span class="name" title="${esc(name)}">${esc(name)}</span><span class="number">${label(v)}</span><div class="track"><span style="width:${100 * v / top}%;background:${COLORS[0]}"></span></div></div>`).join('') || '<p class="muted">Nothing here for this period.</p>';
+  $(target).innerHTML = rows.map(([name, v], i) => `<div class="rankrow" ${shareAttr(share(name, v, i))}><span class="name" title="${esc(name)}">${esc(name)}</span><span class="number">${label(v)}</span><div class="track"><span style="width:${100 * v / top}%;background:${COLORS[0]}"></span></div></div>`).join('') || '<p class="muted">Nothing here for this period.</p>';
 }
 const legend = (target, names) => $(target).innerHTML = names.map((n, i) => `<span><i class="swatch" style="background:${COLORS[i]}"></i>${esc(n)}</span>`).join('');
-const metric = (v, label) => `<div class="metric"><strong>${v}</strong><span>${label}</span></div>`;
+const metric = (v, label, share) => `<div class="metric" ${shareAttr(share)}><strong>${v}</strong><span>${label}</span></div>`;
 const table = (target, head, rows) => $(target).innerHTML = `<thead><tr>${head.map((h, i) => `<th${i === head.length - 1 ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td${i === r.length - 1 ? ' class="num"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
 const yearOptions = (all = 'All years') => `<option value="all">${all}</option>` + Object.keys(D.years).sort().map(y => `<option>${y}</option>`).join('');
 
@@ -1053,32 +1108,43 @@ function findings() {
   const T = D.totals, ys = Object.keys(D.years).sort(), Y = D.years, out = [];
   const full = ys.slice(1, -1).filter(y => Y[y].calendarDays >= 365);
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
-  out.push(['years', `<strong>${busiest} was your loudest year</strong> with ${fmt(Y[busiest].total)} messages, ${pct(Y[busiest].total, T.messages)} of everything you ever sent.`]);
+  out.push(['years', `<strong>${busiest} was your loudest year</strong> with ${fmt(Y[busiest].total)} messages, ${pct(Y[busiest].total, T.messages)} of everything you ever sent.`,
+    {text: `${busiest} was my loudest year on Discord: ${fmt(Y[busiest].total)} messages.`, headline: busiest, sub: `my loudest year on Discord · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
   // Biggest fall between two consecutive full years; partial first and last years would exaggerate it.
   const drops = full.slice(1).filter(y => full.includes(String(+y - 1))).map(y => [y, 1 - Y[y].total / Y[+y - 1].total]).sort((a, b) => b[1] - a[1]);
-  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>${y} was the quiet year:</strong> ${fmt(Y[y].total)} messages, ${(100 * d).toFixed(0)}% fewer than ${+y - 1}. You still posted on ${fmt(Y[y].activeDays)} days.`]); }
+  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>${y} was the quiet year:</strong> ${fmt(Y[y].total)} messages, ${(100 * d).toFixed(0)}% fewer than ${+y - 1}. You still posted on ${fmt(Y[y].activeDays)} days.`,
+    {text: `${y} was my quiet year on Discord: ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}.`, headline: y, sub: `my quiet year on Discord · ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
   const months = Object.entries(D.months), topMonth = months.reduce((a, m) => m[1].total > a[1].total ? m : a);
-  out.push(['month', `<strong>Your busiest month was ${new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'})}:</strong> ${fmt(topMonth[1].total)} messages, about ${fmt(Math.round(topMonth[1].total / 30))} a day.`]);
+  const monthName = new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'}), perDay = fmt(Math.round(topMonth[1].total / 30));
+  out.push(['month', `<strong>Your busiest month was ${monthName}:</strong> ${fmt(topMonth[1].total)} messages, about ${perDay} a day.`,
+    {text: `My busiest month on Discord was ${monthName}: ${fmt(topMonth[1].total)} messages, about ${perDay} a day.`, headline: monthName, sub: `my busiest Discord month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
   const peakHour = D.hourly.indexOf(Math.max(...D.hourly));
-  out.push(['rhythm', `<strong>${pct(T.lateNight, T.messages)} of your messages were sent between midnight and 6 am.</strong> Your busiest hour is ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`]);
+  out.push(['rhythm', `<strong>${pct(T.lateNight, T.messages)} of your messages were sent between midnight and 6 am.</strong> Your busiest hour is ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`,
+    {text: `${pct(T.lateNight, T.messages)} of my Discord messages are sent between midnight and 6 am.`, headline: pct(T.lateNight, T.messages), sub: 'of my Discord messages are sent between midnight and 6 am', chart: 'heat-chart'}]);
   const st = D.streaks[0];
-  if (st) out.push(['calendar', `<strong>Longest streak: ${fmt(st[0])} days in a row</strong>, ${longDate(st[1])} to ${longDate(st[2])}. You posted on ${pct(T.activeDays, T.calendarDays)} of all days since your first message.`]);
+  if (st) out.push(['calendar', `<strong>Longest streak: ${fmt(st[0])} days in a row</strong>, ${longDate(st[1])} to ${longDate(st[2])}. You posted on ${pct(T.activeDays, T.calendarDays)} of all days since your first message.`,
+    {text: `My longest Discord streak: ${fmt(st[0])} days in a row.`, headline: `${fmt(st[0])} days in a row`, sub: `my longest Discord streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
   const pk = D.peakDays[0];
   if (pk) {
     const [txt, n] = pk.topText;
-    out.push(['peaks', `<strong>Record day: ${longDate(pk.date)}</strong>, ${fmt(pk.count)} messages${pk.contexts[0] ? `, mostly in ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${esc(txt.slice(0, 60))}”.` : ''}`]);
+    out.push(['peaks', `<strong>Record day: ${longDate(pk.date)}</strong>, ${fmt(pk.count)} messages${pk.contexts[0] ? `, mostly in ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${esc(txt.slice(0, 60))}”.` : ''}`,
+      {text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${quoteOf(txt, 60)}”.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `my Discord record, ${longDate(pk.date)}`}]);
   }
-  out.push(['length', `<strong>You type in bursts.</strong> ${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before; ${pct(T.shortMessages, T.messages)} are 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`]);
+  out.push(['length', `<strong>You type in bursts.</strong> ${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before; ${pct(T.shortMessages, T.messages)} are 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
+    {text: `My Discord record: ${fmt(D.bursts.bestMinute.count)} messages in one minute. ${pct(T.shortMessages, T.messages)} of my messages are 20 characters or fewer.`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `my Discord record · ${pct(T.shortMessages, T.messages)} of my messages are 20 characters or fewer`, chart: 'length-chart'}]);
   const dms = D.channels.filter(c => c.group === 'DMs' && c.count), dmTotal = dms.reduce((a, c) => a + c.count, 0);
-  if (dms.length > 10) out.push(['people', `<strong>A small inner circle:</strong> your top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all ${fmt(dmTotal)} DM messages, across ${fmt(dms.length)} DM conversations.`]);
+  if (dms.length > 10) out.push(['people', `<strong>A small inner circle:</strong> your top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all ${fmt(dmTotal)} DM messages, across ${fmt(dms.length)} DM conversations.`,
+    {text: `My top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all my Discord DMs.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'of my Discord DMs go to just 10 people'}]);
   if (ys.length > 2) {
     const a = full[0] || ys[0], b = ys.at(-1), wa = Y[a].words / Y[a].total, wb = Y[b].words / Y[b].total;
-    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages got ${wb > wa ? 'longer' : 'shorter'}:</strong> ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`]);
+    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages got ${wb > wa ? 'longer' : 'shorter'}:</strong> ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`,
+      {text: `My Discord messages got ${wb > wa ? 'longer' : 'shorter'}: ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
   }
-  if (D.domains[0]) out.push(['links', `<strong>You link to ${esc(D.domains[0][0])} the most:</strong> ${fmt(D.domains[0][1])} times, out of ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`]);
+  if (D.domains[0]) out.push(['links', `<strong>You link to ${esc(D.domains[0][0])} the most:</strong> ${fmt(D.domains[0][1])} times, out of ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`,
+    {text: `I've shared ${fmt(D.domains[0][1])} links to ${D.domains[0][0]} on Discord.`, headline: D.domains[0][0], sub: `${fmt(D.domains[0][1])} links I've shared on Discord`}]);
   // Each highlight sits next to the chart that shows it.
   document.querySelectorAll('[data-slot]').forEach(el => {
-    el.innerHTML = out.filter(([slot]) => slot === el.dataset.slot).map(([, html]) => `<p>${html}</p>`).join('');
+    el.innerHTML = out.filter(([slot]) => slot === el.dataset.slot).map(([, html, share]) => `<p ${shareAttr(share)}>${html}</p>`).join('');
   });
 }
 
@@ -1090,7 +1156,10 @@ function overview() {
   const T = D.totals;
   $('hero-title').textContent = `${fmt(T.messages)} messages${D.user?.username ? ' from ' + D.user.username : ''}`;
   $('hero-sub').textContent = `${longDate(T.first)} – ${longDate(T.last)} · ${fmt(T.channels)} channels · times in ${D.tz}`;
-  $('counts').innerHTML = metric(fmt(T.messages), 'messages') + metric(fmt(T.words), 'words') + metric(fmt(T.characters), 'characters') + metric(fmt(T.activeDays), `active days of ${fmt(T.calendarDays)}`) + metric(fmt(T.urls), 'links') + metric(fmt(T.attachmentLinks), 'attachments');
+  const since = T.first.slice(0, 4), stat = (n, what) => ({text: `I've ${what} on Discord since ${since}.`, headline: fmt(n), sub: `${what.replace(/^\S+ [\d,.]+ /, '')} on Discord since ${since}`});
+  $('counts').innerHTML = metric(fmt(T.messages), 'messages', stat(T.messages, `sent ${fmt(T.messages)} messages`)) + metric(fmt(T.words), 'words', stat(T.words, `typed ${fmt(T.words)} words`)) + metric(fmt(T.characters), 'characters', stat(T.characters, `typed ${fmt(T.characters)} characters`))
+    + metric(fmt(T.activeDays), `active days of ${fmt(T.calendarDays)}`, {text: `I've sent Discord messages on ${fmt(T.activeDays)} of the last ${fmt(T.calendarDays)} days.`, headline: pct(T.activeDays, T.calendarDays), sub: `of days since ${since} I sent at least one Discord message`, chart: 'calendar'})
+    + metric(fmt(T.urls), 'links', stat(T.urls, `shared ${fmt(T.urls)} links`)) + metric(fmt(T.attachmentLinks), 'attachments', stat(T.attachmentLinks, `sent ${fmt(T.attachmentLinks)} attachments`));
   findings();
   legend('group-legend', GROUPS);
   const ys = Object.keys(D.years).sort();
@@ -1164,7 +1233,7 @@ function people() {
     const dmTotal = dms.reduce((a, x) => a + x[1], 0);
     $('dm-share').textContent = dms.length ? `${fmt(dms.length)} DM conversations · top 10 = ${pct(dms.slice(0, 10).reduce((a, x) => a + x[1], 0), dmTotal)} of DM messages` : '';
     const servers = D.guilds.map(g => [g.name, y === 'all' ? g.count : g.years[y] || 0]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
-    ranks('server-ranks', servers, 10);
+    ranks('server-ranks', servers, 10, fmt, (name, n, i) => ({text: `I've sent ${fmt(n)} messages in ${name} on Discord${y === 'all' ? '' : ` in ${y}`}.`, headline: name, sub: `${i ? `#${i + 1}` : 'my top'} Discord server${y === 'all' ? '' : ` in ${y}`} · ${fmt(n)} messages`}));
     $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. Some old servers only appear by name, so a renamed server can show up twice.` : '';
   };
   $('people-year').onchange = update; update();
@@ -1177,13 +1246,48 @@ function words() {
   legend('topic-legend', names);
   const draw = () => lines('topic-chart', ys, names.map(n => ({name: n, values: ys.map(y => 1000 * (D.topicYears[y]?.[n] || 0) / D.years[y].total)})), {title: 'Topic mentions per 1,000 messages', format: v => v.toFixed(1)});
   draw(); draws.push(draw);
+  const drawBump = () => bump('bump-chart', ys.filter(y => D.wordYears[y]?.length));
+  drawBump(); draws.push(drawBump);
   $('topics-input').value = topicsText;
   $('words-year').innerHTML = yearOptions();
-  const wy = () => ranks('word-ranks', $('words-year').value === 'all' ? D.words : D.wordYears[$('words-year').value] || [], 12);
+  const wy = () => {
+    const y = $('words-year').value;
+    ranks('word-ranks', y === 'all' ? D.words : D.wordYears[y] || [], 12, fmt, (w, n, i) => wordShare(w, n, i, y === 'all' ? null : y));
+  };
   $('words-year').onchange = wy; wy();
-  ranks('expr-ranks', D.expressions, 12);
-  ranks('link-ranks', D.domains, 10);
-  ranks('emoji-ranks', D.emoji.map(([n, v]) => [':' + n + ':', v]), 10);
+  ranks('expr-ranks', D.expressions, 12, fmt, (t, n, i) => ({text: i ? `“${quoteOf(t, 60)}” is my #${i + 1} most-sent message on Discord: ${fmt(n)} times.` : `The thing I say most on Discord is just “${quoteOf(t, 60)}”: ${fmt(n)} times.`, headline: `“${quoteOf(t, 40)}”`, sub: `${i ? `#${i + 1} ` : ''}most-sent Discord message · ${fmt(n)} times`}));
+  ranks('link-ranks', D.domains, 10, fmt, (d, n) => ({text: `I've shared ${fmt(n)} links to ${d} on Discord.`, headline: d, sub: `${fmt(n)} links I've shared on Discord`}));
+  ranks('emoji-ranks', D.emoji.map(([n, v]) => [':' + n + ':', v]), 10, fmt, (e, n, i) => ({text: `${i ? `My #${i + 1}` : 'My most-used'} custom emoji on Discord is ${e} (${fmt(n)} times).`, headline: e, sub: `${i ? `#${i + 1} ` : 'most-used '}custom emoji · ${fmt(n)} times`}));
+}
+const wordShare = (w, n, i, y) => ({
+  text: y ? (i ? `“${w}” was my #${i + 1} word on Discord in ${y} (${fmt(n)} times).` : `My top word on Discord in ${y} was “${w}” (${fmt(n)} times).`)
+    : (i ? `“${w}” is my #${i + 1} word on Discord, used ${fmt(n)} times.` : `My most-used word on Discord is “${w}”: ${fmt(n)} times.`),
+  headline: `“${w}”`, sub: `my #${i + 1} word on Discord${y ? ` in ${y}` : ''} · ${fmt(n)} times`});
+// Bump chart: one column per year, words placed by rank, lines joining a word across consecutive years.
+function bump(target, years) {
+  const tops = years.map(y => D.wordYears[y].slice(0, 10));
+  const paths = new Map();
+  tops.forEach((list, i) => list.forEach(([word, count], r) => { if (!paths.has(word)) paths.set(word, []); paths.get(word).push({i, r, count}); }));
+  // Words that recur get a palette colour, most-recurring first; one-year words stay muted.
+  const recurring = [...paths].filter(([, p]) => p.length > 1).sort((a, b) => b[1].length - a[1].length).map(([w]) => w);
+  const color = w => recurring.includes(w) ? COLORS[recurring.indexOf(w) % COLORS.length] : 'var(--muted)';
+  const host = $(target), w = Math.max(host.clientWidth, years.length * 92), T = 26, rh = 30, h = T + rh * 10 + 4, cw = w / years.length;
+  const x = i => cw * (i + .5), y = r => T + rh * (r + .5), half = word => Math.min(cw / 2 - 6, fit(word).length * 3.4 + 2);
+  const fit = word => word.length * 6.8 > cw - 12 ? word.slice(0, Math.max(3, Math.floor((cw - 12) / 6.8) - 1)) + '…' : word;
+  frameFixed(target, w, h, 'Top 10 words for each year', () => {
+    let s = years.map((yr, i) => `<text class="tick" x="${x(i)}" y="14" text-anchor="middle">${yr}</text>`).join('');
+    for (const [word, pts] of paths) {
+      const c = color(word);
+      s += `<g class="bw">`;
+      pts.forEach((p, k) => {
+        const next = pts[k + 1];
+        if (next && next.i === p.i + 1) s += `<path d="M${x(p.i) + half(word) + 4},${y(p.r)} C${x(p.i) + cw / 2},${y(p.r)} ${x(next.i) - cw / 2},${y(next.r)} ${x(next.i) - half(word) - 4},${y(next.r)}" fill="none" stroke="${c}" stroke-width="2" opacity=".75"/>`;
+        s += `<text x="${x(p.i)}" y="${y(p.r) + 4}" text-anchor="middle" fill="${c}" style="fill:${c}" data-tip="${esc(word)} · #${p.r + 1} in ${years[p.i]} · ${fmt(p.count)} times" data-share-click ${shareAttr(wordShare(word, p.count, p.r, years[p.i]))}>${esc(fit(word))}</text>`;
+      });
+      s += '</g>';
+    }
+    return s;
+  });
 }
 async function retopic(text) {
   topicsText = text; $('topics-apply').disabled = true;
@@ -1195,7 +1299,7 @@ $('topics-reset').onclick = () => retopic(DEFAULT_TOPICS);
 function messageCard(m, q) {
   let text = esc(m.text || '(no text, attachment only)');
   if (q) text = text.replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), x => `<mark>${x}</mark>`);
-  return `<div class="msg"><div class="text">${text}</div><div class="meta">${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open in Discord</a>` : ''}</div></div>`;
+  return `<div class="msg"><div class="text">${text}</div><div class="meta" data-private>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open in Discord</a>` : ''}</div></div>`;
 }
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -1204,7 +1308,9 @@ $('search-form').addEventListener('submit', async e => {
   const r = await call('search', {query: q, wholeWord: $('search-whole').checked});
   if (!r.total) { $('search-out').innerHTML = `<p>You never sent “${esc(r.query)}”.</p>`; return; }
   const ms = Object.keys(D.months);
-  $('search-out').innerHTML = `<div class="metrics">${metric(fmt(r.total), 'messages')}${metric(longDate(r.first.at.slice(0, 10)), 'first time')}${metric(Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0], 'peak year')}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks"></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
+  const peakYear = Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0];
+  lastSearchShare = {text: `I've said “${r.query}” ${fmt(r.total)} times on Discord, most of all in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} times on Discord · peak year ${peakYear}`, chart: 'search-chart'};
+  $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first time')}${metric(peakYear, 'peak year', lastSearchShare)}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
   const draw = () => $('search-chart') && lines('search-chart', ms, [{name: r.query, values: ms.map(m => r.months[m] || 0)}], {height: 200, title: `Messages containing ${r.query} per month`, tickLabel: m => m.slice(0, 4)});
   draw(); ranks('search-ranks', r.channels, 8);
   searchDraw = draw;
@@ -1237,14 +1343,14 @@ function channels() {
   update();
 }
 function fame() {
-  const F = D.fame, card = (title, m, extra = '') => m ? `<article><h3>${title}</h3><blockquote>${esc((m.text || '(attachment only)').slice(0, 1200))}</blockquote><small>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open</a>` : ''}${extra}</small></article>` : '';
+  const F = D.fame, card = (title, m, extra = '', share) => m ? `<article ${shareAttr(share || {text: `${title.replace('Your', 'My')} on Discord (${m.at.slice(0, 10)}): “${quoteOf(m.text || '', 200)}”`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${title.replace('Your', 'my')} on Discord · ${longDate(m.at.slice(0, 10))}`})}><h3>${title}</h3><blockquote>${esc((m.text || '(attachment only)').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open</a>` : ''}${extra}</small></article>` : '';
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
   $('fame').innerHTML = card('Your first message', F.first) + card('Your latest message', F.last) +
-    (F.mostRepeated ? `<article><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
-    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '') +
-    `<article><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
-    (ls ? `<article><h3>Longest session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · lasted ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
-    (pk ? `<article><h3>Record day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
+    (F.mostRepeated ? `<article ${shareAttr(sectionShare('fame'))}><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
+    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest Discord message was ${fmt([...F.longest.text].length)} characters long.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `my longest Discord message · “${quoteOf(F.longest.text, 50)}”`}) +
+    `<article ${shareAttr({text: `My Discord record: ${fmt(bm.count)} messages in 60 seconds.`, headline: `${fmt(bm.count)} messages`, sub: 'in 60 seconds, my Discord record'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
+    (ls ? `<article ${shareAttr({text: `My longest Discord session: ${fmt(ls[0])} messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'without a 30-minute break, my longest Discord session'})}><h3>Longest session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · lasted ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
+    (pk ? `<article ${shareAttr({text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}.`, headline: `${fmt(pk.count)} messages in a day`, sub: `my Discord record, ${longDate(pk.date)}`})}><h3>Record day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
 }
 
 /* ---------- roast ---------- */
@@ -1314,7 +1420,7 @@ function dataQuality() {
 }
 
 function renderAll() {
-  draws.length = 0;
+  draws.length = 0; shareCtx.clear();
   overview(); rhythm(); people(); words(); channels(); fame(); roast(); dataQuality();
 }
 let resizeTimer, lastWidth = innerWidth;
@@ -1326,6 +1432,281 @@ startWorker();
 // Reopen the saved copy, if there is one, instead of asking for the zip again.
 $('status').innerHTML = '<div>Checking for a saved copy…</div>';
 call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
+
+/* ---------- sharing ---------- */
+// Anything marked with shareAttr() can be shared: by selecting text inside it, clicking it (data-share-click),
+// or a section's Share button. Each context carries first-person post text plus what goes on the image.
+const SITE = 'https://wrapped.mia.cx';
+const REPLY_TEXT = `Make your own Discord Wrapped. It runs in your browser and nothing gets uploaded: ${SITE}`;
+const enc = encodeURIComponent;
+const shareCtx = new Map();
+let shareSeq = 0;
+function shareAttr(ctx) {
+  if (!ctx) return '';
+  const id = 's' + ++shareSeq;
+  shareCtx.set(id, ctx);
+  return `data-share="${id}"`;
+}
+const quoteOf = (t, n = 80) => { const s = t.replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+
+// derank: the platform hides posts with links, so the link goes in a reply instead of the post.
+const PLATFORMS = [
+  {id: 'x', name: 'X', derank: true, compose: t => `https://x.com/intent/post?text=${enc(t)}`,
+    reply: (post, t) => { const id = post.match(/status(?:es)?\/(\d+)/)?.[1]; return id && `https://x.com/intent/post?in_reply_to=${id}&text=${enc(t)}`; }},
+  {id: 'bluesky', name: 'Bluesky', compose: t => `https://bsky.app/intent/compose?text=${enc(t)}`},
+  {id: 'threads', name: 'Threads', derank: true, compose: t => `https://www.threads.com/intent/post?text=${enc(t)}`},
+  {id: 'mastodon', name: 'Mastodon', compose: (t, server) => `https://${server}/share?text=${enc(t)}`, needsServer: true},
+  {id: 'linkedin', name: 'LinkedIn', derank: true, compose: t => `https://www.linkedin.com/feed/?shareActive=true&text=${enc(t)}`},
+  {id: 'reddit', name: 'Reddit', linkPost: true, compose: t => `https://www.reddit.com/submit?url=${enc(SITE)}&title=${enc(t)}`},
+  {id: 'whatsapp', name: 'WhatsApp', compose: t => `https://wa.me/?text=${enc(t)}`},
+];
+
+/* image card */
+async function svgImage(svg) {
+  // Copy computed styles inline so CSS variables and classes survive outside the page.
+  const clone = svg.cloneNode(true), from = [svg, ...svg.querySelectorAll('*')], to = [clone, ...clone.querySelectorAll('*')];
+  from.forEach((el, i) => {
+    const s = getComputedStyle(el);
+    for (const p of ['fill', 'stroke', 'opacity', 'stroke-width', 'font-size', 'font-weight', 'font-family']) to[i].style.setProperty(p, s.getPropertyValue(p));
+  });
+  clone.querySelectorAll('.hit').forEach(n => n.remove());
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.removeAttribute('style');
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], {type: 'image/svg+xml'}));
+  const img = new Image();
+  img.src = url;
+  try { await img.decode(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+  return {img, w: +svg.getAttribute('width'), h: +svg.getAttribute('height')};
+}
+function wrapLines(g, text, maxWidth, maxLines) {
+  const words = text.split(' '), out = [];
+  let line = '';
+  for (const w of words) {
+    const next = line ? line + ' ' + w : w;
+    if (g.measureText(next).width > maxWidth && line) { out.push(line); line = w; } else line = next;
+  }
+  if (line) out.push(line);
+  if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
+  return out;
+}
+async function renderCard(ctx) {
+  const W = 1200, H = 675, P = 64, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d'), css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const font = getComputedStyle(document.body).fontFamily;
+  g.fillStyle = css('--surface'); g.fillRect(0, 0, W, H);
+  g.fillStyle = css('--accent'); g.fillRect(0, 0, W, 10);
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = css('--muted'); g.font = `600 26px ${font}`;
+  g.fillText('DISCORD WRAPPED', P, 74);
+  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
+  // Headline shrinks until it fits on two lines; charts leave less room.
+  let size = chartSvg ? 76 : 120, lines;
+  do { g.font = `700 ${size}px ${font}`; lines = wrapLines(g, ctx.headline, W - 2 * P, 2); size -= 4; }
+  while (lines.some(l => g.measureText(l).width > W - 2 * P) && size > 30);
+  g.fillStyle = css('--fg');
+  let y = 74 + size * 1.25;
+  for (const l of lines) { g.fillText(l, P, y); y += size * 1.1; }
+  if (ctx.sub) {
+    g.font = `400 34px ${font}`; g.fillStyle = css('--muted');
+    for (const l of wrapLines(g, ctx.sub, W - 2 * P, 2)) { y += 4; g.fillText(l, P, y); y += 42; }
+  }
+  if (chartSvg) {
+    try {
+      const {img, w, h} = await svgImage(chartSvg), top = y + 10, boxH = H - 80 - top, boxW = W - 2 * P;
+      const k = Math.min(boxW / w, boxH / h);
+      if (boxH > 60) g.drawImage(img, P, top, w * k, h * k);
+    } catch { /* The card still works without its chart. */ }
+  }
+  g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
+  g.fillText('wrapped.mia.cx', P, H - 36);
+  g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
+  g.fillText('made in the browser · nothing uploaded', W - P, H - 38);
+  return new Promise(r => c.toBlob(r, 'image/png'));
+}
+
+/* popover */
+const pop = $('share-pop');
+let current = null, anchor = null;
+function openShare(ctx, rect) {
+  current = {ctx, card: renderCard(ctx)};
+  const canNative = !!navigator.share;
+  pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close">×</button></div>
+    <img class="sp-img" alt="The image that will be shared">
+    <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(ctx.text)}</textarea></label>
+    <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">${p.name}</button>`).join('')}</div>
+    <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download</button><button type="button" data-act="copy-text">Copy text</button></div>
+    <div class="sp-step" aria-live="polite"></div>`;
+  current.card.then(b => { if (b && current?.ctx === ctx) pop.querySelector('.sp-img').src = URL.createObjectURL(b); });
+  addEventListener('resize', () => current && place(), {once: true});
+  pop.classList.remove('hidden');
+  place(rect);
+  pop.querySelector('.sp-text').focus({preventScroll: true});
+}
+function place(rect = anchor) {
+  anchor = rect;
+  if (innerWidth < 600 || !rect) { pop.classList.add('sheet'); pop.style.left = pop.style.top = ''; return; }
+  pop.classList.remove('sheet');
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  const left = Math.min(Math.max(8, rect.left + rect.width / 2 - w / 2), innerWidth - w - 8);
+  const below = rect.bottom + 10, above = rect.top - h - 10;
+  pop.style.left = left + 'px';
+  // Prefer below the anchor, then above; either way keep the whole popover on screen as it grows.
+  const top = below + h < innerHeight ? below : above >= 8 ? above : innerHeight - h - 8;
+  pop.style.top = Math.max(8, top) + 'px';
+}
+function closeShare() { pop.classList.add('hidden'); current = null; }
+const postText = () => pop.querySelector('.sp-text').value.trim();
+const stepOut = html => { pop.querySelector('.sp-step').innerHTML = html; place(); };
+function copyImage() {
+  // Passing the promise keeps the click's user activation for the clipboard write.
+  if (!window.ClipboardItem || !navigator.clipboard?.write) return Promise.reject(new Error('no image clipboard'));
+  return navigator.clipboard.write([new ClipboardItem({'image/png': current.card})]);
+}
+const slug = () => quoteOf(current.ctx.headline, 40).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'card';
+
+function sharePlatform(p) {
+  let server = '';
+  if (p.needsServer) {
+    server = localStorage.getItem('du-mastodon') || prompt('Your Mastodon server (for example mastodon.social):', 'mastodon.social') || '';
+    server = server.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!server) return;
+    localStorage.setItem('du-mastodon', server);
+  }
+  const text = postText(), copied = p.linkPost ? Promise.resolve(false) : copyImage().then(() => true, () => false);
+  window.open(p.compose(p.derank || p.linkPost ? text : `${text}\n\n${SITE}`, server), '_blank', 'noopener');
+  copied.then(ok => {
+    const image = p.linkPost ? '' : ok ? `<li>The image is on your clipboard: paste it into the post (⌘V or Ctrl+V).</li>` : `<li>Copying the image didn't work here. Use Download and attach it.</li>`;
+    if (!p.derank) { stepOut(image ? `<ol>${image}</ol>` : ''); return; }
+    stepOut(`<ol>${image}<li>${p.name} hides posts with links, so the link goes in a reply. After posting, reply with:</li></ol>
+      <div class="sp-reply"><input readonly value="${esc(REPLY_TEXT)}"><button type="button" data-act="copy-reply">Copy</button></div>
+      ${p.reply ? `<div class="sp-reply"><input class="sp-post" placeholder="Paste your post's link" inputmode="url"><button type="button" data-act="open-reply" data-platform-reply="${p.id}">Open reply</button></div>` : ''}`);
+  });
+}
+pop.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.classList.contains('sp-close')) return closeShare();
+  if (b.dataset.platform) return sharePlatform(PLATFORMS.find(p => p.id === b.dataset.platform));
+  const act = b.dataset.act;
+  try {
+    if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
+    else if (act === 'copy-text') { await navigator.clipboard.writeText(`${postText()}\n\n${SITE}`); stepOut('<p>Text and link copied.</p>'); }
+    else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Copied'; }
+    else if (act === 'download') {
+      const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(await current.card), download: `discord-wrapped-${slug()}.png`});
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } else if (act === 'native') {
+      const file = new File([await current.card], `discord-wrapped-${slug()}.png`, {type: 'image/png'});
+      const data = {text: postText(), url: SITE};
+      await navigator.share(navigator.canShare?.({files: [file]}) ? {...data, files: [file]} : data);
+    } else if (act === 'open-reply') {
+      const url = PLATFORMS.find(p => p.id === b.dataset.platformReply).reply(pop.querySelector('.sp-post').value, REPLY_TEXT);
+      if (url) window.open(url, '_blank', 'noopener');
+      else stepOut(pop.querySelector('.sp-step').innerHTML.replace(/<p class="error">.*?<\/p>/, '') + '<p class="error">That doesn’t look like a link to a post.</p>');
+    }
+  } catch (err) {
+    if (err?.name !== 'AbortError') stepOut(`<p class="error">${esc(err.message || 'That didn’t work in this browser.')}</p>`);
+  }
+});
+
+/* triggers */
+function contextFromSelection() {
+  const sel = getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
+  const text = sel.toString().trim();
+  if (!text || text.length > 600) return null;
+  const range = sel.getRangeAt(0), node = range.commonAncestorContainer, el = node.nodeType === 1 ? node : node.parentElement;
+  if (!el?.closest('#report') || el.closest('#share-pop, input, textarea, select, [data-private]')) return null;
+  const owner = el.closest('[data-share]');
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `“${quoteOf(text, 200)}”\n\nFrom my Discord Wrapped.`, headline: `“${quoteOf(text)}”`, sub: 'From my Discord Wrapped'};
+  return ctx && {ctx, rect: range.getBoundingClientRect()};
+}
+document.addEventListener('pointerup', e => {
+  if (pop.contains(e.target)) return;
+  setTimeout(() => { const s = contextFromSelection(); if (s) openShare(s.ctx, s.rect); });
+});
+document.addEventListener('keyup', e => {
+  if (!e.shiftKey || pop.contains(e.target)) return;
+  const s = contextFromSelection(); if (s) openShare(s.ctx, s.rect);
+});
+document.addEventListener('pointerdown', e => {
+  if (!pop.classList.contains('hidden') && !pop.contains(e.target)) closeShare();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.classList.contains('hidden')) closeShare(); });
+document.addEventListener('click', e => {
+  const t = e.target.closest?.('[data-share-click]');
+  if (t && !getSelection()?.toString()) { const ctx = shareCtx.get(t.dataset.share); if (ctx) openShare(ctx, t.getBoundingClientRect()); return; }
+  const b = e.target.closest?.('[data-share-section]');
+  if (b) { const ctx = sectionShare(b.dataset.shareSection); if (ctx) openShare(ctx, b.getBoundingClientRect()); }
+});
+
+function sectionShare(id) {
+  const T = D.totals, Y = D.years, ys = Object.keys(Y).sort();
+  const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
+  const since = T.first.slice(0, 4);
+  if (id === 'overview') return {text: `I've sent ${fmt(T.messages)} messages on Discord since ${since}. ${busiest} was the loudest year.`, headline: `${fmt(T.messages)} messages`, sub: `on Discord since ${since} · loudest year ${busiest}`, chart: 'year-chart'};
+  if (id === 'rhythm') return {text: `${pct(T.lateNight, T.messages)} of my Discord messages are sent between midnight and 6 am.`, headline: 'When I’m on Discord', sub: `${pct(T.lateNight, T.messages)} of my messages are sent between midnight and 6 am`, chart: 'heat-chart'};
+  if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers vs DMs', sub: 'share of my Discord messages, year by year', chart: 'share-chart'};
+  if (id === 'words') {
+    const y = rateYears().filter(y => D.wordYears[y]?.length).at(-1), w = D.wordYears[y]?.[0];
+    return {text: `My top 10 words on Discord, year by year.${w ? ` In ${y} it was “${w[0]}”.` : ''}`, headline: 'My top words, year by year', sub: w ? `${y}: “${w[0]}”` : '', chart: 'bump-chart'};
+  }
+  if (id === 'fame') {
+    const r = D.fame.mostRepeated;
+    return r && {text: `The message I've sent most on Discord is “${quoteOf(r.text, 100)}”: ${fmt(r.count)} times.`, headline: `“${quoteOf(r.text, 60)}”`, sub: `my most repeated Discord message · ${fmt(r.count)} times`};
+  }
+  if (id === 'search') return lastSearchShare;
+  return null;
+}
+let lastSearchShare = null;
+
+/* Splits active ads into one carousel per rail slot. Pure, so the tests can import it. */
+export const RAIL_SLOTS = [['left', 'tower'], ['left', 'square'], ['right', 'tower'], ['right', 'square']];
+export function schedule(ads, rand) {
+  const plan = {};
+  for (const [rail, slot] of RAIL_SLOTS) {
+    const list = ads.filter(a => a.slot === slot && a.rails.includes(rail));
+    // Start each carousel at a random ad so every sponsor gets first views, keeping the order fair after that.
+    const k = list.length ? Math.floor(rand() * list.length) : 0;
+    plan[`${rail}:${slot}`] = [...list.slice(k), ...list.slice(0, k)];
+  }
+  return plan;
+}
+
+/* ---------- sponsor rails ---------- */
+// Rails sit outside the content column and only appear on wide screens, so they never cover the report
+// and never end up in share images (those are drawn separately on a canvas).
+const SPONSORS = 'https://github.com/sponsors/mia-riezebos';
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+async function startRails() {
+  let ads = [];
+  try {
+    const r = await fetch('/api/ads', {signal: AbortSignal.timeout(5000)});
+    if (r.ok) ads = (await r.json()).ads || [];
+  } catch { /* Offline or opened from a file: show the sponsor invitation instead. */ }
+  const plan = schedule(ads, Math.random);
+  for (const [rail, slot] of RAIL_SLOTS) runSlot(document.querySelector(`.rail.${rail} .slot-${slot}`), plan[`${rail}:${slot}`]);
+}
+const adMarkup = ad => `<a href="${esc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${esc(ad.image)}" width="${ad.width}" height="${ad.height}" alt="${esc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsor · ${esc(ad.sponsor)}</span>`;
+const emptySlot = `<a class="ad-empty" href="${SPONSORS}" target="_blank" rel="noopener"><strong>Display your ad here</strong><span>by sponsoring me on GitHub</span></a>`;
+function runSlot(el, list) {
+  if (!el) return;
+  if (!list.length) { el.innerHTML = emptySlot; return; }
+  let i = 0;
+  el.innerHTML = adMarkup(list[0]);
+  if (list.length < 2) return;
+  const tick = () => setTimeout(() => {
+    // Hold still while hovered or while the tab is in the background.
+    if (!document.hidden && !el.matches(':hover')) {
+      i = (i + 1) % list.length;
+      el.innerHTML = adMarkup(list[i]);
+      el.classList.toggle('animate', !reducedMotion.matches);
+    }
+    tick();
+  }, list[i].seconds * 1000);
+  tick();
+}
+startRails();
 </script>
 </body>
 </html>

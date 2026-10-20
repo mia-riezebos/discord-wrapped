@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src data: blob:; connect-src blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<title>Discord Unwrapped — explore your data package</title>
+<title>Discord Wrapped — explore your data package</title>
 <style>/*STYLE*/</style>
 </head>
 <body>
 <main id="landing" class="landing">
   <div class="wrap">
-    <h1>Discord Unwrapped</h1>
+    <h1>Discord Wrapped</h1>
     <p class="lede">See ten years of your Discord messages as charts: when you talk, who you talk to, what you talk about, and the single message you sent most often.</p>
     <div class="drop" id="drop">
       <strong>Drop your package.zip here</strong>
@@ -43,7 +43,7 @@
 
 <div id="report" class="hidden">
   <header class="top"><div class="wrap">
-    <span class="brand">Discord Unwrapped</span>
+    <span class="brand">Discord Wrapped</span>
     <nav class="sections" id="nav">
       <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
     </nav>
@@ -57,10 +57,10 @@
   </div></header>
 
   <div class="wrap">
-    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><div id="notice" aria-live="polite"></div></div>
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select any number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
 
     <section class="card" id="s-overview">
-      <h2>Overview</h2>
+      <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
       <div class="metrics" id="counts"></div>
       <h3>Messages per year</h3>
       <div id="year-chart"></div>
@@ -78,7 +78,7 @@
     </section>
 
     <section class="card" id="s-rhythm">
-      <h2>Rhythm</h2>
+      <div class="sechead"><h2>Rhythm</h2><button class="share-btn" type="button" data-share-section="rhythm">Share</button></div>
       <p class="muted">When you send messages. This shows sending patterns, not sleep or time online.</p>
       <h3>Week × hour</h3>
       <div id="heat-chart"></div>
@@ -102,10 +102,10 @@
     </section>
 
     <section class="card" id="s-people">
-      <h2>People &amp; servers</h2>
+      <div class="sechead"><h2>People &amp; servers</h2><button class="share-btn" type="button" data-share-section="people">Share</button></div>
       <div class="controls"><label>Period<select id="people-year"></select></label></div>
       <div class="twocol">
-        <div><h3>Direct messages</h3><div class="rank" id="dm-ranks"></div><p class="muted" id="dm-share"></p></div>
+        <div data-private><h3>Direct messages</h3><div class="rank" id="dm-ranks"></div><p class="muted" id="dm-share"></p></div>
         <div><h3>Servers</h3><div class="rank" id="server-ranks"></div><p class="muted" id="server-note"></p></div>
       </div>
       <div class="callout" data-slot="people"></div>
@@ -115,7 +115,7 @@
     </section>
 
     <section class="card" id="s-words">
-      <h2>Words &amp; links</h2>
+      <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn" type="button" data-share-section="words">Share</button></div>
       <h3>Topics over time</h3>
       <div id="topic-chart"></div>
       <div class="legend" id="topic-legend"></div>
@@ -125,6 +125,9 @@
         <textarea id="topics-input" spellcheck="false"></textarea>
         <div class="controls"><button id="topics-apply" class="primary" type="button">Update topics</button><button id="topics-reset" type="button">Restore defaults</button></div>
       </details>
+      <h3>Your top 10 words, year by year</h3>
+      <p class="muted">Each column is a year's top 10, most used at the top. Lines follow a word while it stays in the top 10. Hover a word to trace it.</p>
+      <div id="bump-chart"></div>
       <div class="twocol">
         <div><h3>Your words</h3><div class="controls"><label>Year<select id="words-year"></select></label></div><div class="rank" id="word-ranks"></div></div>
         <div><h3>Things you say most</h3><p class="muted">Whole messages of 40 characters or fewer.</p><div class="rank" id="expr-ranks"></div></div>
@@ -147,7 +150,7 @@
       <div id="search-out" aria-live="polite"></div>
     </section>
 
-    <section class="card" id="s-channels">
+    <section class="card" id="s-channels" data-private>
       <h2>Every channel</h2>
       <div class="controls">
         <label class="grow">Channel, person or server<input id="ch-q" type="search" autocomplete="off"></label>
@@ -161,7 +164,7 @@
     </section>
 
     <section class="card" id="s-fame">
-      <h2>Hall of fame</h2>
+      <div class="sechead"><h2>Hall of fame</h2><button class="share-btn" type="button" data-share-section="fame">Share</button></div>
       <div class="fame" id="fame"></div>
     </section>
 
@@ -187,9 +190,12 @@
       <div id="data-quality"></div>
     </section>
   </div>
-  <footer>Everything above was computed in this tab. Close it and it's gone.</footer>
+  <footer>Everything above was computed in this tab. Close it and it's gone. · <a href="https://github.com/sponsors/mia-riezebos" target="_blank" rel="noopener">Sponsor this project</a></footer>
 </div>
+<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
+<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
 <div class="tip" id="tip" role="presentation"></div>
+<div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
 <script type="text/plain" id="worker-src">/*WORKER*/</script>
 <script type="module">/*APP*/</script>
 </body>

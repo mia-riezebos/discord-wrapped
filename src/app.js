@@ -193,12 +193,12 @@ function lines(target, labels, series, {height = 240, title, format = fmt, tickL
   });
   if (onHover) $(target).onpointerover = e => { const i = e.target.dataset?.i; if (i !== undefined) onHover(+i); };
 }
-function ranks(target, items, max = 10, label = fmt) {
+function ranks(target, items, max = 10, label = fmt, share = () => null) {
   const rows = items.slice(0, max), top = Math.max(1, ...rows.map(r => r[1]));
-  $(target).innerHTML = rows.map(([name, v], i) => `<div class="rankrow"><span class="name" title="${esc(name)}">${esc(name)}</span><span class="number">${label(v)}</span><div class="track"><span style="width:${100 * v / top}%;background:${COLORS[0]}"></span></div></div>`).join('') || '<p class="muted">Nothing here for this period.</p>';
+  $(target).innerHTML = rows.map(([name, v], i) => `<div class="rankrow" ${shareAttr(share(name, v, i))}><span class="name" title="${esc(name)}">${esc(name)}</span><span class="number">${label(v)}</span><div class="track"><span style="width:${100 * v / top}%;background:${COLORS[0]}"></span></div></div>`).join('') || '<p class="muted">Nothing here for this period.</p>';
 }
 const legend = (target, names) => $(target).innerHTML = names.map((n, i) => `<span><i class="swatch" style="background:${COLORS[i]}"></i>${esc(n)}</span>`).join('');
-const metric = (v, label) => `<div class="metric"><strong>${v}</strong><span>${label}</span></div>`;
+const metric = (v, label, share) => `<div class="metric" ${shareAttr(share)}><strong>${v}</strong><span>${label}</span></div>`;
 const table = (target, head, rows) => $(target).innerHTML = `<thead><tr>${head.map((h, i) => `<th${i === head.length - 1 ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td${i === r.length - 1 ? ' class="num"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
 const yearOptions = (all = 'All years') => `<option value="all">${all}</option>` + Object.keys(D.years).sort().map(y => `<option>${y}</option>`).join('');
 
@@ -207,32 +207,43 @@ function findings() {
   const T = D.totals, ys = Object.keys(D.years).sort(), Y = D.years, out = [];
   const full = ys.slice(1, -1).filter(y => Y[y].calendarDays >= 365);
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
-  out.push(['years', `<strong>${busiest} was your loudest year</strong> with ${fmt(Y[busiest].total)} messages, ${pct(Y[busiest].total, T.messages)} of everything you ever sent.`]);
+  out.push(['years', `<strong>${busiest} was your loudest year</strong> with ${fmt(Y[busiest].total)} messages, ${pct(Y[busiest].total, T.messages)} of everything you ever sent.`,
+    {text: `${busiest} was my loudest year on Discord: ${fmt(Y[busiest].total)} messages.`, headline: busiest, sub: `my loudest year on Discord · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
   // Biggest fall between two consecutive full years; partial first and last years would exaggerate it.
   const drops = full.slice(1).filter(y => full.includes(String(+y - 1))).map(y => [y, 1 - Y[y].total / Y[+y - 1].total]).sort((a, b) => b[1] - a[1]);
-  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>${y} was the quiet year:</strong> ${fmt(Y[y].total)} messages, ${(100 * d).toFixed(0)}% fewer than ${+y - 1}. You still posted on ${fmt(Y[y].activeDays)} days.`]); }
+  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>${y} was the quiet year:</strong> ${fmt(Y[y].total)} messages, ${(100 * d).toFixed(0)}% fewer than ${+y - 1}. You still posted on ${fmt(Y[y].activeDays)} days.`,
+    {text: `${y} was my quiet year on Discord: ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}.`, headline: y, sub: `my quiet year on Discord · ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
   const months = Object.entries(D.months), topMonth = months.reduce((a, m) => m[1].total > a[1].total ? m : a);
-  out.push(['month', `<strong>Your busiest month was ${new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'})}:</strong> ${fmt(topMonth[1].total)} messages, about ${fmt(Math.round(topMonth[1].total / 30))} a day.`]);
+  const monthName = new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'}), perDay = fmt(Math.round(topMonth[1].total / 30));
+  out.push(['month', `<strong>Your busiest month was ${monthName}:</strong> ${fmt(topMonth[1].total)} messages, about ${perDay} a day.`,
+    {text: `My busiest month on Discord was ${monthName}: ${fmt(topMonth[1].total)} messages, about ${perDay} a day.`, headline: monthName, sub: `my busiest Discord month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
   const peakHour = D.hourly.indexOf(Math.max(...D.hourly));
-  out.push(['rhythm', `<strong>${pct(T.lateNight, T.messages)} of your messages were sent between midnight and 6 am.</strong> Your busiest hour is ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`]);
+  out.push(['rhythm', `<strong>${pct(T.lateNight, T.messages)} of your messages were sent between midnight and 6 am.</strong> Your busiest hour is ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`,
+    {text: `${pct(T.lateNight, T.messages)} of my Discord messages are sent between midnight and 6 am.`, headline: pct(T.lateNight, T.messages), sub: 'of my Discord messages are sent between midnight and 6 am', chart: 'heat-chart'}]);
   const st = D.streaks[0];
-  if (st) out.push(['calendar', `<strong>Longest streak: ${fmt(st[0])} days in a row</strong>, ${longDate(st[1])} to ${longDate(st[2])}. You posted on ${pct(T.activeDays, T.calendarDays)} of all days since your first message.`]);
+  if (st) out.push(['calendar', `<strong>Longest streak: ${fmt(st[0])} days in a row</strong>, ${longDate(st[1])} to ${longDate(st[2])}. You posted on ${pct(T.activeDays, T.calendarDays)} of all days since your first message.`,
+    {text: `My longest Discord streak: ${fmt(st[0])} days in a row.`, headline: `${fmt(st[0])} days in a row`, sub: `my longest Discord streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
   const pk = D.peakDays[0];
   if (pk) {
     const [txt, n] = pk.topText;
-    out.push(['peaks', `<strong>Record day: ${longDate(pk.date)}</strong>, ${fmt(pk.count)} messages${pk.contexts[0] ? `, mostly in ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${esc(txt.slice(0, 60))}”.` : ''}`]);
+    out.push(['peaks', `<strong>Record day: ${longDate(pk.date)}</strong>, ${fmt(pk.count)} messages${pk.contexts[0] ? `, mostly in ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${esc(txt.slice(0, 60))}”.` : ''}`,
+      {text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${quoteOf(txt, 60)}”.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `my Discord record, ${longDate(pk.date)}`}]);
   }
-  out.push(['length', `<strong>You type in bursts.</strong> ${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before; ${pct(T.shortMessages, T.messages)} are 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`]);
+  out.push(['length', `<strong>You type in bursts.</strong> ${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before; ${pct(T.shortMessages, T.messages)} are 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
+    {text: `My Discord record: ${fmt(D.bursts.bestMinute.count)} messages in one minute. ${pct(T.shortMessages, T.messages)} of my messages are 20 characters or fewer.`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `my Discord record · ${pct(T.shortMessages, T.messages)} of my messages are 20 characters or fewer`, chart: 'length-chart'}]);
   const dms = D.channels.filter(c => c.group === 'DMs' && c.count), dmTotal = dms.reduce((a, c) => a + c.count, 0);
-  if (dms.length > 10) out.push(['people', `<strong>A small inner circle:</strong> your top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all ${fmt(dmTotal)} DM messages, across ${fmt(dms.length)} DM conversations.`]);
+  if (dms.length > 10) out.push(['people', `<strong>A small inner circle:</strong> your top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all ${fmt(dmTotal)} DM messages, across ${fmt(dms.length)} DM conversations.`,
+    {text: `My top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all my Discord DMs.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'of my Discord DMs go to just 10 people'}]);
   if (ys.length > 2) {
     const a = full[0] || ys[0], b = ys.at(-1), wa = Y[a].words / Y[a].total, wb = Y[b].words / Y[b].total;
-    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages got ${wb > wa ? 'longer' : 'shorter'}:</strong> ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`]);
+    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages got ${wb > wa ? 'longer' : 'shorter'}:</strong> ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`,
+      {text: `My Discord messages got ${wb > wa ? 'longer' : 'shorter'}: ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
   }
-  if (D.domains[0]) out.push(['links', `<strong>You link to ${esc(D.domains[0][0])} the most:</strong> ${fmt(D.domains[0][1])} times, out of ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`]);
+  if (D.domains[0]) out.push(['links', `<strong>You link to ${esc(D.domains[0][0])} the most:</strong> ${fmt(D.domains[0][1])} times, out of ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`,
+    {text: `I've shared ${fmt(D.domains[0][1])} links to ${D.domains[0][0]} on Discord.`, headline: D.domains[0][0], sub: `${fmt(D.domains[0][1])} links I've shared on Discord`}]);
   // Each highlight sits next to the chart that shows it.
   document.querySelectorAll('[data-slot]').forEach(el => {
-    el.innerHTML = out.filter(([slot]) => slot === el.dataset.slot).map(([, html]) => `<p>${html}</p>`).join('');
+    el.innerHTML = out.filter(([slot]) => slot === el.dataset.slot).map(([, html, share]) => `<p ${shareAttr(share)}>${html}</p>`).join('');
   });
 }
 
@@ -244,7 +255,10 @@ function overview() {
   const T = D.totals;
   $('hero-title').textContent = `${fmt(T.messages)} messages${D.user?.username ? ' from ' + D.user.username : ''}`;
   $('hero-sub').textContent = `${longDate(T.first)} – ${longDate(T.last)} · ${fmt(T.channels)} channels · times in ${D.tz}`;
-  $('counts').innerHTML = metric(fmt(T.messages), 'messages') + metric(fmt(T.words), 'words') + metric(fmt(T.characters), 'characters') + metric(fmt(T.activeDays), `active days of ${fmt(T.calendarDays)}`) + metric(fmt(T.urls), 'links') + metric(fmt(T.attachmentLinks), 'attachments');
+  const since = T.first.slice(0, 4), stat = (n, what) => ({text: `I've ${what} on Discord since ${since}.`, headline: fmt(n), sub: `${what.replace(/^\S+ [\d,.]+ /, '')} on Discord since ${since}`});
+  $('counts').innerHTML = metric(fmt(T.messages), 'messages', stat(T.messages, `sent ${fmt(T.messages)} messages`)) + metric(fmt(T.words), 'words', stat(T.words, `typed ${fmt(T.words)} words`)) + metric(fmt(T.characters), 'characters', stat(T.characters, `typed ${fmt(T.characters)} characters`))
+    + metric(fmt(T.activeDays), `active days of ${fmt(T.calendarDays)}`, {text: `I've sent Discord messages on ${fmt(T.activeDays)} of the last ${fmt(T.calendarDays)} days.`, headline: pct(T.activeDays, T.calendarDays), sub: `of days since ${since} I sent at least one Discord message`, chart: 'calendar'})
+    + metric(fmt(T.urls), 'links', stat(T.urls, `shared ${fmt(T.urls)} links`)) + metric(fmt(T.attachmentLinks), 'attachments', stat(T.attachmentLinks, `sent ${fmt(T.attachmentLinks)} attachments`));
   findings();
   legend('group-legend', GROUPS);
   const ys = Object.keys(D.years).sort();
@@ -318,7 +332,7 @@ function people() {
     const dmTotal = dms.reduce((a, x) => a + x[1], 0);
     $('dm-share').textContent = dms.length ? `${fmt(dms.length)} DM conversations · top 10 = ${pct(dms.slice(0, 10).reduce((a, x) => a + x[1], 0), dmTotal)} of DM messages` : '';
     const servers = D.guilds.map(g => [g.name, y === 'all' ? g.count : g.years[y] || 0]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
-    ranks('server-ranks', servers, 10);
+    ranks('server-ranks', servers, 10, fmt, (name, n, i) => ({text: `I've sent ${fmt(n)} messages in ${name} on Discord${y === 'all' ? '' : ` in ${y}`}.`, headline: name, sub: `${i ? `#${i + 1}` : 'my top'} Discord server${y === 'all' ? '' : ` in ${y}`} · ${fmt(n)} messages`}));
     $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. Some old servers only appear by name, so a renamed server can show up twice.` : '';
   };
   $('people-year').onchange = update; update();
@@ -331,13 +345,48 @@ function words() {
   legend('topic-legend', names);
   const draw = () => lines('topic-chart', ys, names.map(n => ({name: n, values: ys.map(y => 1000 * (D.topicYears[y]?.[n] || 0) / D.years[y].total)})), {title: 'Topic mentions per 1,000 messages', format: v => v.toFixed(1)});
   draw(); draws.push(draw);
+  const drawBump = () => bump('bump-chart', ys.filter(y => D.wordYears[y]?.length));
+  drawBump(); draws.push(drawBump);
   $('topics-input').value = topicsText;
   $('words-year').innerHTML = yearOptions();
-  const wy = () => ranks('word-ranks', $('words-year').value === 'all' ? D.words : D.wordYears[$('words-year').value] || [], 12);
+  const wy = () => {
+    const y = $('words-year').value;
+    ranks('word-ranks', y === 'all' ? D.words : D.wordYears[y] || [], 12, fmt, (w, n, i) => wordShare(w, n, i, y === 'all' ? null : y));
+  };
   $('words-year').onchange = wy; wy();
-  ranks('expr-ranks', D.expressions, 12);
-  ranks('link-ranks', D.domains, 10);
-  ranks('emoji-ranks', D.emoji.map(([n, v]) => [':' + n + ':', v]), 10);
+  ranks('expr-ranks', D.expressions, 12, fmt, (t, n, i) => ({text: i ? `“${quoteOf(t, 60)}” is my #${i + 1} most-sent message on Discord: ${fmt(n)} times.` : `The thing I say most on Discord is just “${quoteOf(t, 60)}”: ${fmt(n)} times.`, headline: `“${quoteOf(t, 40)}”`, sub: `${i ? `#${i + 1} ` : ''}most-sent Discord message · ${fmt(n)} times`}));
+  ranks('link-ranks', D.domains, 10, fmt, (d, n) => ({text: `I've shared ${fmt(n)} links to ${d} on Discord.`, headline: d, sub: `${fmt(n)} links I've shared on Discord`}));
+  ranks('emoji-ranks', D.emoji.map(([n, v]) => [':' + n + ':', v]), 10, fmt, (e, n, i) => ({text: `${i ? `My #${i + 1}` : 'My most-used'} custom emoji on Discord is ${e} (${fmt(n)} times).`, headline: e, sub: `${i ? `#${i + 1} ` : 'most-used '}custom emoji · ${fmt(n)} times`}));
+}
+const wordShare = (w, n, i, y) => ({
+  text: y ? (i ? `“${w}” was my #${i + 1} word on Discord in ${y} (${fmt(n)} times).` : `My top word on Discord in ${y} was “${w}” (${fmt(n)} times).`)
+    : (i ? `“${w}” is my #${i + 1} word on Discord, used ${fmt(n)} times.` : `My most-used word on Discord is “${w}”: ${fmt(n)} times.`),
+  headline: `“${w}”`, sub: `my #${i + 1} word on Discord${y ? ` in ${y}` : ''} · ${fmt(n)} times`});
+// Bump chart: one column per year, words placed by rank, lines joining a word across consecutive years.
+function bump(target, years) {
+  const tops = years.map(y => D.wordYears[y].slice(0, 10));
+  const paths = new Map();
+  tops.forEach((list, i) => list.forEach(([word, count], r) => { if (!paths.has(word)) paths.set(word, []); paths.get(word).push({i, r, count}); }));
+  // Words that recur get a palette colour, most-recurring first; one-year words stay muted.
+  const recurring = [...paths].filter(([, p]) => p.length > 1).sort((a, b) => b[1].length - a[1].length).map(([w]) => w);
+  const color = w => recurring.includes(w) ? COLORS[recurring.indexOf(w) % COLORS.length] : 'var(--muted)';
+  const host = $(target), w = Math.max(host.clientWidth, years.length * 92), T = 26, rh = 30, h = T + rh * 10 + 4, cw = w / years.length;
+  const x = i => cw * (i + .5), y = r => T + rh * (r + .5), half = word => Math.min(cw / 2 - 6, fit(word).length * 3.4 + 2);
+  const fit = word => word.length * 6.8 > cw - 12 ? word.slice(0, Math.max(3, Math.floor((cw - 12) / 6.8) - 1)) + '…' : word;
+  frameFixed(target, w, h, 'Top 10 words for each year', () => {
+    let s = years.map((yr, i) => `<text class="tick" x="${x(i)}" y="14" text-anchor="middle">${yr}</text>`).join('');
+    for (const [word, pts] of paths) {
+      const c = color(word);
+      s += `<g class="bw">`;
+      pts.forEach((p, k) => {
+        const next = pts[k + 1];
+        if (next && next.i === p.i + 1) s += `<path d="M${x(p.i) + half(word) + 4},${y(p.r)} C${x(p.i) + cw / 2},${y(p.r)} ${x(next.i) - cw / 2},${y(next.r)} ${x(next.i) - half(word) - 4},${y(next.r)}" fill="none" stroke="${c}" stroke-width="2" opacity=".75"/>`;
+        s += `<text x="${x(p.i)}" y="${y(p.r) + 4}" text-anchor="middle" fill="${c}" style="fill:${c}" data-tip="${esc(word)} · #${p.r + 1} in ${years[p.i]} · ${fmt(p.count)} times" data-share-click ${shareAttr(wordShare(word, p.count, p.r, years[p.i]))}>${esc(fit(word))}</text>`;
+      });
+      s += '</g>';
+    }
+    return s;
+  });
 }
 async function retopic(text) {
   topicsText = text; $('topics-apply').disabled = true;
@@ -349,7 +398,7 @@ $('topics-reset').onclick = () => retopic(DEFAULT_TOPICS);
 function messageCard(m, q) {
   let text = esc(m.text || '(no text, attachment only)');
   if (q) text = text.replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), x => `<mark>${x}</mark>`);
-  return `<div class="msg"><div class="text">${text}</div><div class="meta">${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open in Discord</a>` : ''}</div></div>`;
+  return `<div class="msg"><div class="text">${text}</div><div class="meta" data-private>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open in Discord</a>` : ''}</div></div>`;
 }
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -358,7 +407,9 @@ $('search-form').addEventListener('submit', async e => {
   const r = await call('search', {query: q, wholeWord: $('search-whole').checked});
   if (!r.total) { $('search-out').innerHTML = `<p>You never sent “${esc(r.query)}”.</p>`; return; }
   const ms = Object.keys(D.months);
-  $('search-out').innerHTML = `<div class="metrics">${metric(fmt(r.total), 'messages')}${metric(longDate(r.first.at.slice(0, 10)), 'first time')}${metric(Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0], 'peak year')}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks"></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
+  const peakYear = Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0];
+  lastSearchShare = {text: `I've said “${r.query}” ${fmt(r.total)} times on Discord, most of all in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} times on Discord · peak year ${peakYear}`, chart: 'search-chart'};
+  $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first time')}${metric(peakYear, 'peak year', lastSearchShare)}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
   const draw = () => $('search-chart') && lines('search-chart', ms, [{name: r.query, values: ms.map(m => r.months[m] || 0)}], {height: 200, title: `Messages containing ${r.query} per month`, tickLabel: m => m.slice(0, 4)});
   draw(); ranks('search-ranks', r.channels, 8);
   searchDraw = draw;
@@ -391,14 +442,14 @@ function channels() {
   update();
 }
 function fame() {
-  const F = D.fame, card = (title, m, extra = '') => m ? `<article><h3>${title}</h3><blockquote>${esc((m.text || '(attachment only)').slice(0, 1200))}</blockquote><small>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open</a>` : ''}${extra}</small></article>` : '';
+  const F = D.fame, card = (title, m, extra = '', share) => m ? `<article ${shareAttr(share || {text: `${title.replace('Your', 'My')} on Discord (${m.at.slice(0, 10)}): “${quoteOf(m.text || '', 200)}”`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${title.replace('Your', 'my')} on Discord · ${longDate(m.at.slice(0, 10))}`})}><h3>${title}</h3><blockquote>${esc((m.text || '(attachment only)').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open</a>` : ''}${extra}</small></article>` : '';
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
   $('fame').innerHTML = card('Your first message', F.first) + card('Your latest message', F.last) +
-    (F.mostRepeated ? `<article><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
-    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '') +
-    `<article><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
-    (ls ? `<article><h3>Longest session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · lasted ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
-    (pk ? `<article><h3>Record day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
+    (F.mostRepeated ? `<article ${shareAttr(sectionShare('fame'))}><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
+    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest Discord message was ${fmt([...F.longest.text].length)} characters long.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `my longest Discord message · “${quoteOf(F.longest.text, 50)}”`}) +
+    `<article ${shareAttr({text: `My Discord record: ${fmt(bm.count)} messages in 60 seconds.`, headline: `${fmt(bm.count)} messages`, sub: 'in 60 seconds, my Discord record'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
+    (ls ? `<article ${shareAttr({text: `My longest Discord session: ${fmt(ls[0])} messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'without a 30-minute break, my longest Discord session'})}><h3>Longest session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · lasted ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
+    (pk ? `<article ${shareAttr({text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}.`, headline: `${fmt(pk.count)} messages in a day`, sub: `my Discord record, ${longDate(pk.date)}`})}><h3>Record day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
 }
 
 /* ---------- roast ---------- */
@@ -468,7 +519,7 @@ function dataQuality() {
 }
 
 function renderAll() {
-  draws.length = 0;
+  draws.length = 0; shareCtx.clear();
   overview(); rhythm(); people(); words(); channels(); fame(); roast(); dataQuality();
 }
 let resizeTimer, lastWidth = innerWidth;

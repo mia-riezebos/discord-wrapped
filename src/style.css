@@ -72,8 +72,9 @@ header.top .actions select { max-width: 170px; }
 @media (max-width: 1100px) { header.top .brand { display: none; } }
 @media (max-width: 760px) {
   header.top .wrap { flex-wrap: wrap; height: auto; padding-top: 8px; padding-bottom: 6px; gap: 6px; }
-  header.top .actions { width: 100%; }
-  header.top .actions label { flex: 1; }
+  header.top .actions { width: 100%; flex-wrap: wrap; }
+  header.top .actions label { flex: 1 1 100%; }
+  header.top .actions .button, header.top .actions button { flex: 1; text-align: center; }
   header.top .actions select { max-width: none; width: 100%; }
   nav.sections { order: 2; width: 100%; flex: none; }
   html { scroll-padding-top: 110px; }
@@ -150,3 +151,50 @@ details.more summary { cursor: pointer; color: var(--muted); }
 footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align: center; }
 .hidden { display: none !important; }
 #notice p { margin: 6px 0; }
+#bump-chart { overflow-x: auto; }
+#bump-chart text { font-size: 12px; font-weight: 500; cursor: default; }
+#bump-chart svg:has(.bw:hover) .bw { opacity: .18; }
+#bump-chart svg .bw:hover { opacity: 1; }
+#bump-chart .bw { transition: opacity 120ms ease-out; }
+@media (prefers-reduced-motion: reduce) { #bump-chart .bw { transition: none; } }
+
+/* sharing */
+.sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.share-btn { padding: 5px 12px; font-size: 13px; border-radius: 99px; }
+.share-tip { font-size: 13px; }
+[data-share] { cursor: text; }
+[data-share-click] { cursor: pointer; }
+.sharepop { position: fixed; z-index: 30; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 14px; }
+.sharepop.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-width: none; max-height: 85vh; border-radius: 16px 16px 0 0; }
+.sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sp-close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 8px; }
+.sp-img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); background: var(--soft); object-fit: cover; }
+.sp-label { margin: 10px 0; }
+.sp-text { min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
+.sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sp-platforms button, .sp-actions button { padding: 6px 10px; font-size: 13px; }
+.sp-step ol { margin: 10px 0 6px; padding-left: 18px; color: var(--muted); }
+.sp-step p { margin: 8px 0 0; }
+.sp-reply { display: flex; gap: 6px; margin-top: 6px; }
+.sp-reply input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
+@media (pointer: coarse) { .sp-platforms button, .sp-actions button { min-height: 40px; } }
+
+/* sponsor rails: only where there is room beside the content column */
+.rail { display: none; }
+@media (min-width: 1480px) {
+  .rail { display: flex; flex-direction: column; gap: 16px; position: fixed; top: 80px; width: 160px; z-index: 1; }
+  .rail.left { left: calc(50% - 520px - 184px); }
+  .rail.right { right: calc(50% - 520px - 184px); }
+}
+@media (max-height: 900px) { .rail .slot-square { display: none; } }
+@media print { .rail { display: none !important; } }
+.slot a { display: block; text-decoration: none; }
+.slot img { display: block; border-radius: 8px; background: var(--soft); }
+.slot.animate img { animation: ad-in 300ms ease-out; }
+@keyframes ad-in { from { opacity: 0; } }
+.ad-by { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot .ad-empty { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.ad-empty strong { color: var(--fg); font-weight: 600; }
+.ad-empty:hover { border-color: var(--accent); }
+.slot-tower .ad-empty { height: 600px; }
+.slot-square .ad-empty { height: 160px; }
