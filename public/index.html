@@ -32,7 +32,7 @@ p { margin: 8px 0; }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
 
 /* landing */
-.landing { min-height: 100vh; display: grid; place-items: center; padding: 40px 0; }
+.landing { min-height: calc(100vh - 57px); display: grid; place-items: center; padding: 40px 0; }
 .landing .wrap { max-width: 680px; }
 .lede { font-size: 17px; color: var(--muted); margin-bottom: 28px; }
 .drop { border: 2px dashed var(--border); border-radius: 16px; background: var(--surface); padding: 36px 24px; text-align: center; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
@@ -68,27 +68,37 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; color: var(--
 .controls input[type=search] { width: 100%; }
 
 /* report layout */
-header.top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
-header.top .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
-header.top .brand { font-weight: 600; white-space: nowrap; }
-nav.sections { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.topbar { display: flex; align-items: center; gap: 16px; min-height: 56px; }
+.brand { font-weight: 600; white-space: nowrap; text-decoration: none; }
+nav.sections { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
 nav.sections a { text-decoration: none; color: var(--muted); padding: 6px 10px; border-radius: 6px; white-space: nowrap; font-size: 14px; }
 nav.sections a:hover, nav.sections a.active { color: var(--fg); background: var(--soft); }
-header.top .actions { display: flex; gap: 8px; }
-header.top .actions .button { padding: 6px 10px; font-size: 14px; white-space: nowrap; color: var(--fg); }
-header.top .actions button, header.top .actions select { padding: 6px 10px; font-size: 14px; }
-header.top .actions select { max-width: 170px; }
-@media (max-width: 1100px) { header.top .brand { display: none; } }
+.topbar .actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+body:not(.has-report) .report-only { display: none !important; }
+nav.project { display: flex; align-items: center; gap: 2px; }
+nav.project a { display: inline-flex; align-items: center; gap: 6px; padding: 7px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; }
+nav.project a:hover { color: var(--fg); background: var(--soft); }
+nav.project .sponsor { color: var(--c2); padding: 6px 10px; border: 1px solid var(--border); }
+nav.project .sponsor:hover { color: var(--c2); }
+/* "Your data" holds the report controls so the bar has room for project links. */
+.menu { position: relative; }
+.menu summary { list-style: none; cursor: pointer; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary::after { content: " ▾"; color: var(--muted); }
+.menu[open] summary { background: var(--soft); }
+.menu-panel { position: absolute; right: 0; top: calc(100% + 6px); width: 240px; display: grid; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / .2); }
+.menu-panel .button, .menu-panel button { text-align: center; font-size: 14px; color: var(--fg); }
+.menu-panel select { width: 100%; }
+button.danger { color: #c43c3c; }
+@media (prefers-color-scheme: dark) { button.danger { color: #ff8a8a; } }
 @media (max-width: 760px) {
-  header.top .wrap { flex-wrap: wrap; height: auto; padding-top: 8px; padding-bottom: 6px; gap: 6px; }
-  header.top .actions { width: 100%; flex-wrap: wrap; }
-  header.top .actions label { flex: 1 1 100%; }
-  header.top .actions .button, header.top .actions button { flex: 1; text-align: center; }
-  header.top .actions select { max-width: none; width: 100%; }
-  nav.sections { order: 2; width: 100%; flex: none; }
+  .topbar { flex-wrap: wrap; gap: 6px 10px; padding-top: 6px; padding-bottom: 6px; }
+  nav.sections { order: 3; flex: 1 1 100%; }
+  nav.project .sponsor span { display: none; }
+  nav.project .sponsor { padding: 7px; border: 0; }
   html { scroll-padding-top: 110px; }
 }
-#calendar { overflow-x: auto; }
 .hero { padding: 36px 0 8px; }
 .hero p { color: var(--muted); }
 section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin: 20px 0; }
@@ -104,7 +114,7 @@ section.card > p.muted:first-of-type { margin-top: 0; }
 .findings li { padding: 12px 14px; background: var(--soft); border-radius: 10px; }
 .findings strong { font-weight: 600; }
 .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-@media (max-width: 760px) { .twocol { grid-template-columns: 1fr; gap: 8px; } .promise { grid-template-columns: 1fr; } header.top .brand { display: none; } section.card { padding: 18px 16px; } }
+@media (max-width: 760px) { .twocol { grid-template-columns: 1fr; gap: 8px; } .promise { grid-template-columns: 1fr; } section.card { padding: 18px 16px; } }
 
 /* charts */
 .chart { width: 100%; display: block; overflow: visible; }
@@ -157,7 +167,21 @@ blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--c2)
 .ai-box { padding: 14px; border-radius: 10px; background: var(--soft); font-size: 14px; }
 details.more { margin-top: 14px; font-size: 14px; }
 details.more summary { cursor: pointer; color: var(--muted); }
-footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align: center; }
+footer.site { margin-top: 40px; padding: 40px 0 56px; border-top: 1px solid var(--border); font-size: 14px; }
+footer.site .inner { display: grid; grid-template-columns: 1fr auto; gap: 40px; }
+footer.site h2 { font-size: 16px; margin: 0 0 12px; }
+footer.site ul { list-style: none; margin: 0; padding: 0; }
+footer.site nav li + li { margin-top: 6px; }
+footer.site p { margin: 6px 0; font-size: 13px; }
+.arrow-link { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; color: var(--fg); }
+.arrow-link:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.arrow-link .arrow { color: var(--muted); transition: transform 150ms ease-out; }
+.arrow-link:hover .arrow { transform: translate(2px, -2px); }
+@media (prefers-reduced-motion: reduce) { .arrow-link .arrow { transition: none; } }
+.socials { display: flex; gap: 4px; margin: 12px 0 !important; }
+.socials a { display: inline-flex; padding: 7px; border-radius: 8px; color: var(--muted); }
+.socials a:hover { color: var(--fg); background: var(--soft); }
+@media (max-width: 600px) { footer.site .inner { grid-template-columns: 1fr; gap: 24px; } }
 .hidden { display: none !important; }
 #notice p { margin: 6px 0; }
 #bump-chart { overflow-x: auto; }
@@ -207,9 +231,35 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
 .ad-empty:hover { border-color: var(--accent); }
 .slot-tower .ad-empty { height: 600px; }
 .slot-square .ad-empty { height: 160px; }
+
+/* Wide charts scroll sideways inside their card on narrow screens. */
+#calendar { overflow-x: auto; }
 </style>
 </head>
-<body>
+<body id="top">
+<header class="top"><div class="wrap topbar">
+  <a class="brand" href="#top">Discord Wrapped</a>
+  <nav class="sections report-only" id="nav" aria-label="Report sections">
+    <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
+  </nav>
+  <div class="actions">
+    <details class="menu report-only" id="data-menu">
+      <summary>Your data</summary>
+      <div class="menu-panel">
+        <label title="Used for hours, days and months">Time zone<select id="tz"></select></label>
+        <label class="button" for="pick-update" title="Add messages from a newer package.zip">Update package</label>
+        <input id="pick-update" type="file" accept=".zip,application/zip">
+        <button id="export" type="button">Save summary</button>
+        <button id="reset" type="button" class="danger">Remove data</button>
+      </div>
+    </details>
+    <nav class="project" aria-label="Project">
+      <a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" title="Source code on GitHub" aria-label="Source code on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+      <a href="https://discord.gg/bePPwYJk2u" rel="external" title="Join the Discord server" aria-label="Join the Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a>
+      <a href="https://github.com/sponsors/mia-riezebos" rel="external" title="Sponsor on GitHub" aria-label="Sponsor on GitHub" class="sponsor"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg><span>Sponsor</span></a>
+    </nav>
+  </div>
+</div></header>
 <main id="landing" class="landing">
   <div class="wrap">
     <h1>Discord Wrapped</h1>
@@ -242,19 +292,6 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
 </main>
 
 <div id="report" class="hidden">
-  <header class="top"><div class="wrap">
-    <span class="brand">Discord Wrapped</span>
-    <nav class="sections" id="nav">
-      <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
-    </nav>
-    <div class="actions">
-      <label class="inline" title="Time zone used for hours, days and months"><select id="tz" aria-label="Time zone"></select></label>
-      <label class="button" for="pick-update" title="Add messages from a newer package.zip">Update package</label>
-      <input id="pick-update" type="file" accept=".zip,application/zip">
-      <button id="export" type="button">Save summary</button>
-      <button id="reset" type="button">Remove data</button>
-    </div>
-  </div></header>
 
   <div class="wrap">
     <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select any number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
@@ -390,8 +427,33 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; text-align:
       <div id="data-quality"></div>
     </section>
   </div>
-  <footer>Everything above was computed in this tab. Close it and it's gone. · <a href="https://github.com/sponsors/mia-riezebos" target="_blank" rel="noopener">Sponsor this project</a></footer>
 </div>
+<footer class="site">
+  <div class="wrap inner">
+    <section class="brandcol">
+      <h2>Discord Wrapped</h2>
+      <a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Contribute on GitHub</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a>
+      <ul class="socials">
+        <li><a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></li>
+        <li><a href="https://discord.gg/bePPwYJk2u" rel="external" aria-label="Discord server" title="Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a></li>
+        <li><a href="https://github.com/sponsors/mia-riezebos" rel="external" aria-label="Sponsor on GitHub" title="Sponsor on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg></a></li>
+      </ul>
+      <p class="muted">Your messages are read in this tab and never uploaded.</p>
+      <p class="muted">© 2026 <a href="https://mia.cx" rel="external">mia.cx</a></p>
+    </section>
+    <nav aria-labelledby="footer-project">
+      <h2 id="footer-project">Project</h2>
+      <ul>
+        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Source code</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/releases" rel="external"><span>What's new</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/issues/new" rel="external"><span>Report a problem</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://discord.gg/bePPwYJk2u" rel="external"><span>Discord server</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/sponsors/mia-riezebos" rel="external"><span>Sponsor or advertise</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://mia.cx" rel="external"><span>mia.cx</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
 <aside class="rail left" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
 <aside class="rail right" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
 <div class="tip" id="tip" role="presentation"></div>
@@ -946,7 +1008,7 @@ let saved = null;
 async function show(info) {
   saved = info;
   await analyse();
-  $('landing').classList.add('hidden'); $('report').classList.remove('hidden');
+  $('landing').classList.add('hidden'); $('report').classList.remove('hidden'); document.body.classList.add('has-report');
   window.scrollTo(0, 0); renderAll(); savedNotice();
 }
 async function open(source) {
@@ -983,6 +1045,12 @@ async function analyse() {
   D = await call('aggregate', {tz: $('tz').value, topics: parseTopics(topicsText)});
 }
 
+// The "Your data" menu closes on outside clicks and after picking an action.
+document.addEventListener('click', e => {
+  const menu = $('data-menu');
+  if (menu.open && (!menu.contains(e.target) || e.target.closest('button'))) menu.open = false;
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('data-menu').open = false; });
 $('pick-update').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) updatePackage({kind: 'zip', file: f}); });
 $('pick-zip').addEventListener('change', e => { const f = e.target.files[0]; if (f) open({kind: 'zip', file: f}); });
 $('pick-folder').addEventListener('change', e => { const files = [...e.target.files].map(f => ({path: f.webkitRelativePath || f.name, file: f})); if (files.length) open({kind: 'folder', files}); });

@@ -45,7 +45,7 @@ let saved = null;
 async function show(info) {
   saved = info;
   await analyse();
-  $('landing').classList.add('hidden'); $('report').classList.remove('hidden');
+  $('landing').classList.add('hidden'); $('report').classList.remove('hidden'); document.body.classList.add('has-report');
   window.scrollTo(0, 0); renderAll(); savedNotice();
 }
 async function open(source) {
@@ -82,6 +82,12 @@ async function analyse() {
   D = await call('aggregate', {tz: $('tz').value, topics: parseTopics(topicsText)});
 }
 
+// The "Your data" menu closes on outside clicks and after picking an action.
+document.addEventListener('click', e => {
+  const menu = $('data-menu');
+  if (menu.open && (!menu.contains(e.target) || e.target.closest('button'))) menu.open = false;
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('data-menu').open = false; });
 $('pick-update').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) updatePackage({kind: 'zip', file: f}); });
 $('pick-zip').addEventListener('change', e => { const f = e.target.files[0]; if (f) open({kind: 'zip', file: f}); });
 $('pick-folder').addEventListener('change', e => { const files = [...e.target.files].map(f => ({path: f.webkitRelativePath || f.name, file: f})); if (files.length) open({kind: 'folder', files}); });
