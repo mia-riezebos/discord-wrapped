@@ -198,11 +198,10 @@ fi
 banner "discord-wrapped: release secrets for $REPO"
 
 stage "Cloudflare: deploy token"
-say "CI deploys wrapped.mia.cx and its sponsor-ads database with a token limited to Workers and D1 on mia.cx."
+say "CI deploys wrapped.mia.cx with a Cloudflare API token limited to Workers on mia.cx."
 open_url "https://dash.cloudflare.com/profile/api-tokens"
 step "Click 'Create Token', then 'Use template' next to 'Edit Cloudflare Workers'."
 step "Account Resources: Include → mia.cx."
-step "Under Permissions, click '+ Add more' and add: Account → D1 → Edit (the sponsor ads live in D1)."
 step "Zone Resources: Include → Specific zone → mia.cx."
 step "Click 'Continue to summary', then 'Create Token', and copy the token."
 ask_secret CLOUDFLARE_API_TOKEN "Paste the Cloudflare token:"

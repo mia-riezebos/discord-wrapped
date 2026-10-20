@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Advertise on Discord Wrapped | Sidebar ads and prices</title>
+<meta name="description" content="Book a tall or square sidebar ad on Discord Wrapped. See sizes, launch prices and next openings. Pay once through GitHub Sponsors, then send your ad to Mia.">
+<link rel="canonical" href="https://discordwrapped.app/advertise">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Discord Wrapped">
+<meta property="og:url" content="https://discordwrapped.app/advertise">
+<meta property="og:title" content="Advertise on Discord Wrapped | Sidebar ads and prices">
+<meta property="og:description" content="Book a tall or square sidebar ad on Discord Wrapped. See sizes, launch prices and next openings. Pay once through GitHub Sponsors, then send your ad to Mia.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","@id":"https://discordwrapped.app/advertise#page","url":"https://discordwrapped.app/advertise","name":"Advertise on Discord Wrapped","description":"Sidebar ad placements, sizes and prices for Discord Wrapped. Pay through GitHub Sponsors and submit an ad for manual approval.","isPartOf":{"@type":"WebSite","name":"Discord Wrapped","url":"https://discordwrapped.app/"},"publisher":{"@type":"Person","name":"Mia","url":"https://mia.cx"}}
+</script>
+<style>/*STYLE*/</style>
+</head>
+<body id="top" class="page-advertise">
+<!--HEADER-->
+<main class="wrap advertise">
+  <section class="ad-hero">
+    <h1>Advertise on Discord Wrapped</h1>
+    <p class="lede">Place an ad beside the report. Choose a tall or square placement, then pay once through GitHub Sponsors.</p>
+    <table class="prices" aria-describedby="price-note">
+      <thead><tr><th>Placement</th><th>Size</th><th class="num">2 weeks</th><th class="num">4 weeks</th></tr></thead>
+      <tbody id="price-rows">
+        <tr><td>Tall</td><td>160 × 600 px</td><td class="num">$8</td><td class="num">$14</td></tr>
+        <tr><td>Square</td><td>160 × 160 px</td><td class="num">$4</td><td class="num">$7</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" id="price-note">Prices are in US dollars. These are launch prices and will rise as slots fill.</p>
+    <p><a class="button primary" href="#choose">Choose your run</a></p>
+  </section>
+
+  <section class="card">
+    <h2>Where your ad appears</h2>
+    <div class="ad-where">
+      <figure class="mock" aria-label="A sketch of the page: the report in the middle, a tall ad with a square ad under it on each side.">
+        <div class="mock-rail"><span class="mock-tall">Tall</span><span class="mock-square">Square</span></div>
+        <div class="mock-page"><span></span><span></span><span></span><span></span></div>
+        <div class="mock-rail"><span class="mock-tall">Tall</span><span class="mock-square">Square</span></div>
+      </figure>
+      <div>
+        <p>Ads appear beside the report on screens at least 1480 px wide. They never cover the report, and they don’t appear in share images or printed reports.</p>
+        <table>
+          <thead><tr><th>Placement</th><th>Position</th><th class="num">Campaigns at once</th></tr></thead>
+          <tbody>
+            <tr><td>Tall</td><td>Beside the report</td><td class="num" data-cap="tall">6</td></tr>
+            <tr><td>Square</td><td>Below the tall ad, on screens at least 900 px tall</td><td class="num" data-cap="square">8</td></tr>
+          </tbody>
+        </table>
+        <p>Each placement takes turns through its campaigns. Every turn shows the next ad on a randomly chosen side. Buy the same campaign twice to show it on both sides at once.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="preview-title">
+    <h2 id="preview-title">Preview your ad</h2>
+    <p class="muted">See how your ad looks in its slot. Nothing you choose here is uploaded.</p>
+    <div class="ad-preview">
+      <form id="preview-form" class="preview-fields">
+        <label>Placement<select name="placement"><option value="tall">Tall</option><option value="square">Square</option></select></label>
+        <label>Ad format<select name="format"><option value="image">Image</option><option value="text">Text</option></select></label>
+        <label class="f-image">Image<input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/avif"></label>
+        <label class="f-text">Name<input name="name" maxlength="40"></label>
+        <label class="f-text">Headline <span class="muted" data-count="headline"></span><input name="headline"></label>
+        <label class="f-text f-body">Body <span class="muted" data-count="body"></span><textarea name="body" rows="3"></textarea></label>
+        <p class="error" id="preview-error" aria-live="polite"></p>
+        <button type="reset">Clear preview</button>
+      </form>
+      <div class="preview-slot" role="region" aria-label="Ad preview">
+        <div class="slot" id="preview-slot"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>What to send</h2>
+    <table>
+      <thead><tr><th>Format</th><th>Tall</th><th>Square</th></tr></thead>
+      <tbody>
+        <tr><td>Image</td><td>160 × 600 px</td><td>160 × 160 px</td></tr>
+        <tr><td>Text</td><td>Name, headline, body and link</td><td>Name, headline and link</td></tr>
+        <tr><td>Headline</td><td>Up to 40 characters</td><td>Up to 30 characters</td></tr>
+        <tr><td>Body</td><td>Up to 90 characters</td><td>No body text</td></tr>
+      </tbody>
+    </table>
+    <p>Images must be PNG, JPEG, WebP or AVIF, at most 300 KB, with no animation. Larger images are cropped and resized to fit. Include the link your ad should open.</p>
+  </section>
+
+  <section class="card" id="choose">
+    <h2>Choose your run</h2>
+    <div id="runs" class="runs"></div>
+    <p>For another length, make a custom one-time payment. Custom payments use the 4-week rate and must cover at least 7 days: on tall ads $1 buys 2 days, and on square ads $1 buys 4 days.</p>
+    <p><a class="button" href="https://github.com/sponsors/mia-riezebos?frequency=one-time" rel="external">Pay a custom amount on GitHub</a></p>
+    <p class="muted">If a placement is full, your purchase goes into its next free window. Refunds are available on request: <a href="mailto:sponsor@mia.cx">email Mia</a>.</p>
+  </section>
+
+  <section class="card">
+    <h2>Send your ad after paying</h2>
+    <ol>
+      <li>Pay on GitHub.</li>
+      <li>Email your ad to <a href="mailto:sponsor@mia.cx">sponsor@mia.cx</a>: the image or text, the link, the placement, and which of Mia’s sites you want it on.</li>
+      <li>Mia reviews every ad before it runs and tells you the start date.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>Ad rules</h2>
+    <p>Mia approves every ad by hand. These ads aren’t allowed:</p>
+    <ul>
+      <li>Gambling</li>
+      <li>Crypto schemes</li>
+      <li>Adult content</li>
+      <li>Data brokers</li>
+      <li>Tools that ask for Discord logins or tokens</li>
+    </ul>
+    <p class="muted">Visitors’ Discord packages stay in their browsers. Ads never see their messages.</p>
+  </section>
+
+  <section class="card">
+    <h2>Support Mia monthly</h2>
+    <p>Monthly sponsors appear in the footer on Mia’s sites.</p>
+    <table>
+      <thead><tr><th>Monthly tier</th><th>In the footer</th></tr></thead>
+      <tbody>
+        <tr><td>Supporters, $1 and Supporters+, $3</td><td>Your name</td></tr>
+        <tr><td>Backers, $10</td><td>Your logo</td></tr>
+        <tr><td>Patrons, $100</td><td>Your logo, large</td></tr>
+      </tbody>
+    </table>
+    <p><a class="button" href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor Mia monthly</a></p>
+  </section>
+</main>
+<!--FOOTER-->
+<!--RAILS-->
+<script type="module">/*ADVERTISE*/</script>
+</body>
+</html>

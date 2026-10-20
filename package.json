@@ -14,7 +14,7 @@
     "test:release": "node --test .github/scripts/*.test.mjs",
     "changeset": "changeset",
     "release:version": "changeset version",
-    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy"
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

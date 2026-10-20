@@ -6,7 +6,40 @@
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<title>Discord Wrapped — explore your data package</title>
+<title>Discord Wrapped | Your Discord stats and message history</title>
+<meta name="description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
+<link rel="canonical" href="https://discordwrapped.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Discord Wrapped">
+<meta property="og:url" content="https://discordwrapped.app/">
+<meta property="og:title" content="Discord Wrapped | Your Discord stats and message history">
+<meta property="og:description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Discord Wrapped | Your Discord stats and message history">
+<meta name="twitter:description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "@id": "https://discordwrapped.app/#app",
+  "name": "Discord Wrapped",
+  "url": "https://discordwrapped.app/",
+  "description": "A free, open-source Discord data package viewer. Explore and search your sent messages in your browser without uploading your package.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Web browser",
+  "isAccessibleForFree": true,
+  "creator": {
+    "@type": "Person",
+    "name": "Mia",
+    "url": "https://mia.cx"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
 <style>:root {
   color-scheme: light dark;
   --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
@@ -19,6 +52,7 @@
     --accent: #8790ff; --accent-fg: #0d0e14; --c1: #8790ff; --c2: #f070b8; --c3: #4cc98c; --c4: #f2b33d; --c5: #4cbcf0; }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; scroll-padding-top: 64px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
@@ -45,6 +79,10 @@ p { margin: 8px 0; }
 .howto { margin-top: 28px; font-size: 14px; }
 .howto summary { cursor: pointer; }
 .howto ol { padding-left: 20px; color: var(--muted); }
+.faq { margin-top: 28px; font-size: 14px; }
+.faq details { margin-top: 14px; }
+.faq summary { cursor: pointer; }
+.faq p { color: var(--muted); }
 .status { margin-top: 18px; min-height: 48px; }
 .bar { height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; margin-top: 8px; }
 .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 120ms linear; }
@@ -229,16 +267,59 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .slot .ad-empty { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 13px; line-height: 1.35; }
 .ad-empty strong { color: var(--fg); font-weight: 600; }
 .ad-empty:hover { border-color: var(--accent); }
-.slot-tower .ad-empty { height: 600px; }
-.slot-square .ad-empty { height: 160px; }
+.slot-tall .ad-empty, .slot-tall .ad-text { height: 600px; }
+.slot-square .ad-empty, .slot-square .ad-text { height: 160px; }
 
 /* Wide charts scroll sideways inside their card on narrow screens. */
 #calendar { overflow-x: auto; }
+
+/* text ads use the site's own look */
+.slot .ad-text { display: flex; flex-direction: column; gap: 8px; padding: 14px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--fg); text-decoration: none; overflow: hidden; }
+.slot .ad-text strong { font-size: 16px; line-height: 1.25; font-weight: 600; overflow-wrap: anywhere; }
+.slot .ad-text span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.slot .ad-text small { margin-top: auto; font-size: 12px; color: var(--accent); }
+.slot-square .ad-text { padding: 10px; gap: 4px; }
+.slot-square .ad-text strong { font-size: 14px; }
+.slot a.ad-text:hover { border-color: var(--accent); }
+
+/* footer sponsor grid: bigger sponsors get bigger logos and fewer columns */
+.sponsor-grid { padding-bottom: 28px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.sponsor-grid h2 { font-size: 16px; margin: 0 0 14px; }
+footer.site .sponsor-level { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 12px; }
+.sponsor-level a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px; border-radius: 10px; background: var(--soft); color: var(--fg); text-decoration: none; overflow-wrap: anywhere; text-align: center; font-size: 13px; }
+.sponsor-level img { max-width: 100%; height: auto; aspect-ratio: 2; object-fit: contain; }
+.level-hero a { min-height: 120px; }
+.level-featured a { min-height: 72px; }
+@media (max-width: 760px) { footer.site .sponsor-level { grid-template-columns: repeat(min(var(--cols), 3), minmax(0, 1fr)); } footer.site .level-grid, footer.site .level-featured { grid-template-columns: repeat(2, minmax(0, 1fr)); } footer.site .level-hero { grid-template-columns: minmax(0, 1fr); } }
+
+/* advertise page */
+.advertise { padding-top: 32px; }
+.ad-hero { padding: 8px 0 12px; }
+.ad-hero .prices { max-width: 560px; margin: 16px 0 8px; }
+.ad-where { display: grid; grid-template-columns: 260px 1fr; gap: 28px; align-items: start; }
+.mock { margin: 0; display: grid; grid-template-columns: 40px 1fr 40px; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+.mock-rail { display: flex; flex-direction: column; gap: 6px; }
+.mock-rail span { display: grid; place-items: center; border: 1px dashed var(--accent); border-radius: 4px; font-size: 9px; color: var(--accent); writing-mode: vertical-rl; }
+.mock-tall { height: 150px; }
+.mock-square { height: 40px; writing-mode: horizontal-tb !important; }
+.mock-page { display: flex; flex-direction: column; gap: 8px; }
+.mock-page span { height: 44px; border-radius: 6px; background: var(--soft); }
+.ad-preview { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: start; }
+.preview-fields { display: grid; gap: 12px; max-width: 420px; }
+.preview-fields input, .preview-fields select, .preview-fields textarea { width: 100%; font-family: var(--font); font-size: 14px; }
+.preview-slot { padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+.runs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 8px 0 16px; }
+.run { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.run h3 { margin: 0 0 4px; }
+.run-price { font-size: 28px; font-weight: 600; margin: 4px 0; }
+.run .button { display: inline-block; margin-top: 8px; text-decoration: none; }
+a.button { display: inline-block; text-decoration: none; }
+@media (max-width: 760px) { .ad-where, .ad-preview { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body id="top">
 <header class="top"><div class="wrap topbar">
-  <a class="brand" href="#top">Discord Wrapped</a>
+  <a class="brand" href="/">Discord Wrapped</a>
   <nav class="sections report-only" id="nav" aria-label="Report sections">
     <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
   </nav>
@@ -249,8 +330,8 @@ footer.site p { margin: 6px 0; font-size: 13px; }
         <label title="Used for hours, days and months">Time zone<select id="tz"></select></label>
         <label class="button" for="pick-update" title="Add messages from a newer package.zip">Update package</label>
         <input id="pick-update" type="file" accept=".zip,application/zip">
-        <button id="export" type="button">Save summary</button>
-        <button id="reset" type="button" class="danger">Remove data</button>
+        <button id="export" type="button">Download summary</button>
+        <button id="reset" type="button" class="danger">Remove saved data</button>
       </div>
     </details>
     <nav class="project" aria-label="Project">
@@ -263,10 +344,10 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 <main id="landing" class="landing">
   <div class="wrap">
     <h1>Discord Wrapped</h1>
-    <p class="lede">See ten years of your Discord messages as charts: when you talk, who you talk to, what you talk about, and the single message you sent most often.</p>
+    <p class="lede">View your Discord message history as charts. Find your busiest days, top words and most repeated messages.</p>
     <div class="drop" id="drop">
       <strong>Drop your package.zip here</strong>
-      <span class="muted">Or choose the zip, or the folder you unzipped it into.</span>
+      <span class="muted">Choose package.zip or its unzipped folder.</span>
       <div class="buttons">
         <label class="button primary" for="pick-zip" style="color:var(--accent-fg)">Choose package.zip</label>
         <label class="button" for="pick-folder" style="color:var(--fg)">Choose folder</label>
@@ -276,25 +357,57 @@ footer.site p { margin: 6px 0; font-size: 13px; }
       <div class="status" id="status" aria-live="polite"></div>
     </div>
     <ul class="promise">
-      <li><strong>Stays on your device</strong>This page reads the file itself. Nothing is uploaded, and the page is locked so it can't send your messages anywhere.</li>
-      <li><strong>Works offline</strong>Save this page and open it with Wi-Fi off. It is one HTML file, and it remembers your package until you remove it.</li>
+      <li><strong>Stays on your device</strong>Your browser reads the package. The package and its messages are never uploaded.</li>
+      <li><strong>Works offline</strong>Save this page and open it with Wi-Fi off. Your browser saves the report so it survives reloads.</li>
       <li><strong>Only your side</strong>Discord exports the messages you sent, not replies from others.</li>
     </ul>
     <details class="howto">
-      <summary>How do I get my package?</summary>
+      <summary>How do I get my Discord data package?</summary>
       <ol>
         <li>In Discord, open <b>User Settings → Data &amp; Privacy</b>.</li>
         <li>Choose <b>Request all of my Data</b>. Messages is the only part this page needs.</li>
-        <li>Discord emails a download link, usually within a few days. Download <b>package.zip</b> and drop it above.</li>
+        <li>Discord emails a download link, usually within a few days. Download <b>package.zip</b> and drop it here.</li>
+        <li><a href="https://support.discord.com/hc/en-us/articles/360004027692-Requesting-a-Copy-of-your-Data">Read Discord's data request guide</a>.</li>
       </ol>
     </details>
+    <section class="faq">
+      <h2>Questions about Discord Wrapped</h2>
+      <details>
+        <summary>How do I see my Discord stats?</summary>
+        <p>Open your Discord data package in Discord Wrapped. Choose package.zip or the folder you unzipped it into. You'll see message counts, charts, top words, DMs and servers from your sent messages.</p>
+      </details>
+      <details>
+        <summary>Can I search my Discord message history?</summary>
+        <p>Yes. Search for a word or phrase to see matching messages and a chart over time. Discord exports messages you sent, not replies from others. The search covers messages in your saved report.</p>
+      </details>
+      <details>
+        <summary>Does Discord Wrapped upload my messages?</summary>
+        <p>No. Your browser reads the package and builds the report. The package and its messages are never uploaded. If you choose the AI roast, the model downloads and runs in your browser too.</p>
+      </details>
+      <details>
+        <summary>Can I use Discord Wrapped offline?</summary>
+        <p>Yes. Save the page and open it with Wi-Fi off. The report works from one HTML file. The optional AI roast needs a model download first.</p>
+      </details>
+      <details>
+        <summary>Does my report stay saved when I close the page?</summary>
+        <p>Yes. Your browser saves the report, so it reopens after a reload or restart. Choose "Update package" to add messages newer than the saved copy. Earlier saved messages stay in the report. Choose "Remove saved data" to clear that browser's copy.</p>
+      </details>
+      <details>
+        <summary>Is Discord Wrapped free?</summary>
+        <p>Yes. Discord Wrapped is free and open source, made by <a href="https://mia.cx">Mia</a>. You can <a href="https://github.com/mia-riezebos/discord-wrapped">view the source code</a> or <a href="https://github.com/sponsors/mia-riezebos">sponsor Mia</a>.</p>
+      </details>
+      <details>
+        <summary>Can I share my Discord Wrapped?</summary>
+        <p>Yes. Select a number, word or highlight, or choose "Share" on a report section. Copy or download the image card. You can also open a post for X, Bluesky, Threads, Mastodon, LinkedIn, Reddit or WhatsApp. Paste or attach the image yourself where needed.</p>
+      </details>
+    </section>
   </div>
 </main>
 
 <div id="report" class="hidden">
 
   <div class="wrap">
-    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select any number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
 
     <section class="card" id="s-overview">
       <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
@@ -316,8 +429,8 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 
     <section class="card" id="s-rhythm">
       <div class="sechead"><h2>Rhythm</h2><button class="share-btn" type="button" data-share-section="rhythm">Share</button></div>
-      <p class="muted">When you send messages. This shows sending patterns, not sleep or time online.</p>
-      <h3>Week × hour</h3>
+      <p class="muted">This shows when you sent messages, not your sleep or time online.</p>
+      <h3>Weekday and hour</h3>
       <div id="heat-chart"></div>
       <div class="controls"><label>Day<select id="day"></select></label></div>
       <div id="hours-chart"></div>
@@ -327,7 +440,7 @@ footer.site p { margin: 6px 0; font-size: 13px; }
         <div><h3>Longest daily streaks</h3><table id="streaks"></table></div>
         <div><h3>Longest silences</h3><table id="gaps"></table></div>
       </div>
-      <h3>Biggest days</h3>
+      <h3>Busiest days</h3>
       <div class="callout" data-slot="peaks"></div>
       <table id="peaks"></table>
       <h3>Message length</h3>
@@ -356,14 +469,14 @@ footer.site p { margin: 6px 0; font-size: 13px; }
       <h3>Topics over time</h3>
       <div id="topic-chart"></div>
       <div class="legend" id="topic-legend"></div>
-      <p class="muted">Messages that contain a keyword, per 1,000 messages. Topics can overlap. Edit the keywords to track anything.</p>
+      <p class="muted">Messages containing a topic keyword per 1,000 messages. Topics can overlap.</p>
       <details class="more"><summary>Edit topics</summary>
         <p>One topic per line: <code>Name: word, another word, prefix*</code>. Up to five topics.</p>
-        <textarea id="topics-input" spellcheck="false"></textarea>
+        <textarea aria-label="Topic keywords" id="topics-input" spellcheck="false"></textarea>
         <div class="controls"><button id="topics-apply" class="primary" type="button">Update topics</button><button id="topics-reset" type="button">Restore defaults</button></div>
       </details>
       <h3>Your top 10 words, year by year</h3>
-      <p class="muted">Each column is a year's top 10, most used at the top. Lines follow a word while it stays in the top 10. Hover a word to trace it.</p>
+      <p class="muted">Each column shows a year's top 10 words, with the most used at the top. Hover a word to trace it.</p>
       <div id="bump-chart"></div>
       <div class="twocol">
         <div><h3>Your words</h3><div class="controls"><label>Year<select id="words-year"></select></label></div><div class="rank" id="word-ranks"></div></div>
@@ -380,8 +493,8 @@ footer.site p { margin: 6px 0; font-size: 13px; }
       <h2>Search your messages</h2>
       <p class="muted">See how often you said something, and when.</p>
       <form class="controls" id="search-form">
-        <label class="grow">Word or phrase<input id="search-q" type="search" placeholder="e.g. tired, good morning, minecraft" autocomplete="off"></label>
-        <label class="inline"><input id="search-whole" type="checkbox" checked> Whole words</label>
+        <label class="grow">Word or phrase<input id="search-q" type="search" placeholder="Try &quot;good morning&quot;" autocomplete="off"></label>
+        <label class="inline"><input id="search-whole" type="checkbox" checked> Match whole words</label>
         <button class="primary" type="submit">Search</button>
       </form>
       <div id="search-out" aria-live="polite"></div>
@@ -395,7 +508,7 @@ footer.site p { margin: 6px 0; font-size: 13px; }
         <label>Year<select id="ch-year"></select></label>
       </div>
       <p class="readout" id="ch-label"></p>
-      <table><thead><tr><th>Channel</th><th>First → last</th><th class="num">Messages</th></tr></thead><tbody id="ch-rows"></tbody></table>
+      <table><thead><tr><th>Channel</th><th>First and last message</th><th class="num">Messages</th></tr></thead><tbody id="ch-rows"></tbody></table>
       <div class="pager"><span id="ch-page"></span><div><button id="ch-prev" type="button">Previous</button><button id="ch-next" type="button">Next</button></div></div>
       <div class="detail hidden" id="ch-detail" aria-live="polite"></div>
     </section>
@@ -407,12 +520,12 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 
     <section class="card" id="s-roast">
       <h2>Roast</h2>
-      <p class="muted">Five of your strangest messages, picked by how many rare words they use. Pick again for a new five.</p>
+      <p class="muted">Messages with unusually rare words. Choose "Pick again" for another selection.</p>
       <div class="controls"><button id="reroll" type="button">Pick again</button></div>
       <div id="roast"></div>
       <div class="ai-box">
-        <strong>Optional: let a small AI judge and caption them</strong>
-        <p>Runs a small language model inside this tab with <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noreferrer">WebLLM</a>, the engine behind <a href="https://github.com/guirguispierre/bit-chat" target="_blank" rel="noreferrer">bit-chat</a>. The first run downloads the library and the model; your messages stay in this tab. Needs WebGPU (Chrome, Edge or Safari 26).</p>
+        <strong>Add AI captions</strong>
+        <p>The optional AI runs in this tab with <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noreferrer">WebLLM</a>. First, it downloads the model. Your messages stay in your browser. It needs WebGPU.</p>
         <div class="controls">
           <label>Model<select id="ai-model"></select></label>
           <button id="ai-run" class="primary" type="button">Download model and roast</button>
@@ -429,16 +542,17 @@ footer.site p { margin: 6px 0; font-size: 13px; }
   </div>
 </div>
 <footer class="site">
+  <section class="wrap sponsor-grid" id="footer-sponsors" aria-labelledby="footer-sponsors-title"></section>
   <div class="wrap inner">
     <section class="brandcol">
       <h2>Discord Wrapped</h2>
       <a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Contribute on GitHub</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a>
       <ul class="socials">
-        <li><a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></li>
-        <li><a href="https://discord.gg/bePPwYJk2u" rel="external" aria-label="Discord server" title="Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a></li>
+        <li><a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" aria-label="View source code on GitHub" title="View source code on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></li>
+        <li><a href="https://discord.gg/bePPwYJk2u" rel="external" aria-label="Join the Discord server" title="Join the Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a></li>
         <li><a href="https://github.com/sponsors/mia-riezebos" rel="external" aria-label="Sponsor on GitHub" title="Sponsor on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg></a></li>
       </ul>
-      <p class="muted">Your messages are read in this tab and never uploaded.</p>
+      <p class="muted">Your browser reads your messages. They are never uploaded.</p>
       <p class="muted">© 2026 <a href="https://mia.cx" rel="external">mia.cx</a></p>
     </section>
     <nav aria-labelledby="footer-project">
@@ -448,14 +562,15 @@ footer.site p { margin: 6px 0; font-size: 13px; }
         <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/releases" rel="external"><span>What's new</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
         <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/issues/new" rel="external"><span>Report a problem</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
         <li><a class="arrow-link" href="https://discord.gg/bePPwYJk2u" rel="external"><span>Discord server</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-        <li><a class="arrow-link" href="https://github.com/sponsors/mia-riezebos" rel="external"><span>Sponsor or advertise</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="/advertise"><span>Advertise on Discord Wrapped</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/sponsors/mia-riezebos" rel="external"><span>Sponsor on GitHub</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
         <li><a class="arrow-link" href="https://mia.cx" rel="external"><span>mia.cx</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
       </ul>
     </nav>
   </div>
 </footer>
-<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
-<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
+<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tall"></div><div class="slot slot-square"></div></aside>
+<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tall"></div><div class="slot slot-square"></div></aside>
 <div class="tip" id="tip" role="presentation"></div>
 <div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
 <script type="text/plain" id="worker-src">/* Parses a Discord data package and computes aggregates. Runs in a Web Worker; never touches the network. */
@@ -1012,12 +1127,12 @@ async function show(info) {
   window.scrollTo(0, 0); renderAll(); savedNotice();
 }
 async function open(source) {
-  $('status').innerHTML = '<div>Opening…</div>';
+  $('status').innerHTML = '<div>Opening package…</div>';
   try {
     await show(await call('load', source));
     navigator.storage?.persist?.();
   } catch (e) {
-    $('status').innerHTML = `<p class="error">${esc(e.message)}</p>`;
+    $('status').innerHTML = `<p class="error">Couldn't open this package: ${esc(e.message)}</p>`;
   }
 }
 async function updatePackage(source) {
@@ -1027,10 +1142,10 @@ async function updatePackage(source) {
     const r = await call('update', source);
     await show(r);
     $('notice').innerHTML = r.added
-      ? `<p><strong>Added ${fmt(r.added)} new messages</strong> sent after ${esc(stamp(before))}${r.newChannels ? `, including ${fmt(r.newChannels)} new channels` : ''}. Everything you had before is kept.</p>`
-      : `<p><strong>No new messages.</strong> That package doesn’t have anything after ${esc(stamp(before))}.</p>`;
+      ? `<p><strong>Added ${fmt(r.added)} new messages</strong> sent after ${esc(stamp(before))}${r.newChannels ? `. Added ${fmt(r.newChannels)} new channels` : ''}. Your earlier messages are still saved.</p>`
+      : `<p><strong>No new messages.</strong> This package has no messages after ${esc(stamp(before))}.</p>`;
   } catch (e) {
-    $('notice').innerHTML = `<p class="error">${esc(e.message)}</p>`;
+    $('notice').innerHTML = `<p class="error">Couldn't update the report: ${esc(e.message)}</p>`;
   }
 }
 const stamp = isoString => new Date(isoString).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'});
@@ -1080,7 +1195,7 @@ $('tz').innerHTML = [...new Set([localTz, 'UTC', ...zones])].map(z => `<option>$
 $('tz').value = zones.includes(localStorage.getItem('du-tz')) || localStorage.getItem('du-tz') === 'UTC' ? localStorage.getItem('du-tz') : localTz;
 $('tz').addEventListener('change', async () => { document.body.style.cursor = 'progress'; await analyse(); document.body.style.cursor = ''; renderAll(); });
 $('reset').addEventListener('click', async () => {
-  if (!confirm('Remove your messages and this report from this browser? You can load package.zip again any time.')) return;
+  if (!confirm('Remove the saved messages and report from this browser? You can open package.zip again later.')) return;
   await call('forget'); localStorage.removeItem('du-topics'); location.reload();
 });
 $('export').addEventListener('click', () => {
@@ -1164,7 +1279,7 @@ function lines(target, labels, series, {height = 240, title, format = fmt, tickL
 }
 function ranks(target, items, max = 10, label = fmt, share = () => null) {
   const rows = items.slice(0, max), top = Math.max(1, ...rows.map(r => r[1]));
-  $(target).innerHTML = rows.map(([name, v], i) => `<div class="rankrow" ${shareAttr(share(name, v, i))}><span class="name" title="${esc(name)}">${esc(name)}</span><span class="number">${label(v)}</span><div class="track"><span style="width:${100 * v / top}%;background:${COLORS[0]}"></span></div></div>`).join('') || '<p class="muted">Nothing here for this period.</p>';
+  $(target).innerHTML = rows.map(([name, v], i) => `<div class="rankrow" ${shareAttr(share(name, v, i))}><span class="name" title="${esc(name)}">${esc(name)}</span><span class="number">${label(v)}</span><div class="track"><span style="width:${100 * v / top}%;background:${COLORS[0]}"></span></div></div>`).join('') || '<p class="muted">No results in this report.</p>';
 }
 const legend = (target, names) => $(target).innerHTML = names.map((n, i) => `<span><i class="swatch" style="background:${COLORS[i]}"></i>${esc(n)}</span>`).join('');
 const metric = (v, label, share) => `<div class="metric" ${shareAttr(share)}><strong>${v}</strong><span>${label}</span></div>`;
@@ -1176,39 +1291,39 @@ function findings() {
   const T = D.totals, ys = Object.keys(D.years).sort(), Y = D.years, out = [];
   const full = ys.slice(1, -1).filter(y => Y[y].calendarDays >= 365);
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
-  out.push(['years', `<strong>${busiest} was your loudest year</strong> with ${fmt(Y[busiest].total)} messages, ${pct(Y[busiest].total, T.messages)} of everything you ever sent.`,
-    {text: `${busiest} was my loudest year on Discord: ${fmt(Y[busiest].total)} messages.`, headline: busiest, sub: `my loudest year on Discord · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
+  out.push(['years', `<strong>${busiest} was your busiest year</strong> with ${fmt(Y[busiest].total)} messages. That's ${pct(Y[busiest].total, T.messages)} of the messages in this report.`,
+    {text: `My busiest year in Discord Wrapped was ${busiest}, with ${fmt(Y[busiest].total)} messages.`, headline: busiest, sub: `My busiest year · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
   // Biggest fall between two consecutive full years; partial first and last years would exaggerate it.
   const drops = full.slice(1).filter(y => full.includes(String(+y - 1))).map(y => [y, 1 - Y[y].total / Y[+y - 1].total]).sort((a, b) => b[1] - a[1]);
-  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>${y} was the quiet year:</strong> ${fmt(Y[y].total)} messages, ${(100 * d).toFixed(0)}% fewer than ${+y - 1}. You still posted on ${fmt(Y[y].activeDays)} days.`,
-    {text: `${y} was my quiet year on Discord: ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}.`, headline: y, sub: `my quiet year on Discord · ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
+  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>You sent ${(100 * d).toFixed(0)}% fewer messages in ${y} than in ${+y - 1}.</strong> That's ${fmt(Y[y].total)} messages across ${fmt(Y[y].activeDays)} days.`,
+    {text: `I sent ${(100 * d).toFixed(0)}% fewer Discord messages in ${y} than in ${+y - 1}.`, headline: y, sub: `${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
   const months = Object.entries(D.months), topMonth = months.reduce((a, m) => m[1].total > a[1].total ? m : a);
   const monthName = new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'}), perDay = fmt(Math.round(topMonth[1].total / 30));
-  out.push(['month', `<strong>Your busiest month was ${monthName}:</strong> ${fmt(topMonth[1].total)} messages, about ${perDay} a day.`,
-    {text: `My busiest month on Discord was ${monthName}: ${fmt(topMonth[1].total)} messages, about ${perDay} a day.`, headline: monthName, sub: `my busiest Discord month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
+  out.push(['month', `<strong>Your busiest month was ${monthName},</strong> with ${fmt(topMonth[1].total)} messages.`,
+    {text: `My busiest month in Discord Wrapped was ${monthName}, with ${fmt(topMonth[1].total)} messages.`, headline: monthName, sub: `My busiest month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
   const peakHour = D.hourly.indexOf(Math.max(...D.hourly));
-  out.push(['rhythm', `<strong>${pct(T.lateNight, T.messages)} of your messages were sent between midnight and 6 am.</strong> Your busiest hour is ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`,
-    {text: `${pct(T.lateNight, T.messages)} of my Discord messages are sent between midnight and 6 am.`, headline: pct(T.lateNight, T.messages), sub: 'of my Discord messages are sent between midnight and 6 am', chart: 'heat-chart'}]);
+  out.push(['rhythm', `<strong>You sent ${pct(T.lateNight, T.messages)} of your messages between midnight and 6 am.</strong> Your busiest hour was ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`,
+    {text: `I sent ${pct(T.lateNight, T.messages)} of the messages in my Discord Wrapped between midnight and 6 am.`, headline: pct(T.lateNight, T.messages), sub: 'Sent between midnight and 6 am', chart: 'heat-chart'}]);
   const st = D.streaks[0];
-  if (st) out.push(['calendar', `<strong>Longest streak: ${fmt(st[0])} days in a row</strong>, ${longDate(st[1])} to ${longDate(st[2])}. You posted on ${pct(T.activeDays, T.calendarDays)} of all days since your first message.`,
-    {text: `My longest Discord streak: ${fmt(st[0])} days in a row.`, headline: `${fmt(st[0])} days in a row`, sub: `my longest Discord streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
+  if (st) out.push(['calendar', `<strong>Your longest streak was ${fmt(st[0])} days,</strong> from ${longDate(st[1])} to ${longDate(st[2])}. You sent messages on ${pct(T.activeDays, T.calendarDays)} of days in this report's date range.`,
+    {text: `My longest streak in Discord Wrapped was ${fmt(st[0])} days.`, headline: `${fmt(st[0])} days in a row`, sub: `My longest streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
   const pk = D.peakDays[0];
   if (pk) {
     const [txt, n] = pk.topText;
-    out.push(['peaks', `<strong>Record day: ${longDate(pk.date)}</strong>, ${fmt(pk.count)} messages${pk.contexts[0] ? `, mostly in ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${esc(txt.slice(0, 60))}”.` : ''}`,
-      {text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}.${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${quoteOf(txt, 60)}”.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `my Discord record, ${longDate(pk.date)}`}]);
+    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day in this report${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` You sent "${esc(txt.slice(0, 60))}" ${fmt(n)} times.` : ''}`,
+      {text: `My busiest day in Discord Wrapped was ${longDate(pk.date)}, with ${fmt(pk.count)} messages.${n > pk.count * .2 && txt ? ` I sent "${quoteOf(txt, 60)}" ${fmt(n)} times.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`}]);
   }
-  out.push(['length', `<strong>You type in bursts.</strong> ${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before; ${pct(T.shortMessages, T.messages)} are 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
-    {text: `My Discord record: ${fmt(D.bursts.bestMinute.count)} messages in one minute. ${pct(T.shortMessages, T.messages)} of my messages are 20 characters or fewer.`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `my Discord record · ${pct(T.shortMessages, T.messages)} of my messages are 20 characters or fewer`, chart: 'length-chart'}]);
+  out.push(['length', `<strong>${pct(D.bursts.within60, T.messages - 1)} of consecutive message pairs were at most a minute apart.</strong> ${pct(T.shortMessages, T.messages)} of your messages have 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
+    {text: `My fastest minute in Discord Wrapped had ${fmt(D.bursts.bestMinute.count)} messages. ${pct(T.shortMessages, T.messages)} of my messages have 20 characters or fewer.`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `${pct(T.shortMessages, T.messages)} of my messages have 20 characters or fewer`, chart: 'length-chart'}]);
   const dms = D.channels.filter(c => c.group === 'DMs' && c.count), dmTotal = dms.reduce((a, c) => a + c.count, 0);
-  if (dms.length > 10) out.push(['people', `<strong>A small inner circle:</strong> your top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all ${fmt(dmTotal)} DM messages, across ${fmt(dms.length)} DM conversations.`,
-    {text: `My top 10 DMs hold ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of all my Discord DMs.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'of my Discord DMs go to just 10 people'}]);
+  if (dms.length > 10) out.push(['people', `<strong>Your top 10 DM conversations contain</strong> ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of your ${fmt(dmTotal)} DM messages. Your report includes ${fmt(dms.length)} DM conversations.`,
+    {text: `My top 10 DM conversations contain ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of the DM messages in my Discord Wrapped.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'Of my DM messages are in 10 conversations'}]);
   if (ys.length > 2) {
     const a = full[0] || ys[0], b = ys.at(-1), wa = Y[a].words / Y[a].total, wb = Y[b].words / Y[b].total;
-    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages got ${wb > wa ? 'longer' : 'shorter'}:</strong> ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`,
-      {text: `My Discord messages got ${wb > wa ? 'longer' : 'shorter'}: ${wa.toFixed(1)} words on average in ${a}, ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
+    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages averaged ${wa.toFixed(1)} words in ${a}</strong> and ${wb.toFixed(1)} in ${b}.`,
+      {text: `My Discord messages averaged ${wa.toFixed(1)} words in ${a} and ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `Per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
   }
-  if (D.domains[0]) out.push(['links', `<strong>You link to ${esc(D.domains[0][0])} the most:</strong> ${fmt(D.domains[0][1])} times, out of ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`,
+  if (D.domains[0]) out.push(['links', `<strong>You linked to ${esc(D.domains[0][0])} most often,</strong> with ${fmt(D.domains[0][1])} links. Your report contains ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`,
     {text: `I've shared ${fmt(D.domains[0][1])} links to ${D.domains[0][0]} on Discord.`, headline: D.domains[0][0], sub: `${fmt(D.domains[0][1])} links I've shared on Discord`}]);
   // Each highlight sits next to the chart that shows it.
   document.querySelectorAll('[data-slot]').forEach(el => {
@@ -1226,7 +1341,7 @@ function overview() {
   $('hero-sub').textContent = `${longDate(T.first)} – ${longDate(T.last)} · ${fmt(T.channels)} channels · times in ${D.tz}`;
   const since = T.first.slice(0, 4), stat = (n, what) => ({text: `I've ${what} on Discord since ${since}.`, headline: fmt(n), sub: `${what.replace(/^\S+ [\d,.]+ /, '')} on Discord since ${since}`});
   $('counts').innerHTML = metric(fmt(T.messages), 'messages', stat(T.messages, `sent ${fmt(T.messages)} messages`)) + metric(fmt(T.words), 'words', stat(T.words, `typed ${fmt(T.words)} words`)) + metric(fmt(T.characters), 'characters', stat(T.characters, `typed ${fmt(T.characters)} characters`))
-    + metric(fmt(T.activeDays), `active days of ${fmt(T.calendarDays)}`, {text: `I've sent Discord messages on ${fmt(T.activeDays)} of the last ${fmt(T.calendarDays)} days.`, headline: pct(T.activeDays, T.calendarDays), sub: `of days since ${since} I sent at least one Discord message`, chart: 'calendar'})
+    + metric(fmt(T.activeDays), `days with messages out of ${fmt(T.calendarDays)}`, {text: `I sent messages on ${fmt(T.activeDays)} of the ${fmt(T.calendarDays)} days covered by my Discord Wrapped.`, headline: pct(T.activeDays, T.calendarDays), sub: `Of days in my report with at least one message`, chart: 'calendar'})
     + metric(fmt(T.urls), 'links', stat(T.urls, `shared ${fmt(T.urls)} links`)) + metric(fmt(T.attachmentLinks), 'attachments', stat(T.attachmentLinks, `sent ${fmt(T.attachmentLinks)} attachments`));
   findings();
   legend('group-legend', GROUPS);
@@ -1263,7 +1378,7 @@ function calendar(year) {
     return s;
   });
   const total = [...counts].filter(([d]) => d >= start && d <= end), active = total.length, sum = total.reduce((a, x) => a + x[1], 0);
-  $('calendar-readout').textContent = `${fmt(sum)} messages on ${fmt(active)} days · darker = more`;
+  $('calendar-readout').textContent = `${fmt(sum)} messages on ${fmt(active)} days. Darker squares mean more messages.`;
 }
 function rhythm() {
   const heat = () => frame('heat-chart', 230, 'Messages by weekday and hour', (w, h) => {
@@ -1281,8 +1396,8 @@ function rhythm() {
   };
   $('day').onchange = hours;
   table('streaks', ['From', 'To', 'Days'], D.streaks.slice(0, 6).map(s => [longDate(s[1]), longDate(s[2]), fmt(s[0])]));
-  table('gaps', ['After', 'Until', 'Days silent'], D.gaps.slice(0, 6).map(g => [longDate(g[1]), longDate(g[2]), fmt(g[0])]));
-  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× “${esc(p.topText[0].slice(0, 40))}”</small>` : ''), fmt(p.count)]));
+  table('gaps', ['After', 'Until', 'Days without messages'], D.gaps.slice(0, 6).map(g => [longDate(g[1]), longDate(g[2]), fmt(g[0])]));
+  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× "${esc(p.topText[0].slice(0, 40))}"</small>` : ''), fmt(p.count)]));
   const ys = rateYears();
   const draw = () => {
     heat(); hours();
@@ -1302,7 +1417,7 @@ function people() {
     $('dm-share').textContent = dms.length ? `${fmt(dms.length)} DM conversations · top 10 = ${pct(dms.slice(0, 10).reduce((a, x) => a + x[1], 0), dmTotal)} of DM messages` : '';
     const servers = D.guilds.map(g => [g.name, y === 'all' ? g.count : g.years[y] || 0]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
     ranks('server-ranks', servers, 10, fmt, (name, n, i) => ({text: `I've sent ${fmt(n)} messages in ${name} on Discord${y === 'all' ? '' : ` in ${y}`}.`, headline: name, sub: `${i ? `#${i + 1}` : 'my top'} Discord server${y === 'all' ? '' : ` in ${y}`} · ${fmt(n)} messages`}));
-    $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. Some old servers only appear by name, so a renamed server can show up twice.` : '';
+    $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. A renamed server can appear twice when the export only identifies it by name.` : '';
   };
   $('people-year').onchange = update; update();
   legend('share-legend', GROUPS);
@@ -1312,7 +1427,7 @@ function people() {
 function words() {
   const ys = rateYears(), names = Object.keys(D.topics);
   legend('topic-legend', names);
-  const draw = () => lines('topic-chart', ys, names.map(n => ({name: n, values: ys.map(y => 1000 * (D.topicYears[y]?.[n] || 0) / D.years[y].total)})), {title: 'Topic mentions per 1,000 messages', format: v => v.toFixed(1)});
+  const draw = () => lines('topic-chart', ys, names.map(n => ({name: n, values: ys.map(y => 1000 * (D.topicYears[y]?.[n] || 0) / D.years[y].total)})), {title: 'Messages containing topic keywords per 1,000 messages', format: v => v.toFixed(1)});
   draw(); draws.push(draw);
   const drawBump = () => bump('bump-chart', ys.filter(y => D.wordYears[y]?.length));
   drawBump(); draws.push(drawBump);
@@ -1323,14 +1438,14 @@ function words() {
     ranks('word-ranks', y === 'all' ? D.words : D.wordYears[y] || [], 12, fmt, (w, n, i) => wordShare(w, n, i, y === 'all' ? null : y));
   };
   $('words-year').onchange = wy; wy();
-  ranks('expr-ranks', D.expressions, 12, fmt, (t, n, i) => ({text: i ? `“${quoteOf(t, 60)}” is my #${i + 1} most-sent message on Discord: ${fmt(n)} times.` : `The thing I say most on Discord is just “${quoteOf(t, 60)}”: ${fmt(n)} times.`, headline: `“${quoteOf(t, 40)}”`, sub: `${i ? `#${i + 1} ` : ''}most-sent Discord message · ${fmt(n)} times`}));
+  ranks('expr-ranks', D.expressions, 12, fmt, (t, n, i) => ({text: i ? `“${quoteOf(t, 60)}” is my #${i + 1} most-sent message on Discord: ${fmt(n)} times.` : `The thing I say most on Discord is just “${quoteOf(t, 60)}”: ${fmt(n)} times.`, headline: `"${quoteOf(t, 40)}"`, sub: `Short message rank #${i + 1} · Sent ${fmt(n)} times`}));
   ranks('link-ranks', D.domains, 10, fmt, (d, n) => ({text: `I've shared ${fmt(n)} links to ${d} on Discord.`, headline: d, sub: `${fmt(n)} links I've shared on Discord`}));
   ranks('emoji-ranks', D.emoji.map(([n, v]) => [':' + n + ':', v]), 10, fmt, (e, n, i) => ({text: `${i ? `My #${i + 1}` : 'My most-used'} custom emoji on Discord is ${e} (${fmt(n)} times).`, headline: e, sub: `${i ? `#${i + 1} ` : 'most-used '}custom emoji · ${fmt(n)} times`}));
 }
 const wordShare = (w, n, i, y) => ({
   text: y ? (i ? `“${w}” was my #${i + 1} word on Discord in ${y} (${fmt(n)} times).` : `My top word on Discord in ${y} was “${w}” (${fmt(n)} times).`)
     : (i ? `“${w}” is my #${i + 1} word on Discord, used ${fmt(n)} times.` : `My most-used word on Discord is “${w}”: ${fmt(n)} times.`),
-  headline: `“${w}”`, sub: `my #${i + 1} word on Discord${y ? ` in ${y}` : ''} · ${fmt(n)} times`});
+  headline: `“${w}”`, sub: `My #${i + 1} word on Discord${y ? ` in ${y}` : ''} · ${fmt(n)} times`});
 // Bump chart: one column per year, words placed by rank, lines joining a word across consecutive years.
 function bump(target, years) {
   const tops = years.map(y => D.wordYears[y].slice(0, 10));
@@ -1365,20 +1480,20 @@ $('topics-apply').onclick = () => retopic($('topics-input').value);
 $('topics-reset').onclick = () => retopic(DEFAULT_TOPICS);
 
 function messageCard(m, q) {
-  let text = esc(m.text || '(no text, attachment only)');
+  let text = esc(m.text || 'Attachment only');
   if (q) text = text.replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), x => `<mark>${x}</mark>`);
-  return `<div class="msg"><div class="text">${text}</div><div class="meta" data-private>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open in Discord</a>` : ''}</div></div>`;
+  return `<div class="msg"><div class="text">${text}</div><div class="meta" data-private>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}</div></div>`;
 }
 $('search-form').addEventListener('submit', async e => {
   e.preventDefault();
   const q = $('search-q').value; if (!q.trim()) return;
   $('search-out').innerHTML = '<p class="readout">Searching…</p>';
   const r = await call('search', {query: q, wholeWord: $('search-whole').checked});
-  if (!r.total) { $('search-out').innerHTML = `<p>You never sent “${esc(r.query)}”.</p>`; return; }
+  if (!r.total) { $('search-out').innerHTML = `<p>No messages match "${esc(r.query)}" in this report. Try another phrase.</p>`; return; }
   const ms = Object.keys(D.months);
   const peakYear = Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0];
-  lastSearchShare = {text: `I've said “${r.query}” ${fmt(r.total)} times on Discord, most of all in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} times on Discord · peak year ${peakYear}`, chart: 'search-chart'};
-  $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first time')}${metric(peakYear, 'peak year', lastSearchShare)}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
+  lastSearchShare = {text: `My Discord Wrapped has ${fmt(r.total)} messages matching "${r.query}". The most matches were in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} matching messages · Most in ${peakYear}`, chart: 'search-chart'};
+  $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first match')}${metric(peakYear, 'busiest year', lastSearchShare)}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
   const draw = () => $('search-chart') && lines('search-chart', ms, [{name: r.query, values: ms.map(m => r.months[m] || 0)}], {height: 200, title: `Messages containing ${r.query} per month`, tickLabel: m => m.slice(0, 4)});
   draw(); ranks('search-ranks', r.channels, 8);
   searchDraw = draw;
@@ -1396,7 +1511,7 @@ function channels() {
   const update = () => {
     const r = results(), last = Math.max(0, Math.ceil(r.length / size) - 1); page = Math.min(page, last);
     $('ch-label').textContent = `${fmt(r.length)} channels · ${fmt(r.reduce((a, x) => a + x.n, 0))} messages`;
-    $('ch-rows').innerHTML = r.slice(page * size, page * size + size).map(({c, n}) => `<tr><td><button class="rowbutton" data-ch="${c.i}">${esc(c.name)}</button><br><small>${esc(c.guild || c.group)}</small></td><td><small>${c.first} → ${c.last}</small></td><td class="num">${fmt(n)}</td></tr>`).join('') || '<tr><td colspan="3">No channels match.</td></tr>';
+    $('ch-rows').innerHTML = r.slice(page * size, page * size + size).map(({c, n}) => `<tr><td><button class="rowbutton" data-ch="${c.i}">${esc(c.name)}</button><br><small>${esc(c.guild || c.group)}</small></td><td><small>${c.first} → ${c.last}</small></td><td class="num">${fmt(n)}</td></tr>`).join('') || '<tr><td colspan="3">No channels match. Change the search or filters.</td></tr>';
     $('ch-page').textContent = `Page ${page + 1} of ${last + 1}`; $('ch-prev').disabled = page === 0; $('ch-next').disabled = page >= last;
   };
   ['ch-q', 'ch-type', 'ch-year'].forEach(id => $(id).oninput = () => { page = 0; update(); });
@@ -1405,20 +1520,20 @@ function channels() {
     const b = e.target.closest('[data-ch]'); if (!b) return;
     const c = D.channels.find(x => x.i === +b.dataset.ch), ys = Object.keys(D.years).sort();
     $('ch-detail').classList.remove('hidden');
-    $('ch-detail').innerHTML = `<strong>${esc(c.name)}</strong> <small>${esc(c.guild || c.group)} · ${esc(c.type)}</small><p>${fmt(c.count)} messages · ${fmt(c.words)} words · ${fmt(c.links)} with links · ${fmt(c.attachments)} with attachments</p><div id="ch-chart"></div>`;
+    $('ch-detail').innerHTML = `<strong>${esc(c.name)}</strong> <small>${esc(c.guild || c.group)} · ${esc(c.type)}</small><p>${fmt(c.count)} messages · ${fmt(c.words)} words · ${fmt(c.links)} messages with links · ${fmt(c.attachments)} messages with attachments</p><div id="ch-chart"></div>`;
     bars('ch-chart', ys.map(y => [y, c.years[y] || 0]), {height: 160, title: `Messages per year in ${c.name}`});
   };
   update();
 }
 function fame() {
-  const F = D.fame, card = (title, m, extra = '', share) => m ? `<article ${shareAttr(share || {text: `${title.replace('Your', 'My')} on Discord (${m.at.slice(0, 10)}): “${quoteOf(m.text || '', 200)}”`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${title.replace('Your', 'my')} on Discord · ${longDate(m.at.slice(0, 10))}`})}><h3>${title}</h3><blockquote>${esc((m.text || '(attachment only)').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open</a>` : ''}${extra}</small></article>` : '';
+  const F = D.fame, card = (title, m, extra = '', share) => m ? `<article ${shareAttr(share || {text: `${title.replace('Your', 'My')} on Discord (${m.at.slice(0, 10)}): “${quoteOf(m.text || '', 200)}”`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${title.replace('Your', 'my')} on Discord · ${longDate(m.at.slice(0, 10))}`})}><h3>${title}</h3><blockquote>${esc((m.text || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
-  $('fame').innerHTML = card('Your first message', F.first) + card('Your latest message', F.last) +
+  $('fame').innerHTML = card('First message in this report', F.first) + card('Latest message in this report', F.last) +
     (F.mostRepeated ? `<article ${shareAttr(sectionShare('fame'))}><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
-    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest Discord message was ${fmt([...F.longest.text].length)} characters long.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `my longest Discord message · “${quoteOf(F.longest.text, 50)}”`}) +
-    `<article ${shareAttr({text: `My Discord record: ${fmt(bm.count)} messages in 60 seconds.`, headline: `${fmt(bm.count)} messages`, sub: 'in 60 seconds, my Discord record'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
-    (ls ? `<article ${shareAttr({text: `My longest Discord session: ${fmt(ls[0])} messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'without a 30-minute break, my longest Discord session'})}><h3>Longest session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · lasted ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
-    (pk ? `<article ${shareAttr({text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}.`, headline: `${fmt(pk.count)} messages in a day`, sub: `my Discord record, ${longDate(pk.date)}`})}><h3>Record day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
+    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest message in Discord Wrapped has ${fmt([...F.longest.text].length)} characters.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `Longest message · "${quoteOf(F.longest.text, 50)}"`}) +
+    `<article ${shareAttr({text: `My fastest minute in Discord Wrapped had ${fmt(bm.count)} messages.`, headline: `${fmt(bm.count)} messages`, sub: 'Messages in 60 seconds'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
+    (ls ? `<article ${shareAttr({text: `I sent ${fmt(ls[0])} Discord messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'Messages without a 30-minute break'})}><h3>Most messages in a session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · about ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
+    (pk ? `<article ${shareAttr({text: `My busiest day in Discord Wrapped was ${longDate(pk.date)}, with ${fmt(pk.count)} messages.`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`})}><h3>Busiest day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
 }
 
 /* ---------- roast ---------- */
@@ -1428,7 +1543,7 @@ async function roast() {
   renderRoast(roastPool.slice(0, 5));
 }
 function renderRoast(items) {
-  $('roast').innerHTML = items.map((m, i) => `<article class="quote"><h3>${i + 1}. ${esc(m.title || 'Exhibit ' + String.fromCharCode(65 + i))}</h3><blockquote>${esc(m.text)}</blockquote>${m.followup ? `<p class="roastline">${fmt(m.followup.seconds)} seconds later: “${esc(m.followup.text.slice(0, 200))}”</p>` : ''}${m.caption ? `<p class="roastline">${esc(m.caption)}</p>` : ''}<small>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">open</a>` : ''}${m.aiScore !== undefined ? ` · AI score ${m.aiScore}/10` : ''}</small></article>`).join('') || '<p class="muted">Not enough longer messages to pick from.</p>';
+  $('roast').innerHTML = items.map((m, i) => `<article class="quote"><h3>${esc(m.title || 'Exhibit ' + String.fromCharCode(65 + i))}</h3><blockquote>${esc(m.text)}</blockquote>${m.followup ? `<p class="roastline">${fmt(m.followup.seconds)} seconds later, you sent "${esc(m.followup.text.slice(0, 200))}".</p>` : ''}${m.caption ? `<p class="roastline">${esc(m.caption)}</p>` : ''}<small>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${m.aiScore !== undefined ? ` · AI score ${m.aiScore}/10` : ''}</small></article>`).join('') || '<p class="muted">No roast candidates in this report.</p>';
 }
 $('reroll').onclick = async () => { roastSeed++; await roast(); };
 
@@ -1437,7 +1552,7 @@ const MODELS = [
   ['SmolLM2-360M-Instruct-q4f16_1-MLC', 'SmolLM2 360M · ~200 MB'],
   ['Llama-3.2-1B-Instruct-q4f16_1-MLC', 'Llama 3.2 1B · ~600 MB'],
   ['Qwen2.5-1.5B-Instruct-q4f16_1-MLC', 'Qwen 2.5 1.5B · ~900 MB'],
-  ['Llama-3.2-3B-Instruct-q4f16_1-MLC', 'Llama 3.2 3B · ~1.7 GB · best'],
+  ['Llama-3.2-3B-Instruct-q4f16_1-MLC', 'Llama 3.2 3B · ~1.7 GB'],
 ];
 $('ai-model').innerHTML = MODELS.map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
 let engine = null, engineModel = null;
@@ -1447,14 +1562,14 @@ async function ask(system, user, maxTokens) {
 }
 $('ai-run').onclick = async () => {
   const status = $('ai-status'), bar = $('ai-bar'), btn = $('ai-run');
-  if (!navigator.gpu || !(await navigator.gpu.requestAdapter().catch(() => null))) { status.innerHTML = '<span class="error">This browser can’t give the page a GPU (WebGPU), so the model can’t run here. Try desktop Chrome or Edge.</span>'; return; }
+  if (!navigator.gpu || !(await navigator.gpu.requestAdapter().catch(() => null))) { status.innerHTML = '<span class="error">WebGPU isn’t available in this browser. Try a browser with WebGPU, or use the roast without AI.</span>'; return; }
   btn.disabled = true;
   try {
     const model = $('ai-model').value;
     if (engineModel !== model) {
-      status.textContent = 'Loading WebLLM…'; bar.classList.remove('hidden');
+      status.textContent = 'Loading the AI model…'; bar.classList.remove('hidden');
       const webllm = await import('https://esm.run/@mlc-ai/web-llm@0.2.82');
-      const report = r => { status.textContent = r.text; bar.firstElementChild.style.width = (100 * (r.progress || 0)) + '%'; };
+      const report = r => { status.textContent = 'Loading the AI model…'; bar.firstElementChild.style.width = (100 * (r.progress || 0)) + '%'; };
       if (engine) { await engine.reload(model); } else engine = await webllm.CreateMLCEngine(model, {initProgressCallback: report});
       engineModel = model;
     }
@@ -1472,19 +1587,19 @@ $('ai-run').onclick = async () => {
       best[i].title = title?.slice(0, 60); best[i].caption = rest.join(' ').slice(0, 220) || undefined;
       renderRoast(best);
     }
-    status.textContent = `Done with ${MODELS.find(m => m[0] === model)[1].split(' · ')[0]}. Small models are hit and miss; run it again or try a bigger one.`;
+    status.textContent = 'Captions ready.';
   } catch (e) {
-    status.innerHTML = `<span class="error">${esc(e.message)}</span>`;
+    status.innerHTML = `<span class="error">Couldn't finish the AI roast: ${esc(e.message)}</span>`;
   } finally { btn.disabled = false; bar.classList.add('hidden'); }
 };
 
 function dataQuality() {
   const V = D.validation, T = D.totals;
   const sections = V.sections.length ? V.sections.join(', ') : 'Messages';
-  $('data-quality').innerHTML = `<p>Read ${fmt(V.messageFiles)} message files from ${fmt(V.archiveFiles)} files in the package (${(V.archiveBytes / 1e6).toFixed(0)} MB uncompressed). Package folders: ${esc(sections)}.</p>
-  <p>${fmt(T.messages)} unique messages · ${fmt(V.duplicateIds)} duplicate IDs skipped · ${fmt(V.parseErrorCount)} problems · ${fmt(V.snowflakeMismatches)} timestamps that disagree with the message ID.</p>
-  ${V.parseErrorCount ? `<details class="more"><summary>Problems</summary><ul>${V.parseErrors.map(e => `<li><code>${esc(e[0])}</code>: ${esc(e[1])}</li>`).join('')}</ul></details>` : ''}
-  <p class="muted">Discord only exports messages you sent and haven't deleted. Replies from other people aren't included, so nothing here measures how much anyone replied to you. Times use ${esc(D.tz)}; change it at the top. Words exclude links, mentions and custom emoji code. “Save summary” downloads counts and names only, without message text.</p>`;
+  $('data-quality').innerHTML = `<p>Read ${fmt(V.messageFiles)} message files from ${fmt(V.archiveFiles)} files in the package. Uncompressed size is ${(V.archiveBytes / 1e6).toFixed(0)} MB. Package folders: ${esc(sections)}.</p>
+  <p>${fmt(T.messages)} unique messages · ${fmt(V.duplicateIds)} duplicate messages skipped · ${fmt(V.parseErrorCount)} read errors · ${fmt(V.snowflakeMismatches)} message dates that disagree with their IDs.</p>
+  ${V.parseErrorCount ? `<details class="more"><summary>Read errors</summary><ul>${V.parseErrors.map(e => `<li><code>${esc(e[0])}</code>: ${esc(e[1])}</li>`).join('')}</ul></details>` : ''}
+  <p class="muted">Discord exports your sent messages. Replies from other people are not included. Times use ${esc(D.tz)}. Change the time zone in "Your data". Word counts exclude links, mentions and custom emoji code. "Download summary" downloads a JSON file with counts and labels. It omits full messages, but includes words, names and link domains.</p>`;
 }
 
 function renderAll() {
@@ -1498,7 +1613,7 @@ const observer = new IntersectionObserver(entries => entries.forEach(e => { if (
 document.querySelectorAll('section.card').forEach(s => observer.observe(s));
 startWorker();
 // Reopen the saved copy, if there is one, instead of asking for the zip again.
-$('status').innerHTML = '<div>Checking for a saved copy…</div>';
+$('status').innerHTML = '<div>Checking for a saved report…</div>';
 call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
 
 /* ---------- sharing ---------- */
@@ -1508,7 +1623,7 @@ call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).c
 // A copy opened from disk has no host, so it falls back to the main domain.
 const SITE = /^https?:$/.test(location.protocol) ? location.origin : 'https://discordwrapped.app';
 const SITE_HOST = new URL(SITE).host;
-const REPLY_TEXT = `Make your own Discord Wrapped. It runs in your browser and nothing gets uploaded: ${SITE}`;
+const REPLY_TEXT = `Make your own Discord Wrapped. Your package stays in your browser. ${SITE}`;
 const enc = encodeURIComponent;
 const shareCtx = new Map();
 let shareSeq = 0;
@@ -1569,7 +1684,7 @@ async function renderCard(ctx) {
   g.fillStyle = css('--accent'); g.fillRect(0, 0, W, 10);
   g.textBaseline = 'alphabetic';
   g.fillStyle = css('--muted'); g.font = `600 26px ${font}`;
-  g.fillText('DISCORD WRAPPED', P, 74);
+  g.fillText('Discord Wrapped', P, 74);
   const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
   // Headline shrinks until it fits on two lines; charts leave less room.
   let size = chartSvg ? 76 : 120, lines;
@@ -1592,7 +1707,7 @@ async function renderCard(ctx) {
   g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
   g.fillText(SITE_HOST, P, H - 36);
   g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
-  g.fillText('made in the browser · nothing uploaded', W - P, H - 38);
+  g.fillText('Package processed in your browser', W - P, H - 38);
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 
@@ -1602,11 +1717,11 @@ let current = null, anchor = null;
 function openShare(ctx, rect) {
   current = {ctx, card: renderCard(ctx)};
   const canNative = !!navigator.share;
-  pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close">×</button></div>
-    <img class="sp-img" alt="The image that will be shared">
+  pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close sharing">×</button></div>
+    <img class="sp-img" alt="Share card showing ${esc(ctx.headline)}. ${esc(ctx.sub || '')}">
     <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(ctx.text)}</textarea></label>
-    <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">${p.name}</button>`).join('')}</div>
-    <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download</button><button type="button" data-act="copy-text">Copy text</button></div>
+    <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
+    <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
   current.card.then(b => { if (b && current?.ctx === ctx) pop.querySelector('.sp-img').src = URL.createObjectURL(b); });
   addEventListener('resize', () => current && place(), {once: true});
@@ -1639,7 +1754,7 @@ const slug = () => quoteOf(current.ctx.headline, 40).toLowerCase().replace(/[^\p
 function sharePlatform(p) {
   let server = '';
   if (p.needsServer) {
-    server = localStorage.getItem('du-mastodon') || prompt('Your Mastodon server (for example mastodon.social):', 'mastodon.social') || '';
+    server = localStorage.getItem('du-mastodon') || prompt('Enter your Mastodon server, such as mastodon.social.', 'mastodon.social') || '';
     server = server.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!server) return;
     localStorage.setItem('du-mastodon', server);
@@ -1647,11 +1762,11 @@ function sharePlatform(p) {
   const text = postText(), copied = p.linkPost ? Promise.resolve(false) : copyImage().then(() => true, () => false);
   window.open(p.compose(p.derank || p.linkPost ? text : `${text}\n\n${SITE}`, server), '_blank', 'noopener');
   copied.then(ok => {
-    const image = p.linkPost ? '' : ok ? `<li>The image is on your clipboard: paste it into the post (⌘V or Ctrl+V).</li>` : `<li>Copying the image didn't work here. Use Download and attach it.</li>`;
+    const image = p.linkPost ? '' : ok ? `<li>Paste the copied image into your post with ⌘V or Ctrl+V.</li>` : `<li>Couldn't copy the image. Choose "Download image" and attach it to your post.</li>`;
     if (!p.derank) { stepOut(image ? `<ol>${image}</ol>` : ''); return; }
-    stepOut(`<ol>${image}<li>${p.name} hides posts with links, so the link goes in a reply. After posting, reply with:</li></ol>
-      <div class="sp-reply"><input readonly value="${esc(REPLY_TEXT)}"><button type="button" data-act="copy-reply">Copy</button></div>
-      ${p.reply ? `<div class="sp-reply"><input class="sp-post" placeholder="Paste your post's link" inputmode="url"><button type="button" data-act="open-reply" data-platform-reply="${p.id}">Open reply</button></div>` : ''}`);
+    stepOut(`<ol>${image}<li>After posting, add this link in a reply:</li></ol>
+      <div class="sp-reply"><input aria-label="Reply text" readonly value="${esc(REPLY_TEXT)}"><button type="button" data-act="copy-reply">Copy reply</button></div>
+      ${p.reply ? `<div class="sp-reply"><input aria-label="Post link" class="sp-post" placeholder="Paste your post's link" inputmode="url"><button type="button" data-act="open-reply" data-platform-reply="${p.id}">Open reply</button></div>` : ''}`);
   });
 }
 pop.addEventListener('click', async e => {
@@ -1662,7 +1777,7 @@ pop.addEventListener('click', async e => {
   try {
     if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
     else if (act === 'copy-text') { await navigator.clipboard.writeText(`${postText()}\n\n${SITE}`); stepOut('<p>Text and link copied.</p>'); }
-    else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Copied'; }
+    else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }
     else if (act === 'download') {
       const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(await current.card), download: `discord-wrapped-${slug()}.png`});
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -1673,10 +1788,10 @@ pop.addEventListener('click', async e => {
     } else if (act === 'open-reply') {
       const url = PLATFORMS.find(p => p.id === b.dataset.platformReply).reply(pop.querySelector('.sp-post').value, REPLY_TEXT);
       if (url) window.open(url, '_blank', 'noopener');
-      else stepOut(pop.querySelector('.sp-step').innerHTML.replace(/<p class="error">.*?<\/p>/, '') + '<p class="error">That doesn’t look like a link to a post.</p>');
+      else stepOut(pop.querySelector('.sp-step').innerHTML.replace(/<p class="error">.*?<\/p>/, '') + '<p class="error">This link doesn’t identify an X post. Paste the full link to your post and try again.</p>');
     }
   } catch (err) {
-    if (err?.name !== 'AbortError') stepOut(`<p class="error">${esc(err.message || 'That didn’t work in this browser.')}</p>`);
+    if (err?.name !== 'AbortError') stepOut(`<p class="error">Couldn't share from this browser. Download the image and attach it to your post.</p>`);
   }
 });
 
@@ -1689,7 +1804,7 @@ function contextFromSelection() {
   const range = sel.getRangeAt(0), node = range.commonAncestorContainer, el = node.nodeType === 1 ? node : node.parentElement;
   if (!el?.closest('#report') || el.closest('#share-pop, input, textarea, select, [data-private]')) return null;
   const owner = el.closest('[data-share]');
-  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `“${quoteOf(text, 200)}”\n\nFrom my Discord Wrapped.`, headline: `“${quoteOf(text)}”`, sub: 'From my Discord Wrapped'};
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `"${quoteOf(text, 200)}"\n\nFrom my Discord Wrapped.`, headline: `"${quoteOf(text)}"`, sub: 'From my Discord Wrapped'};
   return ctx && {ctx, rect: range.getBoundingClientRect()};
 }
 document.addEventListener('pointerup', e => {
@@ -1715,69 +1830,130 @@ function sectionShare(id) {
   const T = D.totals, Y = D.years, ys = Object.keys(Y).sort();
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
   const since = T.first.slice(0, 4);
-  if (id === 'overview') return {text: `I've sent ${fmt(T.messages)} messages on Discord since ${since}. ${busiest} was the loudest year.`, headline: `${fmt(T.messages)} messages`, sub: `on Discord since ${since} · loudest year ${busiest}`, chart: 'year-chart'};
-  if (id === 'rhythm') return {text: `${pct(T.lateNight, T.messages)} of my Discord messages are sent between midnight and 6 am.`, headline: 'When I’m on Discord', sub: `${pct(T.lateNight, T.messages)} of my messages are sent between midnight and 6 am`, chart: 'heat-chart'};
-  if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers vs DMs', sub: 'share of my Discord messages, year by year', chart: 'share-chart'};
+  if (id === 'overview') return {text: `My Discord Wrapped contains ${fmt(T.messages)} messages. ${busiest} was my busiest year.`, headline: `${fmt(T.messages)} messages`, sub: `Busiest year ${busiest}`, chart: 'year-chart'};
+  if (id === 'rhythm') return {text: `I sent ${pct(T.lateNight, T.messages)} of the messages in my Discord Wrapped between midnight and 6 am.`, headline: 'When I sent messages', sub: `${pct(T.lateNight, T.messages)} sent between midnight and 6 am`, chart: 'heat-chart'};
+  if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers, DMs and group DMs', sub: 'Share of my messages by year', chart: 'share-chart'};
   if (id === 'words') {
     const y = rateYears().filter(y => D.wordYears[y]?.length).at(-1), w = D.wordYears[y]?.[0];
-    return {text: `My top 10 words on Discord, year by year.${w ? ` In ${y} it was “${w[0]}”.` : ''}`, headline: 'My top words, year by year', sub: w ? `${y}: “${w[0]}”` : '', chart: 'bump-chart'};
+    return {text: `My top 10 words on Discord, year by year.${w ? ` "${w[0]}" was my top word in ${y}.` : ''}`, headline: 'My top words, year by year', sub: w ? `${y}: "${w[0]}"` : '', chart: 'bump-chart'};
   }
   if (id === 'fame') {
     const r = D.fame.mostRepeated;
-    return r && {text: `The message I've sent most on Discord is “${quoteOf(r.text, 100)}”: ${fmt(r.count)} times.`, headline: `“${quoteOf(r.text, 60)}”`, sub: `my most repeated Discord message · ${fmt(r.count)} times`};
+    return r && {text: `My most repeated message in Discord Wrapped is "${quoteOf(r.text, 100)}". I sent it ${fmt(r.count)} times.`, headline: `"${quoteOf(r.text, 60)}"`, sub: `My most repeated message · Sent ${fmt(r.count)} times`};
   }
   if (id === 'search') return lastSearchShare;
   return null;
 }
 let lastSearchShare = null;
 
-/* Splits active ads into one carousel per rail slot. Pure, so the tests can import it. */
-export const RAIL_SLOTS = [['left', 'tower'], ['left', 'square'], ['right', 'tower'], ['right', 'square']];
-export function schedule(ads, rand) {
-  const plan = {};
-  for (const [rail, slot] of RAIL_SLOTS) {
-    const list = ads.filter(a => a.slot === slot && a.rails.includes(rail));
-    // Start each carousel at a random ad so every sponsor gets first views, keeping the order fair after that.
-    const k = list.length ? Math.floor(rand() * list.length) : 0;
-    plan[`${rail}:${slot}`] = [...list.slice(k), ...list.slice(0, k)];
+/* Sidebar rotation rules. Pure, so the tests can import it. */
+export const SIDES = ['left', 'right'];
+
+/**
+ * One rotation per placement. Each turn the next ad goes on a random side; a mirrored ad
+ * (the sponsor bought the campaign twice) goes on both. The other side keeps what it shows,
+ * and the same ad never shows on both sides at once unless it's mirrored.
+ */
+export function createRotation(ads, rand) {
+  const start = ads.length ? Math.floor(rand() * ads.length) : 0;
+  const queue = [...ads.slice(start), ...ads.slice(0, start)];
+  const showing = {left: null, right: null};
+  let i = 0;
+  const take = () => queue[i++ % queue.length];
+  const set = (sides, ad) => { for (const s of sides) showing[s] = ad; return {sides, ad}; };
+
+  /** The first ad on each side. With one ordinary ad, the second side stays empty and shows the invitation. */
+  function initial() {
+    if (!queue.length) return [];
+    const first = take();
+    if (first.mirrored) return [set(SIDES, first)];
+    const side = SIDES[rand() < 0.5 ? 0 : 1], other = side === 'left' ? 'right' : 'left';
+    const turns = [set([side], first)];
+    if (queue.length > 1) turns.push(set([other], take()));
+    return turns;
   }
-  return plan;
+
+  /** The turns to paint next. Empty when nothing changes. */
+  function next() {
+    // A lone ad, mirrored or not, stays where it is.
+    if (queue.length < 2) return [];
+    const mirroredTurnEnded = showing.left && showing.left === showing.right;
+    let ad = take();
+    if (ad.mirrored && !mirroredTurnEnded) return [set(SIDES, ad)];
+    const side = SIDES[rand() < 0.5 ? 0 : 1], other = side === 'left' ? 'right' : 'left';
+    if (mirroredTurnEnded) {
+      // After a mirrored turn both sides move on, so the mirrored sponsor gets no extra time.
+      if (ad === showing.left) ad = take();
+      const turns = [set([side], ad)];
+      const second = take();
+      if (second !== ad && second !== showing.left) turns.push(set([other], second)); else showing[other] = null;
+      return turns;
+    }
+    // Skip an ad the other side is already showing.
+    for (let tries = 0; tries < queue.length && showing[other] === ad; tries++) ad = take();
+    if (showing[other] === ad) return [];
+    return [set(ad.mirrored ? SIDES : [side], ad)];
+  }
+
+  return {initial, next, showing};
 }
 
-/* ---------- sponsor rails ---------- */
+/* ---------- sponsor rails and footer grid ---------- */
 // Rails sit outside the content column and only appear on wide screens, so they never cover the report
 // and never end up in share images (those are drawn separately on a canvas).
-const SPONSORS = 'https://github.com/sponsors/mia-riezebos';
+const adEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const PLACEMENT_FALLBACK = {tall: {width: 160, height: 600, seconds: 12}, square: {width: 160, height: 160, seconds: 8}};
+
+const adMarkup = ad => ad.kind === 'text'
+  ? `<a class="ad-text" href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
+  : `<a href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${adEsc(ad.image.src)}" srcset="${adEsc(ad.image.src2x)} 2x" width="${ad.width}" height="${ad.height}" alt="${adEsc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsored · ${adEsc(ad.sponsor)}</span>`;
+const emptySlot = `<a class="ad-empty" href="/advertise"><strong>Display your ad here</strong><span>by sponsoring me on GitHub</span></a>`;
+
 async function startRails() {
-  let ads = [];
+  let data = null;
   try {
     const r = await fetch('/api/ads', {signal: AbortSignal.timeout(5000)});
-    if (r.ok) ads = (await r.json()).ads || [];
-  } catch { /* Offline or opened from a file: show the sponsor invitation instead. */ }
-  const plan = schedule(ads, Math.random);
-  for (const [rail, slot] of RAIL_SLOTS) runSlot(document.querySelector(`.rail.${rail} .slot-${slot}`), plan[`${rail}:${slot}`]);
+    if (r.ok) data = await r.json();
+  } catch { /* Offline or opened from a file: show the invitation instead. */ }
+  const placements = data?.placements ?? PLACEMENT_FALLBACK;
+  for (const [placement, conf] of Object.entries(placements)) {
+    const ads = (data?.ads ?? []).filter(a => a.placement === placement).map(a => ({...a, width: conf.width, height: conf.height}));
+    runPlacement(placement, conf.seconds, createRotation(ads, Math.random));
+  }
 }
-const adMarkup = ad => `<a href="${esc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${esc(ad.image)}" width="${ad.width}" height="${ad.height}" alt="${esc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsor · ${esc(ad.sponsor)}</span>`;
-const emptySlot = `<a class="ad-empty" href="${SPONSORS}" target="_blank" rel="noopener"><strong>Display your ad here</strong><span>by sponsoring me on GitHub</span></a>`;
-function runSlot(el, list) {
-  if (!el) return;
-  if (!list.length) { el.innerHTML = emptySlot; return; }
-  let i = 0;
-  el.innerHTML = adMarkup(list[0]);
-  if (list.length < 2) return;
+function runPlacement(placement, seconds, rotation) {
+  const slots = Object.fromEntries(SIDES.map(s => [s, document.querySelector(`.rail.${s} .slot-${placement}`)]));
+  if (!slots.left || !slots.right) return;
+  const paint = turn => { for (const s of turn.sides) { slots[s].innerHTML = adMarkup(turn.ad); slots[s].classList.toggle('animate', !reducedMotion.matches); } };
+  for (const s of SIDES) slots[s].innerHTML = emptySlot;
+  rotation.initial().forEach(paint);
   const tick = () => setTimeout(() => {
-    // Hold still while hovered or while the tab is in the background.
-    if (!document.hidden && !el.matches(':hover')) {
-      i = (i + 1) % list.length;
-      el.innerHTML = adMarkup(list[i]);
-      el.classList.toggle('animate', !reducedMotion.matches);
+    // Hold still while either side is hovered or the tab is in the background.
+    if (!document.hidden && !SIDES.some(s => slots[s].matches(':hover'))) {
+      rotation.next().forEach(paint);
+      for (const s of SIDES) if (!rotation.showing[s]) slots[s].innerHTML = emptySlot;
     }
     tick();
-  }, list[i].seconds * 1000);
+  }, seconds * 1000);
   tick();
 }
+
+async function startFooterGrid() {
+  const host = document.getElementById('footer-sponsors');
+  if (!host) return;
+  let data = null;
+  try {
+    const r = await fetch('/api/footer', {signal: AbortSignal.timeout(5000)});
+    if (r.ok) data = await r.json();
+  } catch { /* Offline: the invitation below still shows. */ }
+  const levels = (data?.levels ?? []).filter(l => l.sponsors.length);
+  host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${l.columns}">${l.sponsors.map(s => `<li><a href="${adEsc(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
+    <p class="muted">${levels.length ? 'Thank you. ' : ''}<a href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor monthly on GitHub</a> to appear here.</p>`;
+}
+
 startRails();
+startFooterGrid();
 </script>
 </body>
 </html>

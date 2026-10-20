@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Advertise on Discord Wrapped | Sidebar ads and prices</title>
+<meta name="description" content="Book a tall or square sidebar ad on Discord Wrapped. See sizes, launch prices and next openings. Pay once through GitHub Sponsors, then send your ad to Mia.">
+<link rel="canonical" href="https://discordwrapped.app/advertise">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Discord Wrapped">
+<meta property="og:url" content="https://discordwrapped.app/advertise">
+<meta property="og:title" content="Advertise on Discord Wrapped | Sidebar ads and prices">
+<meta property="og:description" content="Book a tall or square sidebar ad on Discord Wrapped. See sizes, launch prices and next openings. Pay once through GitHub Sponsors, then send your ad to Mia.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","@id":"https://discordwrapped.app/advertise#page","url":"https://discordwrapped.app/advertise","name":"Advertise on Discord Wrapped","description":"Sidebar ad placements, sizes and prices for Discord Wrapped. Pay through GitHub Sponsors and submit an ad for manual approval.","isPartOf":{"@type":"WebSite","name":"Discord Wrapped","url":"https://discordwrapped.app/"},"publisher":{"@type":"Person","name":"Mia","url":"https://mia.cx"}}
+</script>
+<style>:root {
+  color-scheme: light dark;
+  --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
+  --accent: #4f5bd5; --accent-fg: #ffffff;
+  --c1: #4f5bd5; --c2: #d6409f; --c3: #1f9d63; --c4: #d48a00; --c5: #0e8fc7;
+  --radius: 10px; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111216; --surface: #191a20; --fg: #ecedf1; --muted: #9a9daa; --border: #2c2e37; --soft: #22242c;
+    --accent: #8790ff; --accent-fg: #0d0e14; --c1: #8790ff; --c2: #f070b8; --c3: #4cc98c; --c4: #f2b33d; --c5: #4cbcf0; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
+a { color: inherit; text-underline-offset: 3px; }
+h1, h2, h3 { font-weight: 600; line-height: 1.2; }
+h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; letter-spacing: -0.02em; }
+h2 { font-size: 22px; margin: 0 0 6px; }
+h3 { font-size: 16px; margin: 28px 0 10px; }
+p { margin: 8px 0; }
+.muted, small { color: var(--muted); }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+/* landing */
+.landing { min-height: calc(100vh - 57px); display: grid; place-items: center; padding: 40px 0; }
+.landing .wrap { max-width: 680px; }
+.lede { font-size: 17px; color: var(--muted); margin-bottom: 28px; }
+.drop { border: 2px dashed var(--border); border-radius: 16px; background: var(--surface); padding: 36px 24px; text-align: center; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
+.drop.over { border-color: var(--accent); background: var(--soft); }
+.drop strong { display: block; font-size: 18px; margin-bottom: 6px; }
+.drop .buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+.promise { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 28px 0 0; padding: 0; list-style: none; }
+.promise li { font-size: 14px; color: var(--muted); }
+.promise strong { display: block; color: var(--fg); font-weight: 600; }
+.howto { margin-top: 28px; font-size: 14px; }
+.howto summary { cursor: pointer; }
+.howto ol { padding-left: 20px; color: var(--muted); }
+.faq { margin-top: 28px; font-size: 14px; }
+.faq details { margin-top: 14px; }
+.faq summary { cursor: pointer; }
+.faq p { color: var(--muted); }
+.status { margin-top: 18px; min-height: 48px; }
+.bar { height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 120ms linear; }
+.error { color: #c43c3c; }
+@media (prefers-color-scheme: dark) { .error { color: #ff8a8a; } }
+
+/* controls */
+button, .button, select, input, textarea { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+button, .button { cursor: pointer; font-weight: 500; }
+button:hover, .button:hover { background: var(--soft); }
+button.primary, .button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button.primary:hover, .button.primary:hover { filter: brightness(1.08); }
+button:disabled { opacity: .45; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type=file] { display: none; }
+textarea { width: 100%; min-height: 150px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+label.inline { flex-direction: row; align-items: center; gap: 8px; color: var(--fg); font-size: 14px; }
+.controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 14px 0; }
+.controls .grow { flex: 1 1 240px; }
+.controls input[type=search] { width: 100%; }
+
+/* report layout */
+header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.topbar { display: flex; align-items: center; gap: 16px; min-height: 56px; }
+.brand { font-weight: 600; white-space: nowrap; text-decoration: none; }
+nav.sections { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+nav.sections a { text-decoration: none; color: var(--muted); padding: 6px 10px; border-radius: 6px; white-space: nowrap; font-size: 14px; }
+nav.sections a:hover, nav.sections a.active { color: var(--fg); background: var(--soft); }
+.topbar .actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+body:not(.has-report) .report-only { display: none !important; }
+nav.project { display: flex; align-items: center; gap: 2px; }
+nav.project a { display: inline-flex; align-items: center; gap: 6px; padding: 7px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; }
+nav.project a:hover { color: var(--fg); background: var(--soft); }
+nav.project .sponsor { color: var(--c2); padding: 6px 10px; border: 1px solid var(--border); }
+nav.project .sponsor:hover { color: var(--c2); }
+/* "Your data" holds the report controls so the bar has room for project links. */
+.menu { position: relative; }
+.menu summary { list-style: none; cursor: pointer; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary::after { content: " ▾"; color: var(--muted); }
+.menu[open] summary { background: var(--soft); }
+.menu-panel { position: absolute; right: 0; top: calc(100% + 6px); width: 240px; display: grid; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / .2); }
+.menu-panel .button, .menu-panel button { text-align: center; font-size: 14px; color: var(--fg); }
+.menu-panel select { width: 100%; }
+button.danger { color: #c43c3c; }
+@media (prefers-color-scheme: dark) { button.danger { color: #ff8a8a; } }
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; gap: 6px 10px; padding-top: 6px; padding-bottom: 6px; }
+  nav.sections { order: 3; flex: 1 1 100%; }
+  nav.project .sponsor span { display: none; }
+  nav.project .sponsor { padding: 7px; border: 0; }
+  html { scroll-padding-top: 110px; }
+}
+.hero { padding: 36px 0 8px; }
+.hero p { color: var(--muted); }
+section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin: 20px 0; }
+section.card > p.muted:first-of-type { margin-top: 0; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; margin: 20px 0 4px; }
+.metric strong { display: block; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.metric span { color: var(--muted); font-size: 13px; }
+.callout { display: grid; gap: 8px; margin: 14px 0 6px; }
+.callout:empty { display: none; }
+.callout p { margin: 0; padding: 12px 16px; background: var(--soft); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; font-size: 15px; }
+.callout strong { font-weight: 600; }
+.findings { display: grid; gap: 12px; margin: 8px 0; padding: 0; list-style: none; }
+.findings li { padding: 12px 14px; background: var(--soft); border-radius: 10px; }
+.findings strong { font-weight: 600; }
+.twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+@media (max-width: 760px) { .twocol { grid-template-columns: 1fr; gap: 8px; } .promise { grid-template-columns: 1fr; } section.card { padding: 18px 16px; } }
+
+/* charts */
+.chart { width: 100%; display: block; overflow: visible; }
+.chart text { fill: var(--fg); font-size: 12px; }
+.chart .tick { fill: var(--muted); }
+.chart .grid { stroke: var(--border); }
+.chart .hit { fill: transparent; }
+.chart .hit:hover { fill: var(--fg); fill-opacity: .06; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0 2px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.readout { min-height: 24px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--fg); color: var(--bg); font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); opacity: 0; transition: opacity 80ms; }
+.tip.show { opacity: 1; }
+
+/* ranks */
+.rank { display: grid; gap: 10px; margin: 10px 0; }
+.rankrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; font-size: 14px; }
+.rankrow .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rankrow .number { font-variant-numeric: tabular-nums; color: var(--muted); }
+.track { grid-column: 1 / -1; height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; }
+.track span { display: block; height: 100%; background: var(--c1); border-radius: 99px; }
+
+/* tables and lists */
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+th, td { padding: 9px 6px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { color: var(--muted); font-weight: 500; }
+td.num, th.num { text-align: right; }
+.rowbutton { padding: 0; border: 0; background: none; text-align: left; text-decoration: underline; text-underline-offset: 3px; font-weight: 400; }
+.rowbutton:hover { background: none; color: var(--accent); }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.pager div { display: flex; gap: 8px; }
+.detail { margin-top: 14px; padding: 14px; background: var(--soft); border-radius: 10px; font-size: 14px; }
+.messages { display: grid; gap: 10px; margin-top: 12px; max-height: 520px; overflow: auto; }
+.msg { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.msg .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+mark { background: color-mix(in srgb, var(--c4) 35%, transparent); color: inherit; border-radius: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 99px; background: var(--soft); }
+
+/* hall of fame / roast */
+.fame { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.fame article, .quote { border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.fame h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--c2); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
+.quote { margin: 12px 0; }
+.quote h3 { margin: 0 0 6px; }
+.roastline { color: var(--muted); font-style: italic; }
+.ai-box { padding: 14px; border-radius: 10px; background: var(--soft); font-size: 14px; }
+details.more { margin-top: 14px; font-size: 14px; }
+details.more summary { cursor: pointer; color: var(--muted); }
+footer.site { margin-top: 40px; padding: 40px 0 56px; border-top: 1px solid var(--border); font-size: 14px; }
+footer.site .inner { display: grid; grid-template-columns: 1fr auto; gap: 40px; }
+footer.site h2 { font-size: 16px; margin: 0 0 12px; }
+footer.site ul { list-style: none; margin: 0; padding: 0; }
+footer.site nav li + li { margin-top: 6px; }
+footer.site p { margin: 6px 0; font-size: 13px; }
+.arrow-link { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; color: var(--fg); }
+.arrow-link:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.arrow-link .arrow { color: var(--muted); transition: transform 150ms ease-out; }
+.arrow-link:hover .arrow { transform: translate(2px, -2px); }
+@media (prefers-reduced-motion: reduce) { .arrow-link .arrow { transition: none; } }
+.socials { display: flex; gap: 4px; margin: 12px 0 !important; }
+.socials a { display: inline-flex; padding: 7px; border-radius: 8px; color: var(--muted); }
+.socials a:hover { color: var(--fg); background: var(--soft); }
+@media (max-width: 600px) { footer.site .inner { grid-template-columns: 1fr; gap: 24px; } }
+.hidden { display: none !important; }
+#notice p { margin: 6px 0; }
+#bump-chart { overflow-x: auto; }
+#bump-chart text { font-size: 12px; font-weight: 500; cursor: default; }
+#bump-chart svg:has(.bw:hover) .bw { opacity: .18; }
+#bump-chart svg .bw:hover { opacity: 1; }
+#bump-chart .bw { transition: opacity 120ms ease-out; }
+@media (prefers-reduced-motion: reduce) { #bump-chart .bw { transition: none; } }
+
+/* sharing */
+.sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.share-btn { padding: 5px 12px; font-size: 13px; border-radius: 99px; }
+.share-tip { font-size: 13px; }
+[data-share] { cursor: text; }
+[data-share-click] { cursor: pointer; }
+.sharepop { position: fixed; z-index: 30; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 14px; }
+.sharepop.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-width: none; max-height: 85vh; border-radius: 16px 16px 0 0; }
+.sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.sp-close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 8px; }
+.sp-img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); background: var(--soft); object-fit: cover; }
+.sp-label { margin: 10px 0; }
+.sp-text { min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
+.sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sp-platforms button, .sp-actions button { padding: 6px 10px; font-size: 13px; }
+.sp-step ol { margin: 10px 0 6px; padding-left: 18px; color: var(--muted); }
+.sp-step p { margin: 8px 0 0; }
+.sp-reply { display: flex; gap: 6px; margin-top: 6px; }
+.sp-reply input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
+@media (pointer: coarse) { .sp-platforms button, .sp-actions button { min-height: 40px; } }
+
+/* sponsor rails: only where there is room beside the content column */
+.rail { display: none; }
+@media (min-width: 1480px) {
+  .rail { display: flex; flex-direction: column; gap: 16px; position: fixed; top: 80px; width: 160px; z-index: 1; }
+  .rail.left { left: calc(50% - 520px - 184px); }
+  .rail.right { right: calc(50% - 520px - 184px); }
+}
+@media (max-height: 900px) { .rail .slot-square { display: none; } }
+@media print { .rail { display: none !important; } }
+.slot a { display: block; text-decoration: none; }
+.slot img { display: block; border-radius: 8px; background: var(--soft); }
+.slot.animate img { animation: ad-in 300ms ease-out; }
+@keyframes ad-in { from { opacity: 0; } }
+.ad-by { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot .ad-empty { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.ad-empty strong { color: var(--fg); font-weight: 600; }
+.ad-empty:hover { border-color: var(--accent); }
+.slot-tall .ad-empty, .slot-tall .ad-text { height: 600px; }
+.slot-square .ad-empty, .slot-square .ad-text { height: 160px; }
+
+/* Wide charts scroll sideways inside their card on narrow screens. */
+#calendar { overflow-x: auto; }
+
+/* text ads use the site's own look */
+.slot .ad-text { display: flex; flex-direction: column; gap: 8px; padding: 14px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--fg); text-decoration: none; overflow: hidden; }
+.slot .ad-text strong { font-size: 16px; line-height: 1.25; font-weight: 600; overflow-wrap: anywhere; }
+.slot .ad-text span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.slot .ad-text small { margin-top: auto; font-size: 12px; color: var(--accent); }
+.slot-square .ad-text { padding: 10px; gap: 4px; }
+.slot-square .ad-text strong { font-size: 14px; }
+.slot a.ad-text:hover { border-color: var(--accent); }
+
+/* footer sponsor grid: bigger sponsors get bigger logos and fewer columns */
+.sponsor-grid { padding-bottom: 28px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.sponsor-grid h2 { font-size: 16px; margin: 0 0 14px; }
+footer.site .sponsor-level { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 12px; }
+.sponsor-level a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px; border-radius: 10px; background: var(--soft); color: var(--fg); text-decoration: none; overflow-wrap: anywhere; text-align: center; font-size: 13px; }
+.sponsor-level img { max-width: 100%; height: auto; aspect-ratio: 2; object-fit: contain; }
+.level-hero a { min-height: 120px; }
+.level-featured a { min-height: 72px; }
+@media (max-width: 760px) { footer.site .sponsor-level { grid-template-columns: repeat(min(var(--cols), 3), minmax(0, 1fr)); } footer.site .level-grid, footer.site .level-featured { grid-template-columns: repeat(2, minmax(0, 1fr)); } footer.site .level-hero { grid-template-columns: minmax(0, 1fr); } }
+
+/* advertise page */
+.advertise { padding-top: 32px; }
+.ad-hero { padding: 8px 0 12px; }
+.ad-hero .prices { max-width: 560px; margin: 16px 0 8px; }
+.ad-where { display: grid; grid-template-columns: 260px 1fr; gap: 28px; align-items: start; }
+.mock { margin: 0; display: grid; grid-template-columns: 40px 1fr 40px; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+.mock-rail { display: flex; flex-direction: column; gap: 6px; }
+.mock-rail span { display: grid; place-items: center; border: 1px dashed var(--accent); border-radius: 4px; font-size: 9px; color: var(--accent); writing-mode: vertical-rl; }
+.mock-tall { height: 150px; }
+.mock-square { height: 40px; writing-mode: horizontal-tb !important; }
+.mock-page { display: flex; flex-direction: column; gap: 8px; }
+.mock-page span { height: 44px; border-radius: 6px; background: var(--soft); }
+.ad-preview { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: start; }
+.preview-fields { display: grid; gap: 12px; max-width: 420px; }
+.preview-fields input, .preview-fields select, .preview-fields textarea { width: 100%; font-family: var(--font); font-size: 14px; }
+.preview-slot { padding: 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+.runs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 8px 0 16px; }
+.run { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.run h3 { margin: 0 0 4px; }
+.run-price { font-size: 28px; font-weight: 600; margin: 4px 0; }
+.run .button { display: inline-block; margin-top: 8px; text-decoration: none; }
+a.button { display: inline-block; text-decoration: none; }
+@media (max-width: 760px) { .ad-where, .ad-preview { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body id="top" class="page-advertise">
+<header class="top"><div class="wrap topbar">
+  <a class="brand" href="/">Discord Wrapped</a>
+  <nav class="sections report-only" id="nav" aria-label="Report sections">
+    <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
+  </nav>
+  <div class="actions">
+    <details class="menu report-only" id="data-menu">
+      <summary>Your data</summary>
+      <div class="menu-panel">
+        <label title="Used for hours, days and months">Time zone<select id="tz"></select></label>
+        <label class="button" for="pick-update" title="Add messages from a newer package.zip">Update package</label>
+        <input id="pick-update" type="file" accept=".zip,application/zip">
+        <button id="export" type="button">Download summary</button>
+        <button id="reset" type="button" class="danger">Remove saved data</button>
+      </div>
+    </details>
+    <nav class="project" aria-label="Project">
+      <a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" title="Source code on GitHub" aria-label="Source code on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+      <a href="https://discord.gg/bePPwYJk2u" rel="external" title="Join the Discord server" aria-label="Join the Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a>
+      <a href="https://github.com/sponsors/mia-riezebos" rel="external" title="Sponsor on GitHub" aria-label="Sponsor on GitHub" class="sponsor"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg><span>Sponsor</span></a>
+    </nav>
+  </div>
+</div></header>
+<main class="wrap advertise">
+  <section class="ad-hero">
+    <h1>Advertise on Discord Wrapped</h1>
+    <p class="lede">Place an ad beside the report. Choose a tall or square placement, then pay once through GitHub Sponsors.</p>
+    <table class="prices" aria-describedby="price-note">
+      <thead><tr><th>Placement</th><th>Size</th><th class="num">2 weeks</th><th class="num">4 weeks</th></tr></thead>
+      <tbody id="price-rows">
+        <tr><td>Tall</td><td>160 × 600 px</td><td class="num">$8</td><td class="num">$14</td></tr>
+        <tr><td>Square</td><td>160 × 160 px</td><td class="num">$4</td><td class="num">$7</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" id="price-note">Prices are in US dollars. These are launch prices and will rise as slots fill.</p>
+    <p><a class="button primary" href="#choose">Choose your run</a></p>
+  </section>
+
+  <section class="card">
+    <h2>Where your ad appears</h2>
+    <div class="ad-where">
+      <figure class="mock" aria-label="A sketch of the page: the report in the middle, a tall ad with a square ad under it on each side.">
+        <div class="mock-rail"><span class="mock-tall">Tall</span><span class="mock-square">Square</span></div>
+        <div class="mock-page"><span></span><span></span><span></span><span></span></div>
+        <div class="mock-rail"><span class="mock-tall">Tall</span><span class="mock-square">Square</span></div>
+      </figure>
+      <div>
+        <p>Ads appear beside the report on screens at least 1480 px wide. They never cover the report, and they don’t appear in share images or printed reports.</p>
+        <table>
+          <thead><tr><th>Placement</th><th>Position</th><th class="num">Campaigns at once</th></tr></thead>
+          <tbody>
+            <tr><td>Tall</td><td>Beside the report</td><td class="num" data-cap="tall">6</td></tr>
+            <tr><td>Square</td><td>Below the tall ad, on screens at least 900 px tall</td><td class="num" data-cap="square">8</td></tr>
+          </tbody>
+        </table>
+        <p>Each placement takes turns through its campaigns. Every turn shows the next ad on a randomly chosen side. Buy the same campaign twice to show it on both sides at once.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="preview-title">
+    <h2 id="preview-title">Preview your ad</h2>
+    <p class="muted">See how your ad looks in its slot. Nothing you choose here is uploaded.</p>
+    <div class="ad-preview">
+      <form id="preview-form" class="preview-fields">
+        <label>Placement<select name="placement"><option value="tall">Tall</option><option value="square">Square</option></select></label>
+        <label>Ad format<select name="format"><option value="image">Image</option><option value="text">Text</option></select></label>
+        <label class="f-image">Image<input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/avif"></label>
+        <label class="f-text">Name<input name="name" maxlength="40"></label>
+        <label class="f-text">Headline <span class="muted" data-count="headline"></span><input name="headline"></label>
+        <label class="f-text f-body">Body <span class="muted" data-count="body"></span><textarea name="body" rows="3"></textarea></label>
+        <p class="error" id="preview-error" aria-live="polite"></p>
+        <button type="reset">Clear preview</button>
+      </form>
+      <div class="preview-slot" role="region" aria-label="Ad preview">
+        <div class="slot" id="preview-slot"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>What to send</h2>
+    <table>
+      <thead><tr><th>Format</th><th>Tall</th><th>Square</th></tr></thead>
+      <tbody>
+        <tr><td>Image</td><td>160 × 600 px</td><td>160 × 160 px</td></tr>
+        <tr><td>Text</td><td>Name, headline, body and link</td><td>Name, headline and link</td></tr>
+        <tr><td>Headline</td><td>Up to 40 characters</td><td>Up to 30 characters</td></tr>
+        <tr><td>Body</td><td>Up to 90 characters</td><td>No body text</td></tr>
+      </tbody>
+    </table>
+    <p>Images must be PNG, JPEG, WebP or AVIF, at most 300 KB, with no animation. Larger images are cropped and resized to fit. Include the link your ad should open.</p>
+  </section>
+
+  <section class="card" id="choose">
+    <h2>Choose your run</h2>
+    <div id="runs" class="runs"></div>
+    <p>For another length, make a custom one-time payment. Custom payments use the 4-week rate and must cover at least 7 days: on tall ads $1 buys 2 days, and on square ads $1 buys 4 days.</p>
+    <p><a class="button" href="https://github.com/sponsors/mia-riezebos?frequency=one-time" rel="external">Pay a custom amount on GitHub</a></p>
+    <p class="muted">If a placement is full, your purchase goes into its next free window. Refunds are available on request: <a href="mailto:sponsor@mia.cx">email Mia</a>.</p>
+  </section>
+
+  <section class="card">
+    <h2>Send your ad after paying</h2>
+    <ol>
+      <li>Pay on GitHub.</li>
+      <li>Email your ad to <a href="mailto:sponsor@mia.cx">sponsor@mia.cx</a>: the image or text, the link, the placement, and which of Mia’s sites you want it on.</li>
+      <li>Mia reviews every ad before it runs and tells you the start date.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>Ad rules</h2>
+    <p>Mia approves every ad by hand. These ads aren’t allowed:</p>
+    <ul>
+      <li>Gambling</li>
+      <li>Crypto schemes</li>
+      <li>Adult content</li>
+      <li>Data brokers</li>
+      <li>Tools that ask for Discord logins or tokens</li>
+    </ul>
+    <p class="muted">Visitors’ Discord packages stay in their browsers. Ads never see their messages.</p>
+  </section>
+
+  <section class="card">
+    <h2>Support Mia monthly</h2>
+    <p>Monthly sponsors appear in the footer on Mia’s sites.</p>
+    <table>
+      <thead><tr><th>Monthly tier</th><th>In the footer</th></tr></thead>
+      <tbody>
+        <tr><td>Supporters, $1 and Supporters+, $3</td><td>Your name</td></tr>
+        <tr><td>Backers, $10</td><td>Your logo</td></tr>
+        <tr><td>Patrons, $100</td><td>Your logo, large</td></tr>
+      </tbody>
+    </table>
+    <p><a class="button" href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor Mia monthly</a></p>
+  </section>
+</main>
+<footer class="site">
+  <section class="wrap sponsor-grid" id="footer-sponsors" aria-labelledby="footer-sponsors-title"></section>
+  <div class="wrap inner">
+    <section class="brandcol">
+      <h2>Discord Wrapped</h2>
+      <a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Contribute on GitHub</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a>
+      <ul class="socials">
+        <li><a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" aria-label="View source code on GitHub" title="View source code on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></li>
+        <li><a href="https://discord.gg/bePPwYJk2u" rel="external" aria-label="Join the Discord server" title="Join the Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a></li>
+        <li><a href="https://github.com/sponsors/mia-riezebos" rel="external" aria-label="Sponsor on GitHub" title="Sponsor on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg></a></li>
+      </ul>
+      <p class="muted">Your browser reads your messages. They are never uploaded.</p>
+      <p class="muted">© 2026 <a href="https://mia.cx" rel="external">mia.cx</a></p>
+    </section>
+    <nav aria-labelledby="footer-project">
+      <h2 id="footer-project">Project</h2>
+      <ul>
+        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Source code</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/releases" rel="external"><span>What's new</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/issues/new" rel="external"><span>Report a problem</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://discord.gg/bePPwYJk2u" rel="external"><span>Discord server</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="/advertise"><span>Advertise on Discord Wrapped</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://github.com/sponsors/mia-riezebos" rel="external"><span>Sponsor on GitHub</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+        <li><a class="arrow-link" href="https://mia.cx" rel="external"><span>mia.cx</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
+<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tall"></div><div class="slot slot-square"></div></aside>
+<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tall"></div><div class="slot slot-square"></div></aside>
+<script type="module">/* Sidebar rotation rules. Pure, so the tests can import it. */
+export const SIDES = ['left', 'right'];
+
+/**
+ * One rotation per placement. Each turn the next ad goes on a random side; a mirrored ad
+ * (the sponsor bought the campaign twice) goes on both. The other side keeps what it shows,
+ * and the same ad never shows on both sides at once unless it's mirrored.
+ */
+export function createRotation(ads, rand) {
+  const start = ads.length ? Math.floor(rand() * ads.length) : 0;
+  const queue = [...ads.slice(start), ...ads.slice(0, start)];
+  const showing = {left: null, right: null};
+  let i = 0;
+  const take = () => queue[i++ % queue.length];
+  const set = (sides, ad) => { for (const s of sides) showing[s] = ad; return {sides, ad}; };
+
+  /** The first ad on each side. With one ordinary ad, the second side stays empty and shows the invitation. */
+  function initial() {
+    if (!queue.length) return [];
+    const first = take();
+    if (first.mirrored) return [set(SIDES, first)];
+    const side = SIDES[rand() < 0.5 ? 0 : 1], other = side === 'left' ? 'right' : 'left';
+    const turns = [set([side], first)];
+    if (queue.length > 1) turns.push(set([other], take()));
+    return turns;
+  }
+
+  /** The turns to paint next. Empty when nothing changes. */
+  function next() {
+    // A lone ad, mirrored or not, stays where it is.
+    if (queue.length < 2) return [];
+    const mirroredTurnEnded = showing.left && showing.left === showing.right;
+    let ad = take();
+    if (ad.mirrored && !mirroredTurnEnded) return [set(SIDES, ad)];
+    const side = SIDES[rand() < 0.5 ? 0 : 1], other = side === 'left' ? 'right' : 'left';
+    if (mirroredTurnEnded) {
+      // After a mirrored turn both sides move on, so the mirrored sponsor gets no extra time.
+      if (ad === showing.left) ad = take();
+      const turns = [set([side], ad)];
+      const second = take();
+      if (second !== ad && second !== showing.left) turns.push(set([other], second)); else showing[other] = null;
+      return turns;
+    }
+    // Skip an ad the other side is already showing.
+    for (let tries = 0; tries < queue.length && showing[other] === ad; tries++) ad = take();
+    if (showing[other] === ad) return [];
+    return [set(ad.mirrored ? SIDES : [side], ad)];
+  }
+
+  return {initial, next, showing};
+}
+
+/* ---------- sponsor rails and footer grid ---------- */
+// Rails sit outside the content column and only appear on wide screens, so they never cover the report
+// and never end up in share images (those are drawn separately on a canvas).
+const adEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const PLACEMENT_FALLBACK = {tall: {width: 160, height: 600, seconds: 12}, square: {width: 160, height: 160, seconds: 8}};
+
+const adMarkup = ad => ad.kind === 'text'
+  ? `<a class="ad-text" href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
+  : `<a href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${adEsc(ad.image.src)}" srcset="${adEsc(ad.image.src2x)} 2x" width="${ad.width}" height="${ad.height}" alt="${adEsc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsored · ${adEsc(ad.sponsor)}</span>`;
+const emptySlot = `<a class="ad-empty" href="/advertise"><strong>Display your ad here</strong><span>by sponsoring me on GitHub</span></a>`;
+
+async function startRails() {
+  let data = null;
+  try {
+    const r = await fetch('/api/ads', {signal: AbortSignal.timeout(5000)});
+    if (r.ok) data = await r.json();
+  } catch { /* Offline or opened from a file: show the invitation instead. */ }
+  const placements = data?.placements ?? PLACEMENT_FALLBACK;
+  for (const [placement, conf] of Object.entries(placements)) {
+    const ads = (data?.ads ?? []).filter(a => a.placement === placement).map(a => ({...a, width: conf.width, height: conf.height}));
+    runPlacement(placement, conf.seconds, createRotation(ads, Math.random));
+  }
+}
+function runPlacement(placement, seconds, rotation) {
+  const slots = Object.fromEntries(SIDES.map(s => [s, document.querySelector(`.rail.${s} .slot-${placement}`)]));
+  if (!slots.left || !slots.right) return;
+  const paint = turn => { for (const s of turn.sides) { slots[s].innerHTML = adMarkup(turn.ad); slots[s].classList.toggle('animate', !reducedMotion.matches); } };
+  for (const s of SIDES) slots[s].innerHTML = emptySlot;
+  rotation.initial().forEach(paint);
+  const tick = () => setTimeout(() => {
+    // Hold still while either side is hovered or the tab is in the background.
+    if (!document.hidden && !SIDES.some(s => slots[s].matches(':hover'))) {
+      rotation.next().forEach(paint);
+      for (const s of SIDES) if (!rotation.showing[s]) slots[s].innerHTML = emptySlot;
+    }
+    tick();
+  }, seconds * 1000);
+  tick();
+}
+
+async function startFooterGrid() {
+  const host = document.getElementById('footer-sponsors');
+  if (!host) return;
+  let data = null;
+  try {
+    const r = await fetch('/api/footer', {signal: AbortSignal.timeout(5000)});
+    if (r.ok) data = await r.json();
+  } catch { /* Offline: the invitation below still shows. */ }
+  const levels = (data?.levels ?? []).filter(l => l.sponsors.length);
+  host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${l.columns}">${l.sponsors.map(s => `<li><a href="${adEsc(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
+    <p class="muted">${levels.length ? 'Thank you. ' : ''}<a href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor monthly on GitHub</a> to appear here.</p>`;
+}
+
+startRails();
+startFooterGrid();
+
+/* ---------- advertise page ---------- */
+// Live prices, caps and next openings come from the sponsor service; the static table is the offline fallback.
+const advEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const SPONSORS_PAGE = 'https://github.com/sponsors/mia-riezebos?frequency=one-time';
+const LIMITS = {tall: {width: 160, height: 600, headline: 40, body: 90}, square: {width: 160, height: 160, headline: 30, body: 0}};
+const weeks = days => `${days / 7} weeks`;
+const openingText = iso => {
+  const d = new Date(iso);
+  return d <= new Date(Date.now() + 60_000) ? 'now' : d.toLocaleDateString(undefined, {day: 'numeric', month: 'long', year: 'numeric'});
+};
+
+async function loadAvailability() {
+  const runs = document.getElementById('runs');
+  runs.innerHTML = '<p class="muted">Checking next openings…</p>';
+  try {
+    const r = await fetch('/api/availability', {signal: AbortSignal.timeout(5000)});
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    document.getElementById('price-rows').innerHTML = Object.values(data.placements).map(p =>
+      `<tr><td>${advEsc(p.name)}</td><td>${p.width} × ${p.height} px</td>${p.prices.map(x => `<td class="num">$${x.dollars}</td>`).join('')}</tr>`).join('');
+    for (const [key, p] of Object.entries(data.placements)) {
+      const cap = document.querySelector(`[data-cap="${key}"]`);
+      if (cap) cap.textContent = p.cap;
+    }
+    runs.innerHTML = Object.values(data.placements).flatMap(p => p.prices.map(x => `<article class="run">
+      <h3>${advEsc(p.name)} · ${weeks(x.days)}</h3>
+      <p class="run-price">$${x.dollars}</p>
+      <p class="muted">Next opening: ${advEsc(openingText(p.nextOpening[x.days]))}${p.free ? ` · ${p.free} of ${p.cap} slots free now` : ' · full right now'}</p>
+      <a class="button primary" href="${SPONSORS_PAGE}" rel="external">Pay $${x.dollars} on GitHub</a>
+    </article>`)).join('');
+  } catch {
+    runs.innerHTML = `<p class="muted">We couldn’t load the next openings. Email <a href="mailto:sponsor@mia.cx">sponsor@mia.cx</a> for available dates.</p>`;
+  }
+}
+
+/* preview: everything stays in the browser */
+const form = document.getElementById('preview-form');
+const slot = document.getElementById('preview-slot');
+const errorBox = document.getElementById('preview-error');
+let imageUrl = null;
+function renderPreview() {
+  const f = Object.fromEntries(new FormData(form));
+  const lim = LIMITS[f.placement];
+  form.querySelectorAll('.f-image').forEach(el => el.hidden = f.format !== 'image');
+  form.querySelectorAll('.f-text').forEach(el => el.hidden = f.format !== 'text');
+  form.querySelector('.f-body').hidden = f.format !== 'text' || !lim.body;
+  form.querySelector('[data-count="headline"]').textContent = `${(f.headline || '').length}/${lim.headline} characters`;
+  form.querySelector('[data-count="body"]').textContent = `${(f.body || '').length}/${lim.body} characters`;
+  slot.className = `slot slot-${f.placement}`;
+  slot.style.width = lim.width + 'px';
+  const problems = [];
+  if ((f.headline || '').length > lim.headline) problems.push(`Shorten the headline to ${lim.headline} characters or fewer.`);
+  if (lim.body && (f.body || '').length > lim.body) problems.push('Shorten the body to 90 characters or fewer.');
+  if (f.format === 'image') {
+    slot.innerHTML = imageUrl
+      ? `<img src="${imageUrl}" width="${lim.width}" height="${lim.height}" alt="Your ad" style="object-fit:cover"><span class="ad-by">Sponsored · you</span>`
+      : `<div class="ad-empty" style="height:${lim.height}px"><span>Choose an image to preview your ad.</span></div>`;
+  } else if (!f.name || !f.headline) {
+    slot.innerHTML = `<div class="ad-empty" style="height:${lim.height}px"><span>Enter your name and headline to preview your ad.</span></div>`;
+  } else {
+    slot.innerHTML = `<div class="ad-text" style="height:${lim.height}px"><strong>${advEsc(f.headline)}</strong>${lim.body && f.body ? `<span>${advEsc(f.body)}</span>` : ''}<small>${advEsc(f.name)}</small></div><span class="ad-by">Sponsored</span>`;
+  }
+  errorBox.textContent = problems.join(' ');
+}
+form.addEventListener('input', renderPreview);
+form.addEventListener('change', async e => {
+  if (e.target.name !== 'image') return;
+  const file = e.target.files[0];
+  errorBox.textContent = '';
+  if (imageUrl) URL.revokeObjectURL(imageUrl);
+  imageUrl = null;
+  if (file) {
+    if (!/^image\/(png|jpeg|webp|avif)$/.test(file.type)) errorBox.textContent = 'Choose a PNG, JPEG, WebP or AVIF image.';
+    else if (file.size > 300 * 1024) errorBox.textContent = 'This image is over 300 KB. Choose a smaller file.';
+    else imageUrl = URL.createObjectURL(file);
+  }
+  renderPreview();
+});
+form.addEventListener('reset', () => setTimeout(() => { if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = null; renderPreview(); }));
+renderPreview();
+loadAvailability();
+</script>
+</body>
+</html>

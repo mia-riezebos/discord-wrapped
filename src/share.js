@@ -5,7 +5,7 @@
 // A copy opened from disk has no host, so it falls back to the main domain.
 const SITE = /^https?:$/.test(location.protocol) ? location.origin : 'https://discordwrapped.app';
 const SITE_HOST = new URL(SITE).host;
-const REPLY_TEXT = `Make your own Discord Wrapped. It runs in your browser and nothing gets uploaded: ${SITE}`;
+const REPLY_TEXT = `Make your own Discord Wrapped. Your package stays in your browser. ${SITE}`;
 const enc = encodeURIComponent;
 const shareCtx = new Map();
 let shareSeq = 0;
@@ -66,7 +66,7 @@ async function renderCard(ctx) {
   g.fillStyle = css('--accent'); g.fillRect(0, 0, W, 10);
   g.textBaseline = 'alphabetic';
   g.fillStyle = css('--muted'); g.font = `600 26px ${font}`;
-  g.fillText('DISCORD WRAPPED', P, 74);
+  g.fillText('Discord Wrapped', P, 74);
   const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
   // Headline shrinks until it fits on two lines; charts leave less room.
   let size = chartSvg ? 76 : 120, lines;
@@ -89,7 +89,7 @@ async function renderCard(ctx) {
   g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
   g.fillText(SITE_HOST, P, H - 36);
   g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
-  g.fillText('made in the browser · nothing uploaded', W - P, H - 38);
+  g.fillText('Package processed in your browser', W - P, H - 38);
   return new Promise(r => c.toBlob(r, 'image/png'));
 }
 
@@ -99,11 +99,11 @@ let current = null, anchor = null;
 function openShare(ctx, rect) {
   current = {ctx, card: renderCard(ctx)};
   const canNative = !!navigator.share;
-  pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close">×</button></div>
-    <img class="sp-img" alt="The image that will be shared">
+  pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close sharing">×</button></div>
+    <img class="sp-img" alt="Share card showing ${esc(ctx.headline)}. ${esc(ctx.sub || '')}">
     <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(ctx.text)}</textarea></label>
-    <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">${p.name}</button>`).join('')}</div>
-    <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download</button><button type="button" data-act="copy-text">Copy text</button></div>
+    <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
+    <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
   current.card.then(b => { if (b && current?.ctx === ctx) pop.querySelector('.sp-img').src = URL.createObjectURL(b); });
   addEventListener('resize', () => current && place(), {once: true});
@@ -136,7 +136,7 @@ const slug = () => quoteOf(current.ctx.headline, 40).toLowerCase().replace(/[^\p
 function sharePlatform(p) {
   let server = '';
   if (p.needsServer) {
-    server = localStorage.getItem('du-mastodon') || prompt('Your Mastodon server (for example mastodon.social):', 'mastodon.social') || '';
+    server = localStorage.getItem('du-mastodon') || prompt('Enter your Mastodon server, such as mastodon.social.', 'mastodon.social') || '';
     server = server.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!server) return;
     localStorage.setItem('du-mastodon', server);
@@ -144,11 +144,11 @@ function sharePlatform(p) {
   const text = postText(), copied = p.linkPost ? Promise.resolve(false) : copyImage().then(() => true, () => false);
   window.open(p.compose(p.derank || p.linkPost ? text : `${text}\n\n${SITE}`, server), '_blank', 'noopener');
   copied.then(ok => {
-    const image = p.linkPost ? '' : ok ? `<li>The image is on your clipboard: paste it into the post (⌘V or Ctrl+V).</li>` : `<li>Copying the image didn't work here. Use Download and attach it.</li>`;
+    const image = p.linkPost ? '' : ok ? `<li>Paste the copied image into your post with ⌘V or Ctrl+V.</li>` : `<li>Couldn't copy the image. Choose "Download image" and attach it to your post.</li>`;
     if (!p.derank) { stepOut(image ? `<ol>${image}</ol>` : ''); return; }
-    stepOut(`<ol>${image}<li>${p.name} hides posts with links, so the link goes in a reply. After posting, reply with:</li></ol>
-      <div class="sp-reply"><input readonly value="${esc(REPLY_TEXT)}"><button type="button" data-act="copy-reply">Copy</button></div>
-      ${p.reply ? `<div class="sp-reply"><input class="sp-post" placeholder="Paste your post's link" inputmode="url"><button type="button" data-act="open-reply" data-platform-reply="${p.id}">Open reply</button></div>` : ''}`);
+    stepOut(`<ol>${image}<li>After posting, add this link in a reply:</li></ol>
+      <div class="sp-reply"><input aria-label="Reply text" readonly value="${esc(REPLY_TEXT)}"><button type="button" data-act="copy-reply">Copy reply</button></div>
+      ${p.reply ? `<div class="sp-reply"><input aria-label="Post link" class="sp-post" placeholder="Paste your post's link" inputmode="url"><button type="button" data-act="open-reply" data-platform-reply="${p.id}">Open reply</button></div>` : ''}`);
   });
 }
 pop.addEventListener('click', async e => {
@@ -159,7 +159,7 @@ pop.addEventListener('click', async e => {
   try {
     if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
     else if (act === 'copy-text') { await navigator.clipboard.writeText(`${postText()}\n\n${SITE}`); stepOut('<p>Text and link copied.</p>'); }
-    else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Copied'; }
+    else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }
     else if (act === 'download') {
       const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(await current.card), download: `discord-wrapped-${slug()}.png`});
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -170,10 +170,10 @@ pop.addEventListener('click', async e => {
     } else if (act === 'open-reply') {
       const url = PLATFORMS.find(p => p.id === b.dataset.platformReply).reply(pop.querySelector('.sp-post').value, REPLY_TEXT);
       if (url) window.open(url, '_blank', 'noopener');
-      else stepOut(pop.querySelector('.sp-step').innerHTML.replace(/<p class="error">.*?<\/p>/, '') + '<p class="error">That doesn’t look like a link to a post.</p>');
+      else stepOut(pop.querySelector('.sp-step').innerHTML.replace(/<p class="error">.*?<\/p>/, '') + '<p class="error">This link doesn’t identify an X post. Paste the full link to your post and try again.</p>');
     }
   } catch (err) {
-    if (err?.name !== 'AbortError') stepOut(`<p class="error">${esc(err.message || 'That didn’t work in this browser.')}</p>`);
+    if (err?.name !== 'AbortError') stepOut(`<p class="error">Couldn't share from this browser. Download the image and attach it to your post.</p>`);
   }
 });
 
@@ -186,7 +186,7 @@ function contextFromSelection() {
   const range = sel.getRangeAt(0), node = range.commonAncestorContainer, el = node.nodeType === 1 ? node : node.parentElement;
   if (!el?.closest('#report') || el.closest('#share-pop, input, textarea, select, [data-private]')) return null;
   const owner = el.closest('[data-share]');
-  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `“${quoteOf(text, 200)}”\n\nFrom my Discord Wrapped.`, headline: `“${quoteOf(text)}”`, sub: 'From my Discord Wrapped'};
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `"${quoteOf(text, 200)}"\n\nFrom my Discord Wrapped.`, headline: `"${quoteOf(text)}"`, sub: 'From my Discord Wrapped'};
   return ctx && {ctx, rect: range.getBoundingClientRect()};
 }
 document.addEventListener('pointerup', e => {
@@ -212,16 +212,16 @@ function sectionShare(id) {
   const T = D.totals, Y = D.years, ys = Object.keys(Y).sort();
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
   const since = T.first.slice(0, 4);
-  if (id === 'overview') return {text: `I've sent ${fmt(T.messages)} messages on Discord since ${since}. ${busiest} was the loudest year.`, headline: `${fmt(T.messages)} messages`, sub: `on Discord since ${since} · loudest year ${busiest}`, chart: 'year-chart'};
-  if (id === 'rhythm') return {text: `${pct(T.lateNight, T.messages)} of my Discord messages are sent between midnight and 6 am.`, headline: 'When I’m on Discord', sub: `${pct(T.lateNight, T.messages)} of my messages are sent between midnight and 6 am`, chart: 'heat-chart'};
-  if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers vs DMs', sub: 'share of my Discord messages, year by year', chart: 'share-chart'};
+  if (id === 'overview') return {text: `My Discord Wrapped contains ${fmt(T.messages)} messages. ${busiest} was my busiest year.`, headline: `${fmt(T.messages)} messages`, sub: `Busiest year ${busiest}`, chart: 'year-chart'};
+  if (id === 'rhythm') return {text: `I sent ${pct(T.lateNight, T.messages)} of the messages in my Discord Wrapped between midnight and 6 am.`, headline: 'When I sent messages', sub: `${pct(T.lateNight, T.messages)} sent between midnight and 6 am`, chart: 'heat-chart'};
+  if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers, DMs and group DMs', sub: 'Share of my messages by year', chart: 'share-chart'};
   if (id === 'words') {
     const y = rateYears().filter(y => D.wordYears[y]?.length).at(-1), w = D.wordYears[y]?.[0];
-    return {text: `My top 10 words on Discord, year by year.${w ? ` In ${y} it was “${w[0]}”.` : ''}`, headline: 'My top words, year by year', sub: w ? `${y}: “${w[0]}”` : '', chart: 'bump-chart'};
+    return {text: `My top 10 words on Discord, year by year.${w ? ` "${w[0]}" was my top word in ${y}.` : ''}`, headline: 'My top words, year by year', sub: w ? `${y}: "${w[0]}"` : '', chart: 'bump-chart'};
   }
   if (id === 'fame') {
     const r = D.fame.mostRepeated;
-    return r && {text: `The message I've sent most on Discord is “${quoteOf(r.text, 100)}”: ${fmt(r.count)} times.`, headline: `“${quoteOf(r.text, 60)}”`, sub: `my most repeated Discord message · ${fmt(r.count)} times`};
+    return r && {text: `My most repeated message in Discord Wrapped is "${quoteOf(r.text, 100)}". I sent it ${fmt(r.count)} times.`, headline: `"${quoteOf(r.text, 60)}"`, sub: `My most repeated message · Sent ${fmt(r.count)} times`};
   }
   if (id === 'search') return lastSearchShare;
   return null;

@@ -6,7 +6,7 @@ Everything is computed in the tab: a Web Worker unzips the package with the brow
 The page's Content-Security-Policy only allows network requests to the hosts that serve the optional WebLLM library and model weights.
 
 - `src/`: `index.html`, `style.css`, `worker.js` (zip reader, parsing, aggregates, search, roast candidates), `app.js` (charts and UI), `share.js` (share popover and image cards), `ads.js` and `ads-schedule.js` (sponsor rails)
-- `worker/`: the Cloudflare Worker. It serves the static page and the sponsor ads API, which reads campaigns from D1
+- `worker/`: the Cloudflare Worker. It serves the static pages and forwards sponsor requests to the sponsor service
 - `python3 build.py` inlines `src/` into the single `public/index.html`
 - `pnpm check` rebuilds and fails if `public/index.html` is out of date; commit the rebuilt file with your change
 - `node test/node-check.mjs path/to/package.zip path/to/analysis.json` runs the worker under Node and compares it with a reference `analysis.json` from an earlier Python analysis (not included)
@@ -25,35 +25,25 @@ package.zip and adds only messages sent after the newest saved message, so messa
 3. Merging that pull request deploys wrapped.mia.cx and publishes a GitHub release with the changelog.
 
 To retry a failed deploy, run the Release workflow by hand with the release merge commit's SHA.
-CI needs two secrets, `CLOUDFLARE_API_TOKEN` (Workers and D1) and `RELEASE_PR_TOKEN`; run `bash scripts/setup-ci.sh` to create them, and again when either expires.
+CI needs two secrets, `CLOUDFLARE_API_TOKEN` and `RELEASE_PR_TOKEN`; run `bash scripts/setup-ci.sh` to create them, and again when either expires.
 
 ## Sponsor ads
 
-Screens at least 1480 px wide get a sponsor rail on each side of the report. The rails sit outside the content column,
-never cover it, don't print, and aren't part of share images. Empty slots invite people to
-[sponsor on GitHub](https://github.com/sponsors/mia-riezebos).
+Screens at least 1480 px wide get a sponsor rail on each side of the report: a tall 160 × 600 slot with a 160 × 160
+square under it. The rails sit outside the content column, never cover it, don't print, and aren't part of share
+images. Monthly GitHub sponsors appear in a grid at the top of the footer. `/advertise` explains the placements and
+prices to advertisers, with live next openings and a preview that never uploads anything.
 
-| Tier | Size | Where | Time per turn |
-| --- | --- | --- | --- |
-| `square` | 160 × 160 | one rail, under the tower | 8 s |
-| `tower` | 160 × 600 | one rail | 12 s |
-| `twin` | 160 × 600 | both rails | 15 s |
+Campaigns, prices and footer sponsors live in the shared sponsor service, [mia-cx/sponsors](https://github.com/mia-cx/sponsors)
+at sponsors.mia.cx, managed from its `/admin` dashboard. This site's Worker forwards `/api/ads`, `/api/availability`
+and `/api/footer` to it over a service binding (`SPONSORS`) with `SPONSOR_SITE=discordwrapped.app`, so the page only
+ever talks to its own origin.
 
-Each slot is a carousel: active ads take turns for their tier's time, starting at a random ad on each page load. The
-carousel pauses while hovered or while the tab is in the background. Images are fetched through the Worker
-(`/api/ads/:id/image`), so the page itself still only talks to its own site.
+Rotation rules live in `src/ads-schedule.js` (tested in `test/ads.test.mjs`): each placement takes turns, each turn
+puts the next ad on a random side, and a mirrored campaign (bought twice) shows on both sides at once.
 
-To run a campaign, add a row in the Cloudflare dashboard (Storage & Databases → D1 → discord-wrapped → Console).
-It shows up between `starts_at` and `ends_at` (UTC) without a deploy:
+For local testing, run both Workers together against the sponsor service's local data:
 
-```sql
-INSERT INTO campaigns (sponsor, tier, placement, image_url, link_url, alt, starts_at, ends_at)
-VALUES ('their-github-login', 'tower', 'right', 'https://example.com/ad-160x600.png', 'https://example.com',
-        'What the ad says, for screen readers', '2026-11-01 00:00:00', '2026-12-01 00:00:00');
+```sh
+pnpm exec wrangler dev -c wrangler.jsonc -c ../sponsors/wrangler.jsonc --persist-to ../sponsors/.wrangler/state
 ```
-
-`placement` is `left` or `right` (ignored for `twin`). Images must be PNG, JPEG, GIF, WebP or AVIF, at most 2 MB, at the
-tier's size. The schema lives in `migrations/`; releases apply new migrations before deploying.
-
-For local testing: `pnpm exec wrangler d1 migrations apply DB --local`, insert a row with `wrangler d1 execute DB --local`,
-then `pnpm exec wrangler dev`.
