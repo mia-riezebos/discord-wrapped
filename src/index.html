@@ -6,40 +6,51 @@
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<title>Discord Wrapped — explore your data package</title>
+<title>Discord Wrapped | Your Discord stats and message history</title>
+<meta name="description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
+<link rel="canonical" href="https://discordwrapped.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Discord Wrapped">
+<meta property="og:url" content="https://discordwrapped.app/">
+<meta property="og:title" content="Discord Wrapped | Your Discord stats and message history">
+<meta property="og:description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Discord Wrapped | Your Discord stats and message history">
+<meta name="twitter:description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "@id": "https://discordwrapped.app/#app",
+  "name": "Discord Wrapped",
+  "url": "https://discordwrapped.app/",
+  "description": "A free, open-source Discord data package viewer. Explore and search your sent messages in your browser without uploading your package.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Web browser",
+  "isAccessibleForFree": true,
+  "creator": {
+    "@type": "Person",
+    "name": "Mia",
+    "url": "https://mia.cx"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
 <style>/*STYLE*/</style>
 </head>
 <body id="top">
-<header class="top"><div class="wrap topbar">
-  <a class="brand" href="#top">Discord Wrapped</a>
-  <nav class="sections report-only" id="nav" aria-label="Report sections">
-    <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
-  </nav>
-  <div class="actions">
-    <details class="menu report-only" id="data-menu">
-      <summary>Your data</summary>
-      <div class="menu-panel">
-        <label title="Used for hours, days and months">Time zone<select id="tz"></select></label>
-        <label class="button" for="pick-update" title="Add messages from a newer package.zip">Update package</label>
-        <input id="pick-update" type="file" accept=".zip,application/zip">
-        <button id="export" type="button">Save summary</button>
-        <button id="reset" type="button" class="danger">Remove data</button>
-      </div>
-    </details>
-    <nav class="project" aria-label="Project">
-      <a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" title="Source code on GitHub" aria-label="Source code on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
-      <a href="https://discord.gg/bePPwYJk2u" rel="external" title="Join the Discord server" aria-label="Join the Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a>
-      <a href="https://github.com/sponsors/mia-riezebos" rel="external" title="Sponsor on GitHub" aria-label="Sponsor on GitHub" class="sponsor"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg><span>Sponsor</span></a>
-    </nav>
-  </div>
-</div></header>
+<!--HEADER-->
 <main id="landing" class="landing">
   <div class="wrap">
     <h1>Discord Wrapped</h1>
-    <p class="lede">See ten years of your Discord messages as charts: when you talk, who you talk to, what you talk about, and the single message you sent most often.</p>
+    <p class="lede">View your Discord message history as charts. Find your busiest days, top words and most repeated messages.</p>
     <div class="drop" id="drop">
       <strong>Drop your package.zip here</strong>
-      <span class="muted">Or choose the zip, or the folder you unzipped it into.</span>
+      <span class="muted">Choose package.zip or its unzipped folder.</span>
       <div class="buttons">
         <label class="button primary" for="pick-zip" style="color:var(--accent-fg)">Choose package.zip</label>
         <label class="button" for="pick-folder" style="color:var(--fg)">Choose folder</label>
@@ -49,25 +60,57 @@
       <div class="status" id="status" aria-live="polite"></div>
     </div>
     <ul class="promise">
-      <li><strong>Stays on your device</strong>This page reads the file itself. Nothing is uploaded, and the page is locked so it can't send your messages anywhere.</li>
-      <li><strong>Works offline</strong>Save this page and open it with Wi-Fi off. It is one HTML file, and it remembers your package until you remove it.</li>
+      <li><strong>Stays on your device</strong>Your browser reads the package. The package and its messages are never uploaded.</li>
+      <li><strong>Works offline</strong>Save this page and open it with Wi-Fi off. Your browser saves the report so it survives reloads.</li>
       <li><strong>Only your side</strong>Discord exports the messages you sent, not replies from others.</li>
     </ul>
     <details class="howto">
-      <summary>How do I get my package?</summary>
+      <summary>How do I get my Discord data package?</summary>
       <ol>
         <li>In Discord, open <b>User Settings → Data &amp; Privacy</b>.</li>
         <li>Choose <b>Request all of my Data</b>. Messages is the only part this page needs.</li>
-        <li>Discord emails a download link, usually within a few days. Download <b>package.zip</b> and drop it above.</li>
+        <li>Discord emails a download link, usually within a few days. Download <b>package.zip</b> and drop it here.</li>
+        <li><a href="https://support.discord.com/hc/en-us/articles/360004027692-Requesting-a-Copy-of-your-Data">Read Discord's data request guide</a>.</li>
       </ol>
     </details>
+    <section class="faq">
+      <h2>Questions about Discord Wrapped</h2>
+      <details>
+        <summary>How do I see my Discord stats?</summary>
+        <p>Open your Discord data package in Discord Wrapped. Choose package.zip or the folder you unzipped it into. You'll see message counts, charts, top words, DMs and servers from your sent messages.</p>
+      </details>
+      <details>
+        <summary>Can I search my Discord message history?</summary>
+        <p>Yes. Search for a word or phrase to see matching messages and a chart over time. Discord exports messages you sent, not replies from others. The search covers messages in your saved report.</p>
+      </details>
+      <details>
+        <summary>Does Discord Wrapped upload my messages?</summary>
+        <p>No. Your browser reads the package and builds the report. The package and its messages are never uploaded. If you choose the AI roast, the model downloads and runs in your browser too.</p>
+      </details>
+      <details>
+        <summary>Can I use Discord Wrapped offline?</summary>
+        <p>Yes. Save the page and open it with Wi-Fi off. The report works from one HTML file. The optional AI roast needs a model download first.</p>
+      </details>
+      <details>
+        <summary>Does my report stay saved when I close the page?</summary>
+        <p>Yes. Your browser saves the report, so it reopens after a reload or restart. Choose "Update package" to add messages newer than the saved copy. Earlier saved messages stay in the report. Choose "Remove saved data" to clear that browser's copy.</p>
+      </details>
+      <details>
+        <summary>Is Discord Wrapped free?</summary>
+        <p>Yes. Discord Wrapped is free and open source, made by <a href="https://mia.cx">Mia</a>. You can <a href="https://github.com/mia-riezebos/discord-wrapped">view the source code</a> or <a href="https://github.com/sponsors/mia-riezebos">sponsor Mia</a>.</p>
+      </details>
+      <details>
+        <summary>Can I share my Discord Wrapped?</summary>
+        <p>Yes. Select a number, word or highlight, or choose "Share" on a report section. Copy or download the image card. You can also open a post for X, Bluesky, Threads, Mastodon, LinkedIn, Reddit or WhatsApp. Paste or attach the image yourself where needed.</p>
+      </details>
+    </section>
   </div>
 </main>
 
 <div id="report" class="hidden">
 
   <div class="wrap">
-    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select any number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
 
     <section class="card" id="s-overview">
       <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
@@ -89,8 +132,8 @@
 
     <section class="card" id="s-rhythm">
       <div class="sechead"><h2>Rhythm</h2><button class="share-btn" type="button" data-share-section="rhythm">Share</button></div>
-      <p class="muted">When you send messages. This shows sending patterns, not sleep or time online.</p>
-      <h3>Week × hour</h3>
+      <p class="muted">This shows when you sent messages, not your sleep or time online.</p>
+      <h3>Weekday and hour</h3>
       <div id="heat-chart"></div>
       <div class="controls"><label>Day<select id="day"></select></label></div>
       <div id="hours-chart"></div>
@@ -100,7 +143,7 @@
         <div><h3>Longest daily streaks</h3><table id="streaks"></table></div>
         <div><h3>Longest silences</h3><table id="gaps"></table></div>
       </div>
-      <h3>Biggest days</h3>
+      <h3>Busiest days</h3>
       <div class="callout" data-slot="peaks"></div>
       <table id="peaks"></table>
       <h3>Message length</h3>
@@ -129,14 +172,14 @@
       <h3>Topics over time</h3>
       <div id="topic-chart"></div>
       <div class="legend" id="topic-legend"></div>
-      <p class="muted">Messages that contain a keyword, per 1,000 messages. Topics can overlap. Edit the keywords to track anything.</p>
+      <p class="muted">Messages containing a topic keyword per 1,000 messages. Topics can overlap.</p>
       <details class="more"><summary>Edit topics</summary>
         <p>One topic per line: <code>Name: word, another word, prefix*</code>. Up to five topics.</p>
-        <textarea id="topics-input" spellcheck="false"></textarea>
+        <textarea aria-label="Topic keywords" id="topics-input" spellcheck="false"></textarea>
         <div class="controls"><button id="topics-apply" class="primary" type="button">Update topics</button><button id="topics-reset" type="button">Restore defaults</button></div>
       </details>
       <h3>Your top 10 words, year by year</h3>
-      <p class="muted">Each column is a year's top 10, most used at the top. Lines follow a word while it stays in the top 10. Hover a word to trace it.</p>
+      <p class="muted">Each column shows a year's top 10 words, with the most used at the top. Hover a word to trace it.</p>
       <div id="bump-chart"></div>
       <div class="twocol">
         <div><h3>Your words</h3><div class="controls"><label>Year<select id="words-year"></select></label></div><div class="rank" id="word-ranks"></div></div>
@@ -153,8 +196,8 @@
       <h2>Search your messages</h2>
       <p class="muted">See how often you said something, and when.</p>
       <form class="controls" id="search-form">
-        <label class="grow">Word or phrase<input id="search-q" type="search" placeholder="e.g. tired, good morning, minecraft" autocomplete="off"></label>
-        <label class="inline"><input id="search-whole" type="checkbox" checked> Whole words</label>
+        <label class="grow">Word or phrase<input id="search-q" type="search" placeholder="Try &quot;good morning&quot;" autocomplete="off"></label>
+        <label class="inline"><input id="search-whole" type="checkbox" checked> Match whole words</label>
         <button class="primary" type="submit">Search</button>
       </form>
       <div id="search-out" aria-live="polite"></div>
@@ -168,7 +211,7 @@
         <label>Year<select id="ch-year"></select></label>
       </div>
       <p class="readout" id="ch-label"></p>
-      <table><thead><tr><th>Channel</th><th>First → last</th><th class="num">Messages</th></tr></thead><tbody id="ch-rows"></tbody></table>
+      <table><thead><tr><th>Channel</th><th>First and last message</th><th class="num">Messages</th></tr></thead><tbody id="ch-rows"></tbody></table>
       <div class="pager"><span id="ch-page"></span><div><button id="ch-prev" type="button">Previous</button><button id="ch-next" type="button">Next</button></div></div>
       <div class="detail hidden" id="ch-detail" aria-live="polite"></div>
     </section>
@@ -180,12 +223,12 @@
 
     <section class="card" id="s-roast">
       <h2>Roast</h2>
-      <p class="muted">Five of your strangest messages, picked by how many rare words they use. Pick again for a new five.</p>
+      <p class="muted">Messages with unusually rare words. Choose "Pick again" for another selection.</p>
       <div class="controls"><button id="reroll" type="button">Pick again</button></div>
       <div id="roast"></div>
       <div class="ai-box">
-        <strong>Optional: let a small AI judge and caption them</strong>
-        <p>Runs a small language model inside this tab with <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noreferrer">WebLLM</a>, the engine behind <a href="https://github.com/guirguispierre/bit-chat" target="_blank" rel="noreferrer">bit-chat</a>. The first run downloads the library and the model; your messages stay in this tab. Needs WebGPU (Chrome, Edge or Safari 26).</p>
+        <strong>Add AI captions</strong>
+        <p>The optional AI runs in this tab with <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noreferrer">WebLLM</a>. First, it downloads the model. Your messages stay in your browser. It needs WebGPU.</p>
         <div class="controls">
           <label>Model<select id="ai-model"></select></label>
           <button id="ai-run" class="primary" type="button">Download model and roast</button>
@@ -201,34 +244,8 @@
     </section>
   </div>
 </div>
-<footer class="site">
-  <div class="wrap inner">
-    <section class="brandcol">
-      <h2>Discord Wrapped</h2>
-      <a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Contribute on GitHub</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a>
-      <ul class="socials">
-        <li><a href="https://github.com/mia-riezebos/discord-wrapped" rel="external" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a></li>
-        <li><a href="https://discord.gg/bePPwYJk2u" rel="external" aria-label="Discord server" title="Discord server"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0a13 13 0 0 0-.617-1.25a.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.08.08 0 0 0 .084-.028a14 14 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13 13 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10 10 0 0 0 .372-.292a.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127a12.3 12.3 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028a19.8 19.8 0 0 0 6.002-3.03a.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418"/></svg></a></li>
-        <li><a href="https://github.com/sponsors/mia-riezebos" rel="external" aria-label="Sponsor on GitHub" title="Sponsor on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2 0 3.6 1.1 5 3c1.4-1.9 3-3 5-3c3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg></a></li>
-      </ul>
-      <p class="muted">Your messages are read in this tab and never uploaded.</p>
-      <p class="muted">© 2026 <a href="https://mia.cx" rel="external">mia.cx</a></p>
-    </section>
-    <nav aria-labelledby="footer-project">
-      <h2 id="footer-project">Project</h2>
-      <ul>
-        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped" rel="external"><span>Source code</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/releases" rel="external"><span>What's new</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-        <li><a class="arrow-link" href="https://github.com/mia-riezebos/discord-wrapped/issues/new" rel="external"><span>Report a problem</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-        <li><a class="arrow-link" href="https://discord.gg/bePPwYJk2u" rel="external"><span>Discord server</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-        <li><a class="arrow-link" href="https://github.com/sponsors/mia-riezebos" rel="external"><span>Sponsor or advertise</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-        <li><a class="arrow-link" href="https://mia.cx" rel="external"><span>mia.cx</span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="arrow"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"/></svg></a></li>
-      </ul>
-    </nav>
-  </div>
-</footer>
-<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
-<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tower"></div><div class="slot slot-square"></div></aside>
+<!--FOOTER-->
+<!--RAILS-->
 <div class="tip" id="tip" role="presentation"></div>
 <div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
 <script type="text/plain" id="worker-src">/*WORKER*/</script>

@@ -2,9 +2,11 @@
   "name": "discord-wrapped",
   "account_id": "492214885e7a580ccc1d141dfdb4dc5f",
   "compatibility_date": "2026-10-01",
-  // The page does all the message work in the visitor's browser; the Worker only serves sponsor ads.
+  // The page does all the message work in the visitor's browser; the Worker only forwards sponsor requests.
   "main": "worker/index.js",
-  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
-  "d1_databases": [{ "binding": "DB", "database_name": "discord-wrapped", "database_id": "d1c4d4d0-b816-4e3b-bba9-927262b32669", "migrations_dir": "migrations" }],
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"], "html_handling": "drop-trailing-slash" },
+  // The shared sponsor service (mia-cx/sponsors) stores campaigns and footer sponsors for every site.
+  "services": [{ "binding": "SPONSORS", "service": "sponsors" }],
+  "vars": { "SPONSOR_SITE": "discordwrapped.app" },
   "routes": [{ "pattern": "wrapped.mia.cx", "custom_domain": true }]
 }
