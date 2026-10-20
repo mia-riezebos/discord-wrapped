@@ -7,7 +7,7 @@ The page's Content-Security-Policy only allows network requests to the hosts tha
 
 - `src/`: `index.html`, `style.css`, `worker.js` (zip reader, parsing, aggregates, search, roast candidates), `app.js` (charts and UI)
 - `python3 build.py` inlines `src/` into the single `public/index.html`
-- `wrangler deploy` publishes `public/` as a static Cloudflare Worker on wrapped.mia.cx
+- `pnpm check` rebuilds and fails if `public/index.html` is out of date; commit the rebuilt file with your change
 - `node test/node-check.mjs path/to/package.zip path/to/analysis.json` runs the worker under Node and compares it with a reference `analysis.json` from an earlier Python analysis (not included)
 
 The roast section works without AI: it picks messages full of rare words. The optional AI step runs a small model in the tab
@@ -16,3 +16,12 @@ with WebLLM (the engine bit-chat uses). It needs WebGPU, and the first run downl
 The parsed messages are saved in IndexedDB, so the report reopens after a reload or restart. "Update package" reads a newer
 package.zip and adds only messages sent after the newest saved message, so messages that are missing from the new export
 (for example ones you deleted since) stay in the report. "Remove data" clears the saved copy.
+
+## Releasing
+
+1. Open a pull request with your change and a changeset (`pnpm changeset`). CI checks the build and that a changeset exists.
+2. After it merges, the Release workflow opens or updates a "chore(release): version discord-wrapped" pull request.
+3. Merging that pull request deploys wrapped.mia.cx and publishes a GitHub release with the changelog.
+
+To retry a failed deploy, run the Release workflow by hand with the release merge commit's SHA.
+CI needs two secrets, `CLOUDFLARE_API_TOKEN` and `RELEASE_PR_TOKEN`; run `bash scripts/setup-ci.sh` to create them, and again when either expires.

@@ -1,0 +1,22 @@
+{
+  "name": "discord-wrapped",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "python3 build.py",
+    "check": "node --check src/worker.js && node --check test/node-check.mjs && pnpm build && git diff --exit-code -- public/",
+    "test:release": "node --test .github/scripts/*.test.mjs",
+    "changeset": "changeset",
+    "release:version": "changeset version",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "wrangler": "4.151.3"
+  }
+}
