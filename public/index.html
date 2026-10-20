@@ -1436,7 +1436,10 @@ call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).c
 /* ---------- sharing ---------- */
 // Anything marked with shareAttr() can be shared: by selecting text inside it, clicking it (data-share-click),
 // or a section's Share button. Each context carries first-person post text plus what goes on the image.
-const SITE = 'https://wrapped.mia.cx';
+// Links point at whichever host is serving this page (production domains, preview deploys, local dev).
+// A copy opened from disk has no host, so it falls back to the main domain.
+const SITE = /^https?:$/.test(location.protocol) ? location.origin : 'https://discordwrapped.app';
+const SITE_HOST = new URL(SITE).host;
 const REPLY_TEXT = `Make your own Discord Wrapped. It runs in your browser and nothing gets uploaded: ${SITE}`;
 const enc = encodeURIComponent;
 const shareCtx = new Map();
@@ -1519,7 +1522,7 @@ async function renderCard(ctx) {
     } catch { /* The card still works without its chart. */ }
   }
   g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
-  g.fillText('wrapped.mia.cx', P, H - 36);
+  g.fillText(SITE_HOST, P, H - 36);
   g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
   g.fillText('made in the browser · nothing uploaded', W - P, H - 38);
   return new Promise(r => c.toBlob(r, 'image/png'));
