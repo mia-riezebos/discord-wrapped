@@ -1,0 +1,8 @@
+{
+  "name": "discord-wrapped",
+  "account_id": "492214885e7a580ccc1d141dfdb4dc5f",
+  "compatibility_date": "2026-10-01",
+  // Static site only: the page does all the work in the visitor's browser.
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "wrapped.mia.cx", "custom_domain": true }]
+}

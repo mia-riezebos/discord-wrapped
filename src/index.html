@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src data: blob:; connect-src blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Discord Unwrapped — explore your data package</title>
+<style>/*STYLE*/</style>
+</head>
+<body>
+<main id="landing" class="landing">
+  <div class="wrap">
+    <h1>Discord Unwrapped</h1>
+    <p class="lede">See ten years of your Discord messages as charts: when you talk, who you talk to, what you talk about, and the single message you sent most often.</p>
+    <div class="drop" id="drop">
+      <strong>Drop your package.zip here</strong>
+      <span class="muted">Or choose the zip, or the folder you unzipped it into.</span>
+      <div class="buttons">
+        <label class="button primary" for="pick-zip" style="color:var(--accent-fg)">Choose package.zip</label>
+        <label class="button" for="pick-folder" style="color:var(--fg)">Choose folder</label>
+      </div>
+      <input id="pick-zip" type="file" accept=".zip,application/zip">
+      <input id="pick-folder" type="file" webkitdirectory multiple>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+    <ul class="promise">
+      <li><strong>Stays on your device</strong>This page reads the file itself. Nothing is uploaded, and the page is locked so it can't send your messages anywhere.</li>
+      <li><strong>Works offline</strong>Save this page and open it with Wi-Fi off. It is one HTML file, and it remembers your package until you remove it.</li>
+      <li><strong>Only your side</strong>Discord exports the messages you sent, not replies from others.</li>
+    </ul>
+    <details class="howto">
+      <summary>How do I get my package?</summary>
+      <ol>
+        <li>In Discord, open <b>User Settings → Data &amp; Privacy</b>.</li>
+        <li>Choose <b>Request all of my Data</b>. Messages is the only part this page needs.</li>
+        <li>Discord emails a download link, usually within a few days. Download <b>package.zip</b> and drop it above.</li>
+      </ol>
+    </details>
+  </div>
+</main>
+
+<div id="report" class="hidden">
+  <header class="top"><div class="wrap">
+    <span class="brand">Discord Unwrapped</span>
+    <nav class="sections" id="nav">
+      <a href="#s-overview">Overview</a><a href="#s-rhythm">Rhythm</a><a href="#s-people">People &amp; servers</a><a href="#s-words">Words &amp; links</a><a href="#s-search">Search</a><a href="#s-channels">Channels</a><a href="#s-fame">Hall of fame</a><a href="#s-roast">Roast</a><a href="#s-data">Data</a>
+    </nav>
+    <div class="actions">
+      <label class="inline" title="Time zone used for hours, days and months"><select id="tz" aria-label="Time zone"></select></label>
+      <label class="button" for="pick-update" title="Add messages from a newer package.zip">Update package</label>
+      <input id="pick-update" type="file" accept=".zip,application/zip">
+      <button id="export" type="button">Save summary</button>
+      <button id="reset" type="button">Remove data</button>
+    </div>
+  </div></header>
+
+  <div class="wrap">
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><div id="notice" aria-live="polite"></div></div>
+
+    <section class="card" id="s-overview">
+      <h2>Overview</h2>
+      <div class="metrics" id="counts"></div>
+      <h3>Messages per year</h3>
+      <div id="year-chart"></div>
+      <div class="legend" id="group-legend"></div>
+      <div class="callout" data-slot="years"></div>
+      <div class="controls"><label>Year<select id="year"></select></label></div>
+      <h3>Messages per month</h3>
+      <div id="month-chart"></div>
+      <div class="readout" id="month-readout"></div>
+      <div class="callout" data-slot="month"></div>
+      <h3 id="calendar-title">Every day</h3>
+      <div id="calendar"></div>
+      <div class="readout" id="calendar-readout"></div>
+      <div class="callout" data-slot="calendar"></div>
+    </section>
+
+    <section class="card" id="s-rhythm">
+      <h2>Rhythm</h2>
+      <p class="muted">When you send messages. This shows sending patterns, not sleep or time online.</p>
+      <h3>Week × hour</h3>
+      <div id="heat-chart"></div>
+      <div class="controls"><label>Day<select id="day"></select></label></div>
+      <div id="hours-chart"></div>
+      <div class="readout" id="hours-readout"></div>
+      <div class="callout" data-slot="rhythm"></div>
+      <div class="twocol">
+        <div><h3>Longest daily streaks</h3><table id="streaks"></table></div>
+        <div><h3>Longest silences</h3><table id="gaps"></table></div>
+      </div>
+      <h3>Biggest days</h3>
+      <div class="callout" data-slot="peaks"></div>
+      <table id="peaks"></table>
+      <h3>Message length</h3>
+      <div id="length-chart"></div>
+      <div class="callout" data-slot="length"></div>
+      <h3>Words per message, by year</h3>
+      <div id="wpm-chart"></div>
+      <div class="callout" data-slot="wpm"></div>
+    </section>
+
+    <section class="card" id="s-people">
+      <h2>People &amp; servers</h2>
+      <div class="controls"><label>Period<select id="people-year"></select></label></div>
+      <div class="twocol">
+        <div><h3>Direct messages</h3><div class="rank" id="dm-ranks"></div><p class="muted" id="dm-share"></p></div>
+        <div><h3>Servers</h3><div class="rank" id="server-ranks"></div><p class="muted" id="server-note"></p></div>
+      </div>
+      <div class="callout" data-slot="people"></div>
+      <h3>Where your messages went</h3>
+      <div id="share-chart"></div>
+      <div class="legend" id="share-legend"></div>
+    </section>
+
+    <section class="card" id="s-words">
+      <h2>Words &amp; links</h2>
+      <h3>Topics over time</h3>
+      <div id="topic-chart"></div>
+      <div class="legend" id="topic-legend"></div>
+      <p class="muted">Messages that contain a keyword, per 1,000 messages. Topics can overlap. Edit the keywords to track anything.</p>
+      <details class="more"><summary>Edit topics</summary>
+        <p>One topic per line: <code>Name: word, another word, prefix*</code>. Up to five topics.</p>
+        <textarea id="topics-input" spellcheck="false"></textarea>
+        <div class="controls"><button id="topics-apply" class="primary" type="button">Update topics</button><button id="topics-reset" type="button">Restore defaults</button></div>
+      </details>
+      <div class="twocol">
+        <div><h3>Your words</h3><div class="controls"><label>Year<select id="words-year"></select></label></div><div class="rank" id="word-ranks"></div></div>
+        <div><h3>Things you say most</h3><p class="muted">Whole messages of 40 characters or fewer.</p><div class="rank" id="expr-ranks"></div></div>
+      </div>
+      <div class="twocol">
+        <div><h3>Where your links go</h3><div class="rank" id="link-ranks"></div></div>
+        <div><h3>Custom emoji</h3><div class="rank" id="emoji-ranks"></div></div>
+      </div>
+      <div class="callout" data-slot="links"></div>
+    </section>
+
+    <section class="card" id="s-search">
+      <h2>Search your messages</h2>
+      <p class="muted">See how often you said something, and when.</p>
+      <form class="controls" id="search-form">
+        <label class="grow">Word or phrase<input id="search-q" type="search" placeholder="e.g. tired, good morning, minecraft" autocomplete="off"></label>
+        <label class="inline"><input id="search-whole" type="checkbox" checked> Whole words</label>
+        <button class="primary" type="submit">Search</button>
+      </form>
+      <div id="search-out" aria-live="polite"></div>
+    </section>
+
+    <section class="card" id="s-channels">
+      <h2>Every channel</h2>
+      <div class="controls">
+        <label class="grow">Channel, person or server<input id="ch-q" type="search" autocomplete="off"></label>
+        <label>Type<select id="ch-type"><option value="all">All</option><option value="DMs">DMs</option><option value="Group DMs">Group DMs</option><option value="Servers">Servers</option></select></label>
+        <label>Year<select id="ch-year"></select></label>
+      </div>
+      <p class="readout" id="ch-label"></p>
+      <table><thead><tr><th>Channel</th><th>First → last</th><th class="num">Messages</th></tr></thead><tbody id="ch-rows"></tbody></table>
+      <div class="pager"><span id="ch-page"></span><div><button id="ch-prev" type="button">Previous</button><button id="ch-next" type="button">Next</button></div></div>
+      <div class="detail hidden" id="ch-detail" aria-live="polite"></div>
+    </section>
+
+    <section class="card" id="s-fame">
+      <h2>Hall of fame</h2>
+      <div class="fame" id="fame"></div>
+    </section>
+
+    <section class="card" id="s-roast">
+      <h2>Roast</h2>
+      <p class="muted">Five of your strangest messages, picked by how many rare words they use. Pick again for a new five.</p>
+      <div class="controls"><button id="reroll" type="button">Pick again</button></div>
+      <div id="roast"></div>
+      <div class="ai-box">
+        <strong>Optional: let a small AI judge and caption them</strong>
+        <p>Runs a small language model inside this tab with <a href="https://github.com/mlc-ai/web-llm" target="_blank" rel="noreferrer">WebLLM</a>, the engine behind <a href="https://github.com/guirguispierre/bit-chat" target="_blank" rel="noreferrer">bit-chat</a>. The first run downloads the library and the model; your messages stay in this tab. Needs WebGPU (Chrome, Edge or Safari 26).</p>
+        <div class="controls">
+          <label>Model<select id="ai-model"></select></label>
+          <button id="ai-run" class="primary" type="button">Download model and roast</button>
+        </div>
+        <div class="readout" id="ai-status" aria-live="polite"></div>
+        <div class="bar hidden" id="ai-bar"><span></span></div>
+      </div>
+    </section>
+
+    <section class="card" id="s-data">
+      <h2>About this data</h2>
+      <div id="data-quality"></div>
+    </section>
+  </div>
+  <footer>Everything above was computed in this tab. Close it and it's gone.</footer>
+</div>
+<div class="tip" id="tip" role="presentation"></div>
+<script type="text/plain" id="worker-src">/*WORKER*/</script>
+<script type="module">/*APP*/</script>
+</body>
+</html>
