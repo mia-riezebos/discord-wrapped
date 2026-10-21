@@ -90,8 +90,9 @@ export function buildStories(report, period) {
 
   // The busiest day, against an average day you showed up.
   const pk = report.peakDays[0], [quote = '', quoted = 0] = pk?.topText || [];
-  const longDay = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', ...(all ? {year: 'numeric'} : {})});
-  const pkText = pk ? longDay(pk.date) : '', times = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
+  const longDay = (iso, opts) => new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', ...opts});
+  const dayOpts = {day: 'numeric', month: 'long', ...(all ? {year: 'numeric'} : {})};
+  const pkText = pk ? longDay(pk.date, {weekday: 'long', ...dayOpts}) : '', times = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
   stories.push({
     id: 'biggest-day', section: 'rhythm', enough: !!pk && T.activeDays > 1,
     question: `${did('What was', "What's been")} your biggest day ${period.in}?`,
@@ -99,7 +100,7 @@ export function buildStories(report, period) {
     share: pk ? `My biggest day on Discord ${period.in} was ${pkText}, with ${plural(pk.count, 'message')}.` : '',
     value: pk?.count || 0,
     // A message repeated in over a fifth of the day's messages is worth quoting.
-    data: {date: pk?.date, times, quote: quoted > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoted] : null},
+    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times, quote: quoted > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoted] : null},
     card: {hero: num(pk?.count || 0), fact: `Messages on ${pkText}.${times > 1 ? ` About ${times}× your usual day.` : ''}`,
       list: report.peakDays.slice(0, 5).map(p => [day(p.date, all), p.count])},
   });
@@ -122,7 +123,7 @@ export function buildStories(report, period) {
   const exact = counts.map(n => sent ? 100 * n / sent : 0), pcts = exact.map(Math.floor);
   exact.map((x, k) => [x - pcts[k], k]).sort((a, b) => b[0] - a[0]).slice(0, sent ? 100 - pcts.reduce((a, x) => a + x, 0) : 0).forEach(([, k]) => pcts[k]++);
   const went = GROUPS.map(([label, word], k) => ({label, word, count: counts[k], pct: pcts[k]})).filter(g => g.count).sort((a, b) => b.count - a.count);
-  const wentText = went.map(g => `${g.pct}% to ${g.word}`).join(', ').replace(/, ([^,]*)$/, ' and $1');
+  const wentText = went.filter(g => g.pct).map(g => `${g.pct}% to ${g.word}`).join(', ').replace(/, ([^,]*)$/, ' and $1');
   stories.push({
     id: 'where', section: 'people', enough: went.length > 1,
     question: `Where ${did('did your messages go', 'have your messages gone')} ${period.in}?`,
@@ -164,7 +165,7 @@ export function buildStories(report, period) {
   stories.push({
     id: 'inner-circle', section: 'people', enough: dms.length > 10,
     question: `How much of your DMing ${did('went', 'has gone')} to just ten people ${period.in}?`,
-    answer: `${circlePct}% of your DM messages, out of ${plural(dms.length, 'conversation')}`,
+    answer: `${circlePct}% of your DMs to your top 10, out of ${plural(dms.length, 'conversation')}`,
     share: `${circlePct}% of my Discord DMs ${period.in} ${did('went', 'have gone')} to just ten people, out of ${plural(dms.length, 'conversation')}.`,
     value: circlePct,
     data: {conversations: dms.length, names: circle.map(c => c.name)},

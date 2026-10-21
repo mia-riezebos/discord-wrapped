@@ -148,6 +148,7 @@ test('biggest day, with how it compares to a usual day', () => {
   assert.deepEqual(s.card.list.map(([, n]) => n), [600, 300]);
   const plain = byId(buildStories(rich({peakDays: [{date: '2025-08-17', count: 600, contexts: [], topText: ['lol', 100]}]}), YEAR))['biggest-day'];
   assert.equal(plain.data.quote, null, 'a message is only quoted when it is over a fifth of the day');
+  assert.match(byId(buildStories(rich(), ALL))['biggest-day'].data.parts[1], /2025/, 'all time names the year');
 });
 
 test('fastest minute', () => {
@@ -200,9 +201,15 @@ test('inner circle is the top ten DMs\' share of all DM messages', () => {
   const s = byId(buildStories(rich(), YEAR))['inner-circle'];
   // ada 300, bo 200 and pal0 to pal7 (50 down to 43): 872 of 955.
   assert.equal(s.value, 91);
-  assert.equal(s.answer, '91% of your DM messages, out of 12 conversations');
+  assert.equal(s.answer, '91% of your DMs to your top 10, out of 12 conversations');
   assert.equal(s.share, '91% of my Discord DMs in 2025 went to just ten people, out of 12 conversations.');
   assert.equal(s.data.names.length, 10);
   assert.equal(s.card.hero, '91%');
   assert.equal(s.card.names, undefined, 'the card shows no names');
+});
+
+test('a share under 1% stays in the list but out of the sentence', () => {
+  const s = byId(buildStories(rich({periods: {'2025-01': month(1000, {Servers: 800, DMs: 198, 'Group DMs': 2})}}), YEAR)).where;
+  assert.deepEqual(s.data.groups.map(g => g.pct), [80, 20, 0]);
+  assert.equal(s.answer, '80% to servers and 20% to DMs');
 });
