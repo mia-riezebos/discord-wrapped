@@ -19,12 +19,14 @@ const SHARE_COPY = (() => {
     const forbidden = text.search(/Discord Wrapped|#|\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\ufe0f\u20e3]|\b(?:[a-z][a-z\d+.-]*:\/\/|www\.)/iu);
     return clip(forbidden < 0 ? text : `${text.slice(0, forbidden).trimEnd()}…`, limit);
   };
-  // Quotes (messages, words, search terms) and Discord names are marked for redaction; name() is for other labels.
-  const quote = (value, limit = 62) => `“${markQuote(excerpt(value, limit - 2))}”`;
-  // A whole message: a quote, or "a link to youtube.com" when it opens with a link and so has no words to quote (#21).
+  // Quotes (messages, words, search terms) read as Discord shows them (plainText, stories.js) and, like Discord names,
+  // are marked for redaction; name() is for other labels.
+  const quote = (value, limit = 62) => `“${markQuote(excerpt(plainText(value), limit - 2))}”`;
+  // A whole message: a quote, "a link to youtube.com" when it opens with a link and so has no words to quote (#21), or
+  // "a mention" when it is only mentions.
   const said = (value, limit, start = false) => {
-    const host = linkHost(value);
-    return host ? `${start ? 'A' : 'a'} link to ${markQuote(host)}` : quote(value, limit);
+    const host = linkHost(value), a = start ? 'A' : 'a';
+    return host ? `${a} link to ${markQuote(host)}` : onlyMentions(value) ? `${a} mention` : quote(value, limit);
   };
   const name = value => excerpt(value, 32);
   const who = value => markName(name(value));

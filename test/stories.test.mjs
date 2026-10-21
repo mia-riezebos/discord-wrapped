@@ -310,6 +310,6 @@ test('a first message that opens with a link reads as the site, never as "…" (
     assert.equal(s.data.host, 'youtube.com');
   }
   const later = byId(buildStories(words({fame: {first: msg('look https://youtube.com'), longest: null}}), YEAR))['first-message'];
-  assert.equal(later.share, 'My first Discord message in 2025 was “look https://youtube.com”.', 'a link after words stays in the quote');
+  assert.equal(later.share, 'My first Discord message in 2025 was “look…”.', 'a quote stops at a link, as the report\'s posts do');
   assert.equal(byId(buildStories(words({fame: {first: msg(''), longest: null}}), YEAR))['first-message'].share, 'My first Discord message in 2025 was an attachment.');
 });

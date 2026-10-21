@@ -28,6 +28,21 @@ export function linkHost(text) {
 }
 
 /**
+ * A message as it reads in Discord, for quoting. The export writes mentions and custom emoji as markup with ids
+ * (<@id>, <@&id>, <#id>, <:name:id>), and has no names for them: a person reads as @someone, a role as @role, a channel
+ * as "a channel" (posts never carry a #), a custom emoji as :name:. A quote stops at a link, with an ellipsis.
+ */
+export function plainText(text) {
+  return String(text || '').replace(/<a?(:\w+:)\d+>/g, '$1').replace(/<@!?\d+>/g, '@someone').replace(/<@&\d+>/g, '@role')
+    .replace(/<#\d+>/g, 'a channel').replace(/\s*<?\b(?:https?:\/\/|www\.)[\s\S]*$/i, '…');
+}
+
+/** Whether a message is nothing but mentions, so it reads as "a mention" instead of a quote of placeholders. */
+export function onlyMentions(text) {
+  return /^(?:\s*<(?:@[!&]?|#)\d+>)+\s*$/.test(text || '');
+}
+
+/**
  * The core stories for one period report, in reel order. `period` is the app's resolved period
  * ({kind, label, in, from, to}). Each story is {id, section, enough, question, answer, share, guess?, value, data, card}:
  * `enough` says whether the data carries the story; stories without enough data are dropped, except Overview's,
@@ -135,7 +150,8 @@ export function buildStories(report, period) {
   });
 
   // The busiest day, against an average day you showed up.
-  const pk = report.peakDays[0], [quote = '', quoteN = 0] = pk?.topText || [];
+  const pk = report.peakDays[0], [quoteRaw = '', quoteN = 0] = pk?.topText || [];
+  const quote = onlyMentions(quoteRaw) || linkHost(quoteRaw) ? '' : plainText(quoteRaw);
   const longDay = (iso, opts) => new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', ...opts});
   const dayOpts = {day: 'numeric', month: 'long', ...(all ? {year: 'numeric'} : {})};
   const pkText = pk ? longDay(pk.date, {weekday: 'long', ...dayOpts}) : '', usual = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
@@ -146,7 +162,7 @@ export function buildStories(report, period) {
     share: pk ? `${plural(pk.count, 'Discord message')} on ${pkText}. My busiest day ${period.in}${usual > 1 ? `, about ${num(usual)}× my usual day` : ''}.` : '',
     value: pk?.count || 0,
     // A message repeated in over a fifth of the day's messages is worth quoting.
-    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times: usual, quote: quoteN > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoteN] : null},
+    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times: usual, quote: quote && quoteN > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoteN] : null},
     card: {hero: plural(pk?.count || 0, 'message'), fact: `On ${pkText}.${usual > 1 ? ` About ${num(usual)}× your usual day.` : ''}`,
       list: report.peakDays.slice(0, 5).map(p => [day(p.date, all), p.count])},
   });
@@ -237,7 +253,7 @@ export function buildStories(report, period) {
     card: {hero: quoted(clip(word, 22)), fact: `Used ${times(wordN)}.`, list: report.words.slice(0, 5)},
   });
 
-  const [said = '', saidN = 0] = report.expressions[0] || [];
+  const [saidRaw = '', saidN = 0] = report.expressions[0] || [], said = plainText(saidRaw);
   stories.push({
     id: 'say-most', section: 'words', enough: saidN >= 2,
     question: `Which message ${did('did you send', 'have you sent')} most ${period.in}?`,
@@ -245,7 +261,7 @@ export function buildStories(report, period) {
     share: `${did('I sent', "I've sent")} ${quoted(clip(said, 60))} ${times(saidN)} on Discord ${period.in}. A whole message, every time.`,
     value: saidN,
     data: {text: said},
-    card: {hero: quoted(clip(said, 22)), fact: `Sent ${times(saidN)} as a whole message.`, list: report.expressions.slice(0, 5).map(([t, n]) => [quoted(t), n])},
+    card: {hero: quoted(clip(said, 22)), fact: `Sent ${times(saidN)} as a whole message.`, list: report.expressions.slice(0, 5).map(([t, n]) => [quoted(plainText(t)), n])},
   });
 
   // Custom emoji only: the export writes them as <:name:id>; other emoji are plain text.
@@ -272,9 +288,10 @@ export function buildStories(report, period) {
   });
 
   /* ---------- Hall of fame ---------- */
-  const first = report.fame.first, firstText = first?.text || '', host = linkHost(firstText);
+  const first = report.fame.first, firstRaw = first?.text || '', host = linkHost(firstRaw), mention = onlyMentions(firstRaw);
+  const firstText = host || mention ? '' : plainText(firstRaw);
   // A message that opens with a link reads as the link's site, never as an empty quote (#21).
-  const firstSaid = !firstText ? 'an attachment' : host ? `a link to ${host}` : quoted(clip(firstText, 60));
+  const firstSaid = host ? `a link to ${host}` : mention ? 'a mention' : firstText ? quoted(clip(firstText, 60)) : 'an attachment';
   const firstDay = first ? day(first.at.slice(0, 10), all) : '';
   stories.push({
     id: 'first-message', section: 'fame', enough: !!first,
@@ -282,12 +299,12 @@ export function buildStories(report, period) {
     answer: `Started with ${firstSaid}, on ${firstDay}`,
     share: all ? `My first ever message on Discord was ${firstSaid}!` : `My first Discord message ${period.in} was ${firstSaid}.`,
     value: null,
-    data: {text: clip(firstText, 200), host, date: firstDay},
-    card: {hero: host || (firstText ? quoted(clip(firstText, 22)) : 'An attachment'), fact: `${host ? 'A link, sent' : 'Sent'} on ${firstDay}.`},
+    data: {text: clip(firstText, 200), host, lead: host ? 'A link to' : mention ? 'A mention' : firstText ? '' : 'An attachment', date: firstDay},
+    card: {hero: host || (mention ? 'A mention' : firstText ? quoted(clip(firstText, 22)) : 'An attachment'), fact: `${host ? 'A link, sent' : 'Sent'} on ${firstDay}.`},
   });
 
   // The worker skips messages with links when it picks the longest, so its text always quotes.
-  const longest = report.fame.longest?.text || '', chars = [...longest].length;
+  const longestRaw = report.fame.longest?.text || '', chars = [...longestRaw].length, longest = plainText(longestRaw);
   const lastBucket = report.lengths.findLastIndex(([, n]) => n > 0);
   stories.push({
     id: 'longest-message', section: 'fame', enough: chars > 0 && T.messages > 1,

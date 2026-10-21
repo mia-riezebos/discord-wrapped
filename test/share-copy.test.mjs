@@ -24,3 +24,9 @@ test('a message that opens with a link shares as its site, never as "…" (#21)'
 test('a message with words before a link still quotes them', () => {
   assert.deepEqual(copy('fame.first', {text: 'look at this https://youtube.com/x', date: '3 Jan 2025'}), {text: 'My first Discord message in 2025 was “look at this…”.', headline: '“look at this…”'});
 });
+
+test('a quote reads as Discord shows it: mentions as @someone, custom emoji as :name:, a message of only mentions as "a mention"', () => {
+  assert.equal(copy('fame.first', {text: '<@400140550503923713> hi'}).text, 'My first Discord message in 2025 was “@someone hi”.');
+  assert.deepEqual(copy('fame.first', {text: '<@!400140550503923713> <@&400140550503923714>'}), {text: 'My first Discord message in 2025 was a mention.', headline: 'A mention'});
+  assert.equal(copy('rank.expression', {text: 'gg <:kekw:400140550503923713> in <#400140550503923713>', n: '2', nRaw: 2, rank: '1'}).text, 'I sent “gg :kekw: in a channel” 2 times in 2025. A whole message, every time.');
+});
