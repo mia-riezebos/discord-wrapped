@@ -272,39 +272,97 @@ function topicMatchers(groups) {
   });
 }
 
-function aggregate({tz, topics}) {
-  const S = STORE, n = S.ts.length, clock = localClock(tz);
+// Bucket keys sort as strings in time order. Weeks start on Monday and are keyed by that date.
+function keyOf(unit, L) {
+  const s = new Date(L).toISOString();
+  if (unit === 'year') return s.slice(0, 4);
+  if (unit === 'month') return s.slice(0, 7);
+  if (unit === 'day') return s.slice(0, 10);
+  if (unit === 'hour') return s.slice(0, 13);
+  const d = Math.floor(L / DAY);
+  return iso(d - (new Date(d * DAY).getUTCDay() + 6) % 7);
+}
+const FINER = {year: 'month', month: 'day', week: 'day', day: 'hour'};
+// Pick the bucket size that gives the period's charts roughly 4 to 24 bars.
+const unitFor = days => days > 731 ? 'year' : days > 92 ? 'month' : days > 14 ? 'week' : 'day';
+const blankBucket = () => ({total: 0, Servers: 0, DMs: 0, 'Group DMs': 0, words: 0, chars: 0, links: 0, attachments: 0, activeDays: 0, calendarDays: 0});
+
+// Tokens depend only on the messages, and local times only on the time zone, so both survive range changes.
+function prepare(tz) {
+  const S = STORE, n = S.ts.length;
+  let C = S.cache;
+  if (!C) {
+    const tokensOf = new Array(n), lens = new Uint32Array(n);
+    for (let i = 0; i < n; i++) {
+      if (i % 20000 === 0) progress('Reading words', i, n);
+      tokensOf[i] = foldQuotes(cleanText(S.text[i]).toLowerCase()).match(WORD_RE) || [];
+      lens[i] = codePoints(S.text[i]);
+    }
+    C = S.cache = {tokensOf, lens};
+  }
+  if (C.tz !== tz) {
+    const clock = localClock(tz), local = new Float64Array(n), dayOf = new Int32Array(n);
+    let first = Infinity, last = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const L = local[i] = clock(S.ts[i]), d = dayOf[i] = Math.floor(L / DAY);
+      if (d < first) first = d; if (d > last) last = d;
+    }
+    // Views hold day-filtered messages, so they belong to one time zone.
+    Object.assign(C, {tz, clock, local, dayOf, first, last, views: new Map()});
+  }
+  return C;
+}
+
+// The period's messages, oldest first. Search and the roast read the current view; recent views are kept for stepping back.
+function setView({tz, range}) {
+  const S = STORE, C = prepare(tz), dayOf = C.dayOf;
+  const from = Math.max(C.first, range?.from ? Date.parse(range.from) / DAY : -Infinity), to = Math.min(C.last, range?.to ? Date.parse(range.to) / DAY : Infinity);
+  const views = C.views ||= new Map(), key = from + ':' + to;
+  let v = views.get(key);
+  if (v) views.delete(key);
+  else v = {from, to, unit: unitFor(to - from + 1), sel: S.order.filter(i => dayOf[i] >= from && dayOf[i] <= to)};
+  views.set(key, v);
+  if (views.size > 12) views.delete(views.keys().next().value);
+  return C.view = v;
+}
+
+function aggregate({tz, topics, range}) {
+  const S = STORE, C = prepare(tz), clock = C.clock, {local, dayOf, tokensOf, lens} = C;
   const matchers = topicMatchers(topics);
-  const local = new Float64Array(n), dayOf = new Int32Array(n);
-  const chStats = S.channels.map(() => ({count: 0, words: 0, attachments: 0, links: 0, first: Infinity, last: -Infinity, years: {}}));
-  const years = {}, months = {}, days = new Map(), hourly = Array(24).fill(0), weekdays = Array(7).fill(0), heat = Array.from({length: 7}, () => Array(24).fill(0));
-  const words = new Map(), wordYears = {}, allFreq = new Map(), expressions = new Map(), emoji = new Map(), domains = new Map(), domainYears = {};
-  const topicYears = {}, topicTotals = Object.fromEntries(matchers.map(m => [m.name, 0]));
+  const bounds = {first: iso(C.first), last: iso(C.last)};
+  const {from, to, sel} = setView({tz, range}), n = sel.length;
+  if (!n) return {tz, user: S.user, bounds, range: {from: iso(from), to: iso(to)}, empty: true, validation: S.validation};
+  const unit = C.view.unit, fineUnit = FINER[unit];
+  const chStats = S.channels.map(() => ({count: 0, words: 0, attachments: 0, links: 0, first: Infinity, last: -Infinity, periods: {}}));
+  const periods = {}, fine = {}, days = new Map(), hourly = Array(24).fill(0), weekdays = Array(7).fill(0), heat = Array.from({length: 7}, () => Array(24).fill(0));
+  // Every bucket in the period appears on the time axis, including ones without messages.
+  for (let d = from; d <= to; d++) {
+    (periods[keyOf(unit, d * DAY)] ||= blankBucket()).calendarDays++;
+    if (fineUnit === 'hour') for (let h = 0; h < 24; h++) fine[keyOf('hour', d * DAY + h * 3600000)] ||= {total: 0, Servers: 0, DMs: 0, 'Group DMs': 0};
+    else fine[keyOf(fineUnit, d * DAY)] ||= {total: 0, Servers: 0, DMs: 0, 'Group DMs': 0};
+  }
+  // The first and last buckets can be cut off by the period or by the data.
+  periods[keyOf(unit, from * DAY)].partial = keyOf(unit, (from - 1) * DAY) === keyOf(unit, from * DAY);
+  periods[keyOf(unit, to * DAY)].partial ||= keyOf(unit, (to + 1) * DAY) === keyOf(unit, to * DAY);
+  const words = new Map(), wordPeriods = {}, allFreq = new Map(), expressions = new Map(), emoji = new Map(), domains = new Map(), domainPeriods = {};
+  const topicPeriods = {}, topicTotals = Object.fromEntries(matchers.map(m => [m.name, 0]));
   const lengths = Array(9).fill(0), LEN_EDGES = [5, 10, 20, 40, 80, 160, 320, 640];
-  const tokensOf = new Array(n);
   let totalWords = 0, chars = 0, urlMessages = 0, urls = 0, attachmentMessages = 0, attachmentLinks = 0, blank = 0, questions = 0, code = 0, commands = 0, short = 0;
   let longest = -1, longestLen = 0;
-  const lens = new Uint32Array(n);
-  for (let i = 0; i < n; i++) {
-    if (i % 20000 === 0) progress('Counting', i, n);
-    const L = clock(S.ts[i]); local[i] = L;
-    const d = Math.floor(L / DAY); dayOf[i] = d;
-    const date = new Date(L), y = String(date.getUTCFullYear()), mo = y + '-' + String(date.getUTCMonth() + 1).padStart(2, '0');
+  for (let k = 0; k < n; k++) {
+    if (k % 20000 === 0) progress('Counting', k, n);
+    const i = sel[k], L = local[i], d = dayOf[i], date = new Date(L), y = keyOf(unit, L);
     const h = date.getUTCHours(), wd = (date.getUTCDay() + 6) % 7;
     const c = S.channels[S.ch[i]], cs = chStats[S.ch[i]], txt = S.text[i];
-    const Y = years[y] ||= {total: 0, Servers: 0, DMs: 0, 'Group DMs': 0, words: 0, chars: 0, links: 0, attachments: 0, activeDays: 0};
-    const M = months[mo] ||= {total: 0, Servers: 0, DMs: 0, 'Group DMs': 0};
-    Y.total++; Y[c.group]++; M.total++; M[c.group]++;
+    const Y = periods[y], F = fine[keyOf(fineUnit, L)];
+    Y.total++; Y[c.group]++; F.total++; F[c.group]++;
     inc(days, d); hourly[h]++; weekdays[wd]++; heat[wd][h]++;
-    cs.count++; cs.years[y] = (cs.years[y] || 0) + 1; if (d < cs.first) cs.first = d; if (d > cs.last) cs.last = d;
-    const clean = cleanText(txt);
-    const toks = foldQuotes(clean.toLowerCase()).match(WORD_RE) || [];
-    tokensOf[i] = toks;
-    const len = codePoints(txt); lens[i] = len;
+    cs.count++; cs.periods[y] = (cs.periods[y] || 0) + 1; if (d < cs.first) cs.first = d; if (d > cs.last) cs.last = d;
+    const toks = tokensOf[i], len = lens[i];
     totalWords += toks.length; cs.words += toks.length; Y.words += toks.length; Y.chars += len; chars += len;
     if (len > longestLen && !/https?:\/\//.test(txt)) { longestLen = len; longest = i; }
     let b = 0; while (b < LEN_EDGES.length && len > LEN_EDGES[b]) b++; if (len) lengths[b]++;
-    const wy = wordYears[y] ||= new Map();
+    const wy = wordPeriods[y] ||= new Map();
     for (const w of toks) {
       inc(allFreq, w);
       if (w.length > 2 && !STOP.has(w)) { inc(words, w); inc(wy, w); }
@@ -316,7 +374,7 @@ function aggregate({tz, topics}) {
     let hosts = 0;
     for (const u of txt.match(LINK_RE) || []) {
       const host = hostOf(u);
-      if (host) { hosts++; inc(domains, host); inc(domainYears[y] ||= new Map(), host); }
+      if (host) { hosts++; inc(domains, host); inc(domainPeriods[y] ||= new Map(), host); }
     }
     if (hosts) { urlMessages++; cs.links++; Y.links++; urls += hosts; }
     if (S.att[i]) { attachmentMessages++; cs.attachments++; Y.attachments++; attachmentLinks += S.att[i]; }
@@ -325,20 +383,14 @@ function aggregate({tz, topics}) {
     if (txt.includes('```')) code++;
     if (/^[/!][\w-]+/.test(txt)) commands++;
     if (len <= 20) short++;
-    for (const m of matchers) if (m.re && m.re.test(clean)) { topicTotals[m.name]++; (topicYears[y] ||= {})[m.name] = ((topicYears[y] ||= {})[m.name] || 0) + 1; }
+    if (matchers.some(m => m.re)) {
+      const clean = cleanText(txt);
+      for (const m of matchers) if (m.re && m.re.test(clean)) { topicTotals[m.name]++; const tp = topicPeriods[y] ||= {}; tp[m.name] = (tp[m.name] || 0) + 1; }
+    }
   }
   progress('Finding patterns', 0, 1);
   const dayList = [...days.keys()].sort((a, b) => a - b), first = dayList[0], last = dayList.at(-1);
-  // Keep months without messages on the time axis.
-  for (let cur = new Date(first * DAY); cur <= new Date(last * DAY); cur.setUTCMonth(cur.getUTCMonth() + 1, 1)) {
-    const k = cur.getUTCFullYear() + '-' + String(cur.getUTCMonth() + 1).padStart(2, '0');
-    months[k] ||= {total: 0, Servers: 0, DMs: 0, 'Group DMs': 0};
-  }
-  for (const d of dayList) years[iso(d).slice(0, 4)].activeDays++;
-  for (const y in years) {
-    const start = Math.max(first, Date.UTC(+y, 0, 1) / DAY), end = Math.min(last, Date.UTC(+y, 11, 31) / DAY);
-    years[y].calendarDays = end - start + 1;
-  }
+  for (const d of dayList) periods[keyOf(unit, d * DAY)].activeDays++;
   const streaks = [], gaps = [];
   let s0 = first, prev = first;
   for (const d of dayList.slice(1)) {
@@ -349,15 +401,14 @@ function aggregate({tz, topics}) {
   streaks.sort((a, b) => b[0] - a[0]); gaps.sort((a, b) => b[0] - a[0]);
 
   // Bursts and sessions follow chronological order.
-  const O = S.order;
-  let within60 = 0, sameChannel60 = 0, sessions = [], sStart = S.ts[O[0]], sPrev = sStart, sCount = 0, best = {count: 0};
+  let within60 = 0, sameChannel60 = 0, sessions = [], sStart = S.ts[sel[0]], sPrev = sStart, sCount = 0, best = {count: 0};
   for (let k = 0, lo = 0; k < n; k++) {
-    const i = O[k], t = S.ts[i];
-    if (k) { const j = O[k - 1]; if (t - S.ts[j] <= 60000) { within60++; if (S.ch[i] === S.ch[j]) sameChannel60++; } }
+    const i = sel[k], t = S.ts[i];
+    if (k) { const j = sel[k - 1]; if (t - S.ts[j] <= 60000) { within60++; if (S.ch[i] === S.ch[j]) sameChannel60++; } }
     if (t - sPrev > 1800000) { sessions.push([sCount, (sPrev - sStart) / 60000, sStart]); sStart = t; sCount = 0; }
     sCount++; sPrev = t;
-    while (t - S.ts[O[lo]] > 60000) lo++;
-    if (k - lo + 1 > best.count) best = {count: k - lo + 1, start: S.ts[O[lo]], channel: S.ch[i]};
+    while (t - S.ts[sel[lo]] > 60000) lo++;
+    if (k - lo + 1 > best.count) best = {count: k - lo + 1, start: S.ts[sel[lo]], channel: S.ch[i]};
   }
   sessions.push([sCount, (sPrev - sStart) / 60000, sStart]);
   const sessionSizes = sessions.map(s => s[0]).sort((a, b) => a - b);
@@ -365,7 +416,7 @@ function aggregate({tz, topics}) {
   const peakDays = top(days, 12).map(([d, count]) => ({date: iso(d), day: d, count, contexts: new Map(), texts: new Map()}));
   const peakByDay = new Map(peakDays.map(p => [p.day, p]));
   const repeated = new Map();
-  for (let i = 0; i < n; i++) {
+  for (const i of sel) {
     const p = peakByDay.get(dayOf[i]);
     if (p) { const c = S.channels[S.ch[i]]; inc(p.contexts, c.guild || c.group); inc(p.texts, S.text[i].trim().toLowerCase()); }
     const t = S.text[i].trim();
@@ -376,37 +427,38 @@ function aggregate({tz, topics}) {
   const guilds = new Map();
   S.channels.forEach((c, i) => {
     if (!c.contextKey) return;
-    const g = guilds.get(c.contextKey) || {name: c.guild, identified: !!c.guildId, current: c.current, count: 0, channels: 0, years: {}};
-    const cs = chStats[i]; g.channels++; g.count += cs.count;
-    for (const y in cs.years) g.years[y] = (g.years[y] || 0) + cs.years[y];
+    const g = guilds.get(c.contextKey) || {name: c.guild, identified: !!c.guildId, current: c.current, count: 0, channels: 0, periods: {}};
+    const cs = chStats[i]; if (cs.count) g.channels++; g.count += cs.count;
+    for (const y in cs.periods) g.periods[y] = (g.periods[y] || 0) + cs.periods[y];
     guilds.set(c.contextKey, g);
   });
   const channels = S.channels.map((c, i) => {
     const cs = chStats[i];
-    return {i, id: c.id, name: c.name, guild: c.guild, guildId: c.guildId, type: c.type, group: c.group, count: cs.count, words: cs.words, attachments: cs.attachments, links: cs.links, first: cs.count ? iso(cs.first) : '', last: cs.count ? iso(cs.last) : '', years: cs.years};
-  }).sort((a, b) => b.count - a.count);
+    return {i, id: c.id, name: c.name, guild: c.guild, guildId: c.guildId, type: c.type, group: c.group, count: cs.count, words: cs.words, attachments: cs.attachments, links: cs.links, first: cs.count ? iso(cs.first) : '', last: cs.count ? iso(cs.last) : '', periods: cs.periods};
+  }).filter(c => c.count).sort((a, b) => b.count - a.count);
 
   // Keep word frequencies for the roast candidate scorer.
-  S.cache = {tokensOf, allFreq, local, lens, totalTokens: totalWords};
+  Object.assign(C.view, {allFreq, totalTokens: totalWords});
   const msgRef = i => i < 0 ? null : messageRef(i);
   const mostRepeated = top(repeated, 1)[0];
+  const sortObj = o => Object.fromEntries(Object.entries(o).sort());
   return {
-    tz, user: S.user,
-    totals: {messages: n, words: totalWords, characters: chars, channels: S.channels.length, servers: guilds.size, first: iso(first), last: iso(last), calendarDays: last - first + 1, activeDays: dayList.length,
+    tz, user: S.user, bounds, range: {from: iso(from), to: iso(to)}, unit, fineUnit,
+    totals: {messages: n, words: totalWords, characters: chars, channels: channels.length, servers: [...guilds.values()].filter(g => g.count).length, first: iso(first), last: iso(last), calendarDays: to - from + 1, activeDays: dayList.length,
       attachmentMessages, attachmentLinks, urlMessages, urls, distinctDomains: domains.size, blankMessages: blank, questionMessages: questions, codeBlockMessages: code, commandLikeMessages: commands, shortMessages: short,
-      medianChars: median(lens), lateNight: hourly.slice(0, 6).reduce((a, b) => a + b, 0)},
+      medianChars: median(sel.map(i => lens[i])), lateNight: hourly.slice(0, 6).reduce((a, b) => a + b, 0)},
     validation: S.validation,
-    years, months: Object.fromEntries(Object.entries(months).sort()), days: dayList.map(d => [d, days.get(d)]), hourly, weekdays, heat,
+    periods: sortObj(periods), fine: sortObj(fine), days: dayList.map(d => [d, days.get(d)]), hourly, weekdays, heat,
     lengths: lengths.map((v, i) => [i === 0 ? '1–5' : i === LEN_EDGES.length ? `${LEN_EDGES.at(-1) + 1}+` : `${LEN_EDGES[i - 1] + 1}–${LEN_EDGES[i]}`, v]),
-    guilds: [...guilds.values()].sort((a, b) => b.count - a.count),
+    guilds: [...guilds.values()].filter(g => g.count).sort((a, b) => b.count - a.count),
     channels,
-    domains: top(domains, 100), domainYears: Object.fromEntries(Object.entries(domainYears).map(([y, m]) => [y, top(m, 25)])),
-    words: top(words, 150), wordYears: Object.fromEntries(Object.entries(wordYears).map(([y, m]) => [y, top(m, 40)])),
+    domains: top(domains, 100), domainPeriods: Object.fromEntries(Object.entries(domainPeriods).map(([y, m]) => [y, top(m, 25)])),
+    words: top(words, 150), wordPeriods: Object.fromEntries(Object.entries(wordPeriods).map(([y, m]) => [y, top(m, 40)])),
     expressions: top(expressions, 60), emoji: top(emoji, 30),
-    topics: topicTotals, topicYears,
+    topics: topicTotals, topicPeriods,
     streaks: streaks.slice(0, 10), gaps: gaps.slice(0, 10), peakDays,
     bursts: {within60, sameChannel60, sessions: sessions.length, medianSession: sessionSizes[sessionSizes.length >> 1], largestSessions: sessions.sort((a, b) => b[0] - a[0]).slice(0, 5).map(([c, mins, t]) => [c, Math.round(mins), toISOStringLocal(clock(t))]), bestMinute: {count: best.count, at: toISOStringLocal(clock(best.start)), channel: S.channels[best.channel]?.name}},
-    fame: {first: msgRef(S.order[0]), last: msgRef(S.order[n - 1]), longest: msgRef(longest), mostRepeated: mostRepeated ? {text: mostRepeated[0], count: mostRepeated[1]} : null},
+    fame: {first: msgRef(sel[0]), last: msgRef(sel[n - 1]), longest: msgRef(longest), mostRepeated: mostRepeated ? {text: mostRepeated[0], count: mostRepeated[1]} : null},
   };
 }
 function median(a) { const s = Array.from(a).sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; }
@@ -419,31 +471,33 @@ function messageRef(i) {
 
 /* ---------- search ---------- */
 function search({query, wholeWord, limit = 150}) {
-  const S = STORE, n = S.ts.length;
+  const S = STORE, C = S.cache, {sel, unit} = C.view, fineUnit = FINER[unit];
   const q = query.trim();
-  if (!q) return {query, total: 0, months: {}, years: {}, channels: [], results: []};
+  if (!q) return {query, total: 0, periods: {}, fine: {}, channels: [], results: []};
   // Either apostrophe in the query matches both kinds in messages.
   const body = foldQuotes(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, "['’‘]");
   const re = new RegExp(wholeWord ? `(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])` : body, 'iu');
-  const months = {}, years = {}, chans = new Map(), hits = [];
-  for (let k = 0; k < n; k++) {
-    const i = S.order[k];
+  const periods = {}, fine = {}, chans = new Map(), hits = [];
+  for (const i of sel) {
     if (!re.test(S.text[i])) continue;
     hits.push(i);
-    const L = new Date(S.cache.local[i]), y = String(L.getUTCFullYear()), m = y + '-' + String(L.getUTCMonth() + 1).padStart(2, '0');
-    months[m] = (months[m] || 0) + 1; years[y] = (years[y] || 0) + 1; inc(chans, S.ch[i]);
+    inc2(periods, keyOf(unit, C.local[i])); inc2(fine, keyOf(fineUnit, C.local[i])); inc(chans, S.ch[i]);
   }
   const step = Math.max(1, Math.floor(hits.length / limit));
   const sample = hits.length <= limit ? hits : hits.filter((_, k) => k % step === 0).slice(0, limit);
-  return {query: q, wholeWord, total: hits.length, months, years, channels: top(chans, 8).map(([c, v]) => [S.channels[c].name + (S.channels[c].guild ? ' · ' + S.channels[c].guild : ''), v]),
+  return {query: q, wholeWord, total: hits.length, periods, fine, channels: top(chans, 8).map(([c, v]) => [S.channels[c].name + (S.channels[c].guild ? ' · ' + S.channels[c].guild : ''), v]),
     first: hits.length ? messageRef(hits[0]) : null, results: sample.reverse().map(messageRef)};
 }
+const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
 /* ---------- roast candidates (no inference) ---------- */
 function candidates({seed = 1, count = 30}) {
-  const S = STORE, C = S.cache, n = S.ts.length, N = C.totalTokens;
+  const S = STORE, C = S.cache, V = C.view;
+  // A view reused from the page's cache may not have word frequencies yet.
+  if (!V.allFreq) { V.allFreq = new Map(); V.totalTokens = 0; for (const i of V.sel) for (const w of C.tokensOf[i]) { inc(V.allFreq, w); V.totalTokens++; } }
+  const N = V.totalTokens;
   const scored = [];
-  for (let i = 0; i < n; i++) {
+  for (const i of C.view.sel) {
     const len = C.lens[i];
     if (len < 30 || len > 600) continue;
     const t = S.text[i];
@@ -452,7 +506,7 @@ function candidates({seed = 1, count = 30}) {
     const toks = C.tokensOf[i];
     if (toks.length < 6) continue;
     const distinct = new Set(toks); let rare = 0, info = 0;
-    for (const w of distinct) { const f = C.allFreq.get(w) || 1; info += Math.min(14, Math.log2(N / f)); if (f <= 3 && w.length > 3) rare++; }
+    for (const w of distinct) { const f = V.allFreq.get(w) || 1; info += Math.min(14, Math.log2(N / f)); if (f <= 3 && w.length > 3) rare++; }
     const score = info / Math.sqrt(toks.length + 4) + rare * 1.5 + (/[!?]{2,}/.test(t) ? 1 : 0);
     scored.push([score, i, rare]);
   }
@@ -495,7 +549,9 @@ self.onmessage = async e => {
     else if (type === 'restore') result = await restore();
     else if (type === 'update') result = await update(payload);
     else if (type === 'forget') { STORE = null; result = await idb('readwrite', kv => kv.delete(DB_KEY)); }
+    else if (type === 'bounds') { const C = prepare(payload.tz); result = {first: iso(C.first), last: iso(C.last)}; }
     else if (type === 'aggregate') result = aggregate(payload);
+    else if (type === 'view') { setView(payload); result = true; }
     else if (type === 'search') result = search(payload);
     else if (type === 'candidates') result = candidates(payload);
     send({type: 'result', id, result});

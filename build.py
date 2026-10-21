@@ -3,7 +3,7 @@ from pathlib import Path
 root = Path(__file__).parent
 src = root / 'src'
 read = lambda name: (src / name).read_text()
-SCRIPTS = ('worker.js', 'app.js', 'share.js', 'ads-schedule.js', 'ads.js', 'advertise.js')
+SCRIPTS = ('worker.js', 'share-copy.js', 'app.js', 'share.js', 'ads-schedule.js', 'ads.js', 'advertise.js')
 assert all('</script' not in read(f).lower() for f in SCRIPTS)
 partials = {f'<!--{name.upper()}-->\n': read(f'partials/{name}.html') for name in ('header', 'footer', 'rails')}
 
@@ -19,5 +19,5 @@ def page(template, out, scripts):
     path.write_text(html)
     print(path, len(html.encode()), 'bytes')
 
-page('index.html', 'index.html', ('/*APP*/', ('app.js', 'share.js', 'ads-schedule.js', 'ads.js')))
+page('index.html', 'index.html', ('/*APP*/', ('share-copy.js', 'app.js', 'share.js', 'ads-schedule.js', 'ads.js')))
 page('advertise.html', 'advertise.html', ('/*ADVERTISE*/', ('ads-schedule.js', 'ads.js', 'advertise.js')))

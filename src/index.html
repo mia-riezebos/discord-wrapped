@@ -110,23 +110,38 @@
 <div id="report" class="hidden">
 
   <div class="wrap">
+    <div class="period" id="period" role="group" aria-label="Report period">
+      <fieldset class="seg"><legend class="sr-only">Period length</legend>
+        <label><input type="radio" name="pkind" value="week"><span>Week</span></label>
+        <label><input type="radio" name="pkind" value="month"><span>Month</span></label>
+        <label><input type="radio" name="pkind" value="year"><span>Year</span></label>
+        <label><input type="radio" name="pkind" value="all"><span>All time</span></label>
+        <label><input type="radio" name="pkind" value="custom"><span>Custom</span></label>
+      </fieldset>
+      <div class="stepper">
+        <button type="button" id="p-prev"><span aria-hidden="true">←</span> <span class="t"></span></button>
+        <strong id="p-label" aria-live="polite"></strong>
+        <button type="button" id="p-next"><span class="t"></span> <span aria-hidden="true">→</span></button>
+      </div>
+      <div class="custom" id="p-custom" hidden><label>From<input type="date" id="p-from"></label><label>To<input type="date" id="p-to"></label></div>
+    </div>
     <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
+    <section class="card empty-period hidden" id="s-empty"><h2 id="empty-title">No messages in this period</h2><p>Pick another period, or choose All time.</p></section>
 
     <section class="card" id="s-overview">
       <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
       <div class="metrics" id="counts"></div>
-      <h3>Messages per year</h3>
-      <div id="year-chart"></div>
+      <h3 id="period-chart-title">Messages per year</h3>
       <div class="legend" id="group-legend"></div>
+      <div id="year-chart"></div>
       <div class="callout" data-slot="years"></div>
-      <div class="controls"><label>Year<select id="year"></select></label></div>
-      <h3>Messages per month</h3>
+      <h3 id="fine-chart-title">Messages per month</h3>
       <div id="month-chart"></div>
       <div class="readout" id="month-readout"></div>
       <div class="callout" data-slot="month"></div>
-      <h3 id="calendar-title">Every day</h3>
+      <div id="calendar-block"><h3 id="calendar-title">Every day</h3>
       <div id="calendar"></div>
-      <div class="readout" id="calendar-readout"></div>
+      <div class="readout" id="calendar-readout"></div></div>
       <div class="callout" data-slot="calendar"></div>
     </section>
 
@@ -149,40 +164,39 @@
       <h3>Message length</h3>
       <div id="length-chart"></div>
       <div class="callout" data-slot="length"></div>
-      <h3>Words per message, by year</h3>
+      <h3 id="wpm-title">Words per message, by year</h3>
       <div id="wpm-chart"></div>
       <div class="callout" data-slot="wpm"></div>
     </section>
 
     <section class="card" id="s-people">
       <div class="sechead"><h2>People &amp; servers</h2><button class="share-btn" type="button" data-share-section="people">Share</button></div>
-      <div class="controls"><label>Period<select id="people-year"></select></label></div>
       <div class="twocol">
         <div data-private><h3>Direct messages</h3><div class="rank" id="dm-ranks"></div><p class="muted" id="dm-share"></p></div>
         <div><h3>Servers</h3><div class="rank" id="server-ranks"></div><p class="muted" id="server-note"></p></div>
       </div>
       <div class="callout" data-slot="people"></div>
       <h3>Where your messages went</h3>
-      <div id="share-chart"></div>
       <div class="legend" id="share-legend"></div>
+      <div id="share-chart"></div>
     </section>
 
     <section class="card" id="s-words">
       <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn" type="button" data-share-section="words">Share</button></div>
       <h3>Topics over time</h3>
-      <div id="topic-chart"></div>
       <div class="legend" id="topic-legend"></div>
+      <div id="topic-chart"></div>
       <p class="muted">Messages containing a topic keyword per 1,000 messages. Topics can overlap.</p>
       <details class="more"><summary>Edit topics</summary>
         <p>One topic per line: <code>Name: word, another word, prefix*</code>. Up to five topics.</p>
         <textarea aria-label="Topic keywords" id="topics-input" spellcheck="false"></textarea>
         <div class="controls"><button id="topics-apply" class="primary" type="button">Update topics</button><button id="topics-reset" type="button">Restore defaults</button></div>
       </details>
-      <h3>Your top 10 words, year by year</h3>
-      <p class="muted">Each column shows a year's top 10 words, with the most used at the top. Hover a word to trace it.</p>
+      <h3 id="bump-title">Your top 10 words, year by year</h3>
+      <p class="muted" id="bump-note">Most used at the top. Hover or focus a word to trace it.</p>
       <div id="bump-chart"></div>
       <div class="twocol">
-        <div><h3>Your words</h3><div class="controls"><label>Year<select id="words-year"></select></label></div><div class="rank" id="word-ranks"></div></div>
+        <div><h3>Your words</h3><div class="rank" id="word-ranks"></div></div>
         <div><h3>Things you say most</h3><p class="muted">Whole messages of 40 characters or fewer.</p><div class="rank" id="expr-ranks"></div></div>
       </div>
       <div class="twocol">
@@ -208,7 +222,6 @@
       <div class="controls">
         <label class="grow">Channel, person or server<input id="ch-q" type="search" autocomplete="off"></label>
         <label>Type<select id="ch-type"><option value="all">All</option><option value="DMs">DMs</option><option value="Group DMs">Group DMs</option><option value="Servers">Servers</option></select></label>
-        <label>Year<select id="ch-year"></select></label>
       </div>
       <p class="readout" id="ch-label"></p>
       <table><thead><tr><th>Channel</th><th>First and last message</th><th class="num">Messages</th></tr></thead><tbody id="ch-rows"></tbody></table>

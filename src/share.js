@@ -34,7 +34,7 @@ const PLATFORMS = [
 ];
 
 /* image card */
-async function svgImage(svg) {
+async function svgImage(svg, focus) {
   // Copy computed styles inline so CSS variables and classes survive outside the page.
   const clone = svg.cloneNode(true), from = [svg, ...svg.querySelectorAll('*')], to = [clone, ...clone.querySelectorAll('*')];
   from.forEach((el, i) => {
@@ -42,6 +42,8 @@ async function svgImage(svg) {
     for (const p of ['fill', 'stroke', 'opacity', 'stroke-width', 'font-size', 'font-weight', 'font-family']) to[i].style.setProperty(p, s.getPropertyValue(p));
   });
   clone.querySelectorAll('.hit').forEach(n => n.remove());
+  // A shared bump-chart word keeps full colour; every other word fades back.
+  if (focus) clone.querySelectorAll('.bw').forEach(g => { if (g.dataset.word !== focus) g.style.opacity = '.15'; });
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.removeAttribute('style');
   const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], {type: 'image/svg+xml'}));
@@ -71,9 +73,9 @@ async function renderCard(ctx) {
   g.textBaseline = 'alphabetic';
   g.fillStyle = css('--muted'); g.font = `600 26px ${font}`;
   g.fillText('Discord Wrapped', P, 74);
-  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
+  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg'), graphic = chartSvg || ctx.bars;
   // Headline shrinks until it fits on two lines; charts leave less room.
-  let size = chartSvg ? 76 : 120, lines;
+  let size = graphic ? 76 : 120, lines;
   do { g.font = `700 ${size}px ${font}`; lines = wrapLines(g, ctx.headline, W - 2 * P, 2); size -= 4; }
   while (lines.some(l => g.measureText(l).width > W - 2 * P) && size > 30);
   g.fillStyle = css('--fg');
@@ -85,16 +87,35 @@ async function renderCard(ctx) {
   }
   if (chartSvg) {
     try {
-      const {img, w, h} = await svgImage(chartSvg), top = y + 10, boxH = H - 80 - top, boxW = W - 2 * P;
+      const {img, w, h} = await svgImage(chartSvg, ctx.focus), top = y + 10, boxH = H - 80 - top, boxW = W - 2 * P;
       const k = Math.min(boxW / w, boxH / h);
       if (boxH > 60) g.drawImage(img, P, top, w * k, h * k);
     } catch { /* The card still works without its chart. */ }
   }
+  if (ctx.bars && !chartSvg) drawBars(g, ctx.bars, P, y + 10, W - 2 * P, H - 80 - (y + 10), font, css);
   g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
   g.fillText(SITE_HOST, P, H - 36);
   g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
   g.fillText('Package processed in your browser', W - P, H - 38);
   return new Promise(r => c.toBlob(r, 'image/png'));
+}
+
+// A ranked list as horizontal bars, the shared row in the accent colour and the rest muted.
+function drawBars(g, {items, highlight}, x, top, w, h, font, css) {
+  if (h < 60 || !items.length) return;
+  const rows = items.length, gap = 6, rh = Math.min(34, (h - gap * (rows - 1)) / rows), labelW = Math.min(360, w * .36), max = Math.max(...items.map(r => r[1]));
+  g.textBaseline = 'middle';
+  items.forEach(([name, v], i) => {
+    const y = top + i * (rh + gap), on = i === highlight;
+    g.font = `${on ? 700 : 400} ${Math.round(rh * .62)}px ${font}`; g.fillStyle = css(on ? '--fg' : '--muted'); g.textAlign = 'left';
+    let label = name; while (label.length > 3 && g.measureText(label).width > labelW - 16) label = label.slice(0, -2) + '…';
+    g.fillText(label, x, y + rh / 2);
+    g.fillStyle = css(on ? '--accent' : '--soft');
+    g.beginPath(); g.roundRect(x + labelW, y + 3, Math.max(4, (w - labelW - 120) * v / max), rh - 6, 4); g.fill();
+    g.fillStyle = css(on ? '--fg' : '--muted'); g.textAlign = 'right';
+    g.fillText(fmt(v), x + w, y + rh / 2);
+  });
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
 
 /* popover */
@@ -184,6 +205,9 @@ pop.addEventListener('click', async e => {
 });
 
 /* triggers */
+// Shares without a chart of their own borrow the main chart of the section they came from.
+const SECTION_CHART = {'s-overview': 'year-chart', 's-rhythm': 'heat-chart', 's-people': 'share-chart', 's-words': 'bump-chart', 's-search': 'search-chart'};
+const withSectionChart = (ctx, el) => ctx.chart || ctx.bars ? ctx : {...ctx, chart: SECTION_CHART[el.closest('section.card')?.id]};
 function contextFromSelection() {
   const sel = getSelection();
   if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
@@ -192,8 +216,10 @@ function contextFromSelection() {
   const range = sel.getRangeAt(0), node = range.commonAncestorContainer, el = node.nodeType === 1 ? node : node.parentElement;
   if (!el?.closest('#report') || el.closest('#share-pop, input, textarea, select, [data-private]')) return null;
   const owner = el.closest('[data-share]');
-  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `“${quoteOf(text, 200)}”, from my Discord history.`, headline: `"${quoteOf(text)}"`, sub: 'From my Discord Wrapped'};
-  return ctx && {ctx, rect: range.getBoundingClientRect()};
+  // Quoted messages share as a quote; interface text shares its section instead.
+  const section = el.closest('section.card')?.id?.replace(/^s-/, '');
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : el.closest('blockquote, .msg .text') ? share('selection', {text}) : section && sectionShare(section);
+  return ctx && {ctx: withSectionChart(ctx, el), rect: range.getBoundingClientRect()};
 }
 document.addEventListener('pointerup', e => {
   if (pop.contains(e.target)) return;
@@ -206,29 +232,31 @@ document.addEventListener('keyup', e => {
 document.addEventListener('pointerdown', e => {
   if (!pop.classList.contains('hidden') && !pop.contains(e.target)) closeShare();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.classList.contains('hidden')) closeShare(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !pop.classList.contains('hidden')) closeShare();
+  // Shareable chart labels act as buttons from the keyboard.
+  const t = e.target.closest?.('[data-share-click]');
+  if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const ctx = shareCtx.get(t.dataset.share); if (ctx) openShare(withSectionChart(ctx, t), t.getBoundingClientRect()); }
+});
 document.addEventListener('click', e => {
   const t = e.target.closest?.('[data-share-click]');
-  if (t && !getSelection()?.toString()) { const ctx = shareCtx.get(t.dataset.share); if (ctx) openShare(ctx, t.getBoundingClientRect()); return; }
+  if (t && !getSelection()?.toString()) { const ctx = shareCtx.get(t.dataset.share); if (ctx) openShare(withSectionChart(ctx, t), t.getBoundingClientRect()); return; }
   const b = e.target.closest?.('[data-share-section]');
   if (b) { const ctx = sectionShare(b.dataset.shareSection); if (ctx) openShare(ctx, b.getBoundingClientRect()); }
 });
 
 function sectionShare(id) {
-  const T = D.totals, Y = D.years, ys = Object.keys(Y).sort();
-  const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
-  const since = T.first.slice(0, 4);
-  if (id === 'overview') return {text: `I've sent ${fmt(T.messages)} messages on Discord since ${since}. ${busiest} was my loudest year!`, headline: `${fmt(T.messages)} messages`, sub: `Busiest year ${busiest}`, chart: 'year-chart'};
-  if (id === 'rhythm') return {text: `${pct(T.lateNight, T.messages)} of my Discord messages were sent between midnight and 6 am. Night owl confirmed.`, headline: 'When I sent messages', sub: `${pct(T.lateNight, T.messages)} sent between midnight and 6 am`, chart: 'heat-chart'};
-  if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers, DMs and group DMs', sub: 'Share of my messages by year', chart: 'share-chart'};
-  if (id === 'words') {
-    const y = rateYears().filter(y => D.wordYears[y]?.length).at(-1), w = D.wordYears[y]?.[0];
-    return {text: `My top 10 words on Discord, year by year.${w ? ` "${w[0]}" was my top word in ${y}.` : ''}`, headline: 'My top words, year by year', sub: w ? `${y}: "${w[0]}"` : '', chart: 'bump-chart'};
+  const T = D.totals, Y = D.periods, ks = Object.keys(Y).sort();
+  const busiest = ks.reduce((a, k) => Y[k].total > Y[a].total ? k : a, ks[0]);
+  const peakHour = D.hourly.indexOf(Math.max(...D.hourly));
+  if (id === 'overview') return share('section.overview', {messages: T.messages, loudest: bucketName(busiest, D.unit, true)}, {chart: 'year-chart'});
+  if (id === 'rhythm') return share('section.rhythm', {lateNightPct: pctOf(T.lateNight, T.messages), peakHour: String(peakHour).padStart(2, '0') + ':00'}, {chart: 'heat-chart'});
+  if (id === 'people') {
+    const sum = g => ks.reduce((a, k) => a + Y[k][g], 0);
+    return share('section.people', {dmPct: pctOf(sum('DMs') + sum('Group DMs'), T.messages), serverPct: pctOf(sum('Servers'), T.messages)}, {chart: 'share-chart'});
   }
-  if (id === 'fame') {
-    const r = D.fame.mostRepeated;
-    return r && {text: `The message I've sent most on Discord is “${quoteOf(r.text, 100)}”: ${fmt(r.count)} times!`, headline: `"${quoteOf(r.text, 60)}"`, sub: `My most repeated message · Sent ${fmt(r.count)} times`};
-  }
+  if (id === 'words') return D.words[0] && share('section.words', {topWord: D.words[0][0], topWordCount: D.words[0][1]}, {chart: 'bump-chart'});
+  if (id === 'fame') { const r = D.fame.mostRepeated; return r && share('fame.mostRepeated', {text: r.text, n: r.count}); }
   if (id === 'search') return lastSearchShare;
   return null;
 }
