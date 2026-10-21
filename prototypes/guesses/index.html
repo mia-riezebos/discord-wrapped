@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway. Issue #14 "How guesses feel to answer".
+  Three variants of the five guesses inside a 9:16 story frame, on 2025 data,
+  switched with ?variant=A|B|C and the floating bar ([ and ] keys).
+  A: Let go to answer (one-gesture commit). B: Lock it in (explicit commit + Skip). C: Game show (10 s clock).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prototype: guesses</title>
+<link rel="stylesheet" href="proto.css">
+</head>
+<body>
+<div class="dim" aria-hidden="true"></div>
+
+<main class="player" id="player" aria-label="Your 2025 reel">
+  <div class="frame" id="frame">
+    <div class="bars" id="bars" aria-hidden="true"></div>
+    <div class="chrome">
+      <span class="period" id="period">2025</span>
+      <span class="waitnote" id="waitnote" aria-hidden="true" hidden>Waiting for you</span>
+      <span class="score-chip" id="scorechip" aria-hidden="true" hidden></span>
+      <span class="spacer"></span>
+      <button type="button" class="icon" id="btn-prev" aria-label="Previous story"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button type="button" class="icon" id="btn-pause" aria-label="Pause"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="pause-path" d="M8 5v14M16 5v14"/></svg></button>
+      <button type="button" class="icon" id="btn-next" aria-label="Next story"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button type="button" class="icon" id="btn-close" aria-label="Close reel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="stage" id="stage" tabindex="-1"></div>
+    <p class="sr" id="live" aria-live="polite" aria-atomic="true"></p>
+  </div>
+</main>
+
+<nav class="switcher" aria-label="Prototype variants">
+  <button type="button" id="v-prev" aria-label="Previous variant">&lsaquo;</button>
+  <span id="v-label"></span>
+  <button type="button" id="v-next" aria-label="Next variant">&rsaquo;</button>
+  <span class="state" id="v-state"></span>
+</nav>
+
+<script src="proto.js"></script>
+</body>
+</html>
