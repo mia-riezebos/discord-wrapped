@@ -5,11 +5,10 @@
 // A copy opened from disk has no host, so it falls back to the main domain.
 const SITE = /^https?:$/.test(location.protocol) ? location.origin : 'https://discordwrapped.app';
 const SITE_HOST = new URL(SITE).host;
-// Every post ends with an invitation to the site; platforms that bury links get it as a reply instead.
+// Every post ends with an invitation to the site, as a full link so platforms link it and show its preview.
 const CTA = `Check yours on ${SITE_HOST}`;
 const withoutCta = t => t.replace(CTA, '').trim();
-const ensureLink = t => t.includes(SITE_HOST) ? t : `${t}\n\n${SITE}`;
-const REPLY_TEXT = `Check yours on ${SITE}. It runs in your browser, so your messages never leave your device.`;
+const withLink = t => (t.includes(SITE_HOST) ? t : `${t}\n\n${SITE}`).replace(CTA, `Check yours on ${SITE}`);
 const enc = encodeURIComponent;
 const shareCtx = new Map();
 let shareSeq = 0;
@@ -21,15 +20,13 @@ function shareAttr(ctx) {
 }
 const quoteOf = (t, n = 80) => { const s = t.replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
-// derank: the platform hides posts with links, so the link goes in a reply instead of the post.
 // brand: the tile behind the white mark, each at least 3:1 against it (WhatsApp uses its darker teal for that).
 const PLATFORMS = [
-  {id: 'x', name: 'X', brand: '#000', derank: true, compose: t => `https://x.com/intent/post?text=${enc(t)}`,
-    reply: (post, t) => { const id = post.match(/status(?:es)?\/(\d+)/)?.[1]; return id && `https://x.com/intent/post?in_reply_to=${id}&text=${enc(t)}`; }},
+  {id: 'x', name: 'X', brand: '#000', compose: t => `https://x.com/intent/post?text=${enc(t)}`},
   {id: 'bluesky', name: 'Bluesky', brand: '#1185fe', compose: t => `https://bsky.app/intent/compose?text=${enc(t)}`},
-  {id: 'threads', name: 'Threads', brand: '#000', derank: true, compose: t => `https://www.threads.com/intent/post?text=${enc(t)}`},
+  {id: 'threads', name: 'Threads', brand: '#000', compose: t => `https://www.threads.com/intent/post?text=${enc(t)}`},
   {id: 'mastodon', name: 'Mastodon', brand: '#6364ff', compose: (t, server) => `https://${server}/share?text=${enc(t)}`, needsServer: true},
-  {id: 'linkedin', name: 'LinkedIn', brand: '#0a66c2', derank: true, compose: t => `https://www.linkedin.com/feed/?shareActive=true&text=${enc(t)}`},
+  {id: 'linkedin', name: 'LinkedIn', brand: '#0a66c2', compose: t => `https://www.linkedin.com/feed/?shareActive=true&text=${enc(t)}`},
   {id: 'reddit', name: 'Reddit', brand: '#ff4500', linkPost: true, compose: t => `https://www.reddit.com/submit?url=${enc(SITE)}&title=${enc(t)}`},
   {id: 'whatsapp', name: 'WhatsApp', brand: '#128c7e', compose: t => `https://wa.me/?text=${enc(t)}`},
 ];
@@ -324,15 +321,12 @@ function sharePlatform(p) {
     localStorage.setItem('du-mastodon', server);
   }
   const text = postText(), copied = p.linkPost ? Promise.resolve(false) : copyImage().then(() => true, () => false);
-  // Mastodon only links addresses that start with https://.
-  const post = p.derank || p.linkPost ? withoutCta(text) : p.needsServer ? ensureLink(text).replace(CTA, `Check yours on ${SITE}`) : ensureLink(text);
+  // Reddit takes the link as the post's own URL.
+  const post = p.linkPost ? withoutCta(text) : withLink(text);
   window.open(p.compose(post, server), '_blank', 'noopener');
   copied.then(ok => {
     const image = p.linkPost ? '' : ok ? `<li>Paste the copied image into your post with ⌘V or Ctrl+V.</li>` : `<li>Couldn't copy the image. Choose "Download image" and attach it to your post.</li>`;
-    if (!p.derank) { stepOut(image ? `<ol>${image}</ol>` : ''); return; }
-    stepOut(`<ol>${image}<li>After posting, add this link in a reply:</li></ol>
-      <div class="sp-reply"><input aria-label="Reply text" readonly value="${esc(REPLY_TEXT)}"><button type="button" data-act="copy-reply">Copy reply</button></div>
-      ${p.reply ? `<div class="sp-reply"><input aria-label="Post link" class="sp-post" placeholder="Paste your post's link" inputmode="url"><button type="button" data-act="open-reply" data-platform-reply="${p.id}">Open reply</button></div>` : ''}`);
+    stepOut(image ? `<ol>${image}</ol>` : '');
   });
 }
 pop.addEventListener('click', async e => {
@@ -344,7 +338,7 @@ pop.addEventListener('click', async e => {
   const act = b.dataset.act;
   try {
     if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
-    else if (act === 'copy-text') { await navigator.clipboard.writeText(ensureLink(postText())); stepOut('<p>Text and link copied.</p>'); }
+    else if (act === 'copy-text') { await navigator.clipboard.writeText(withLink(postText())); stepOut('<p>Text and link copied.</p>'); }
     else if (act === 'zoom') {
       current.zoomed = !current.zoomed;
       b.setAttribute('aria-pressed', current.zoomed);
@@ -359,19 +353,14 @@ pop.addEventListener('click', async e => {
       pop.querySelector('.sp-post').replaceWith(area, note);
       b.remove();
       area.focus();
-    } else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }
-    else if (act === 'download') {
+    } else if (act === 'download') {
       const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(await current.card), download: `discord-wrapped-${slug()}.png`});
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } else if (act === 'native') {
       // No await before share(), so the click still counts as the user's.
-      const file = current.file, data = {text: ensureLink(postText())};
+      const file = current.file, data = {text: withLink(postText())};
       if (!file) return;
       await navigator.share(navigator.canShare?.({files: [file]}) ? {...data, files: [file]} : data);
-    } else if (act === 'open-reply') {
-      const url = PLATFORMS.find(p => p.id === b.dataset.platformReply).reply(pop.querySelector('.sp-post').value, REPLY_TEXT);
-      if (url) window.open(url, '_blank', 'noopener');
-      else stepOut(pop.querySelector('.sp-step').innerHTML.replace(/<p class="error">.*?<\/p>/, '') + '<p class="error">This link doesn’t identify an X post. Paste the full link to your post and try again.</p>');
     }
   } catch (err) {
     if (err?.name !== 'AbortError') stepOut(`<p class="error">Couldn't share from this browser. Download the image and attach it to your post.</p>`);
