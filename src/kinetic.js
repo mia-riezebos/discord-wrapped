@@ -98,7 +98,7 @@ export const KINETIC = (() => {
     const {options, answer} = s.guess;
     ranked(F, options.map(o => [o.label + (r && o.key === r.guess ? ' (your guess)' : ''), num(o.count), o.count]), options.findIndex(o => o.key === answer), at);
   }
-  const times = n => `${num(n)} ${n === 1 ? 'time' : 'times'}`;
+  const plural = (n, one, many = one + 's') => `${num(n)} ${n === 1 ? one : many}`, times = n => plural(n, 'time');
 
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
   const scenes = {
@@ -119,8 +119,8 @@ export const KINETIC = (() => {
         sweep(stage);
         const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
         odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
-        slideIn(el('p', 'k-unit', `of ${num(s.data.of)} days`, box), 1500);
-        slideIn(el('p', 'k-sub', `You showed up on ${s.data.pct}% of them.`, box), 1900);
+        slideIn(el('p', 'k-unit', `of ${plural(s.data.of, 'day')}`, box), 1500);
+        slideIn(el('p', 'k-sub', `You posted on ${s.data.pct}% of them.`, box), 1900);
         // One square per day of the period, filled where you sent something. Long periods skip it.
         const {days, from, of} = s.data;
         if (of <= 400) {
@@ -144,7 +144,7 @@ export const KINETIC = (() => {
         const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
         el('p', 'k-kicker', `Your loudest ${s.data.unit}`, box);
         letters(box, 'k-word', s.data.label, 500);
-        slideIn(el('p', 'k-sub', `${num(s.value)} ${s.value === 1 ? 'message' : 'messages'}`, box), 1300);
+        slideIn(el('p', 'k-sub', plural(s.value, 'message'), box), 1300);
         // The period's buckets as chunky columns rising one after another, the loudest in ink.
         const chart = hide(el('div', 'k-bars', null, F)), max = Math.max(1, ...s.data.buckets.map(b => b[1]));
         s.data.buckets.forEach(([, n], k) => {
@@ -181,7 +181,7 @@ export const KINETIC = (() => {
         sweep(stage);
         const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F), {owl, hourly} = s.data;
         letters(box, 'k-word', owl ? 'Night owl' : 'Early bird', 450);
-        slideIn(el('p', 'k-sub', `${num(s.value)} ${s.value === 1 ? 'message' : 'messages'} ${owl ? 'from 9 pm to 3 am' : 'from 5 to 11 am'}.`, box), 1300);
+        slideIn(el('p', 'k-sub', `${plural(s.value, 'message')} ${owl ? 'from 9 pm to 3 am' : 'from 5 to 11 am'}.`, box), 1300);
         // The day's 24 hours as columns, your window in ink.
         const hours = hide(el('div', 'k-bars k-hours', null, box)), max = Math.max(1, ...hourly), win = owl ? [21, 22, 23, 0, 1, 2] : [5, 6, 7, 8, 9, 10];
         hourly.forEach((n, h) => {
@@ -246,7 +246,7 @@ export const KINETIC = (() => {
         const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
         el('p', 'k-kicker', 'Your top server', box);
         letters(box, 'k-word', s.data.name, 450);
-        slideIn(el('p', 'k-sub', `${num(s.value)} messages, ${s.data.pct}% of what you sent in servers.`, box), 1500);
+        slideIn(el('p', 'k-sub', `${plural(s.value, 'message')}, ${s.data.pct}% of what you sent in servers.`, box), 1500);
         ranked(F, s.data.ranked.map(([name, n]) => [name, num(n), n]), 0, 1900);
       },
     },
@@ -257,7 +257,7 @@ export const KINETIC = (() => {
         const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
         el('p', 'k-kicker', 'You DMed most', box);
         letters(box, 'k-word', s.data.name, 450);
-        slideIn(el('p', 'k-sub', `${num(s.value)} messages, ${s.data.pct}% of your DMs.`, box), 1500);
+        slideIn(el('p', 'k-sub', `${plural(s.value, 'message')}, ${s.data.pct}% of your DMs.`, box), 1500);
         choices(F, s, r, 1900);
         verdict(F, s, r, c, 2500, 0.5);
       },
@@ -269,7 +269,7 @@ export const KINETIC = (() => {
         const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack k-fill', null, F);
         odometer(box, `${s.value}%`, {at: 400}).style.fontSize = fit(`${s.value}%`, 70, 0.62, 26);
         slideIn(el('p', 'k-unit', 'of your DMs', box), 1500);
-        slideIn(el('p', 'k-sub', `went to just ten people, out of ${num(s.data.conversations)} conversations.`, box), 1800);
+        slideIn(el('p', 'k-sub', `went to just ten people, out of ${plural(s.data.conversations, 'conversation')}.`, box), 1800);
         // Your ten fall in and pile up in the space left at the foot, slightly askew.
         const pile = hide(el('div', 'k-pile', null, box));
         s.data.names.forEach((name, k) => {
@@ -327,7 +327,7 @@ export const KINETIC = (() => {
         sweep(stage);
         const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
         letters(box, 'k-word', s.data.site, 450);
-        slideIn(el('p', 'k-sub', `${num(s.value)} of your ${num(s.data.of)} ${s.data.of === 1 ? 'link' : 'links'}`, box), 900 + s.data.site.length * 70);
+        slideIn(el('p', 'k-sub', `${num(s.value)} of your ${plural(s.data.of, 'link')}`, box), 900 + s.data.site.length * 70);
         ranked(F, s.data.ranked.map(([label, count]) => [label, num(count), count]), 0, 1800);
       },
     },
@@ -337,12 +337,12 @@ export const KINETIC = (() => {
       ask,
       reveal(stage, s, r, c) {
         sweep(stage);
-        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F), {text, host, date} = s.data;
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F), {text, host, lead, date} = s.data;
         slideIn(el('p', 'k-sub', date, box), 400);
-        // The message lands as a chat bubble; one that opens with a link shows the site it links to.
-        const bubble = el('p', 'k-bubble', null, box), said = host || !text ? '' : `“${text}”`;
+        // The message lands as a chat bubble; one that opens with a link shows the site it links to, one that's only mentions says so.
+        const bubble = el('p', 'k-bubble', null, box), said = lead ? '' : `“${text}”`;
         if (said) bubble.textContent = said;
-        else { el('span', null, host ? 'A link to' : 'An attachment', bubble); if (host) el('b', null, host, bubble); }
+        else { el('span', null, lead, bubble); if (host) el('b', null, host, bubble); }
         bubble.style.fontSize = `${said.length > 120 ? 5.5 : said.length > 50 ? 7 : 9.5}cqw`;
         pop(bubble, 700, 'translateY(40cqh) scale(.3)');
       },
