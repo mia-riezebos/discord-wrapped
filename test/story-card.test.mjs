@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {guessLine, scoreGuess} from '../src/guess.js';
+import {guessLine, pickSet, scoreGuess} from '../src/guess.js';
 import {markName, newRedaction, redactCard, setToggle, unmark} from '../src/redaction.js';
 import {buildStories} from '../src/stories.js';
 import {storyCard, summaryCard} from '../src/story-card.js';
 
-// The page scripts share one scope; story-card.js finds these there.
-Object.assign(globalThis, {markName, guessLine});
+// The page scripts share one scope; story-card.js and stories.js find these there.
+Object.assign(globalThis, {markName, guessLine, pickSet});
 
 const YEAR = {kind: 'year', label: '2025', in: 'in 2025', from: '2025-01-01', to: '2025-12-31'};
 const report = {
@@ -16,6 +16,7 @@ const report = {
   streaks: [[41, '2025-03-01', '2025-04-10']],
   days: [],
   range: {from: '2025-01-01', to: '2025-12-31'},
+  hourly: Array(24).fill(0), peakDays: [], bursts: {bestMinute: {count: 0}}, guilds: [], channels: [],
 };
 const stories = buildStories(report, YEAR);
 const messages = stories.find(s => s.id === 'messages');
