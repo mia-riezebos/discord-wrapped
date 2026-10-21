@@ -58,3 +58,10 @@ shared bump-chart word keeps its colour while the other words fade. The site hos
 
 Only opacity and colour transitions under 150 ms. Smooth scrolling and transitions turn off under
 `prefers-reduced-motion`.
+
+## Stories
+
+"Play" in the period bar opens a reel for a year or All time: a 9:16 frame, full screen on phones and centred over
+the dimmed report elsewhere. Reels are the one place with bold motion. The default theme, Kinetic, sets each story
+on a full-frame palette colour with heavy type; text on a colour uses its `--on-c1` to `--on-c5` token. Under
+`prefers-reduced-motion` the player turns every scene animation into a short crossfade to its end state.
