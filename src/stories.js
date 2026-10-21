@@ -4,6 +4,8 @@
 /** Sections that have stories, in report order. Ids match the report's data-share-section values. */
 export const STORY_SECTIONS = [
   {id: 'overview', name: 'Overview'},
+  {id: 'rhythm', name: 'Rhythm'},
+  {id: 'people', name: 'People & servers'},
 ];
 
 /**
@@ -65,6 +67,108 @@ export function buildStories(report, period) {
     share: len > 1 ? `My longest Discord streak ${period.in}: ${num(len)} days in a row.` : '',
     value: len,
     data: {from, to, fromText: from && day(from, all), toText: to && day(to, all)},
+  });
+
+  /* ---------- Rhythm ---------- */
+  // Hours are in the report's time zone.
+  const H = report.hourly, hours = hs => hs.reduce((a, h) => a + H[h], 0);
+  const night = hours([21, 22, 23, 0, 1, 2]), early = hours([5, 6, 7, 8, 9, 10]), owl = night >= early;
+  stories.push({
+    id: 'night-owl', section: 'rhythm', enough: night + early >= 10 && night !== early,
+    question: `Night owl or early bird ${period.in}?`,
+    answer: owl ? `Night owl, with ${plural(night, 'message')} from 9 pm to 3 am` : `Early bird, with ${plural(early, 'message')} from 5 to 11 am`,
+    share: `${did('I was', "I'm")} ${owl ? 'a night owl' : 'an early bird'} on Discord ${period.in}: ${num(night)} messages from 9 pm to 3 am, ${num(early)} from 5 to 11 am.`,
+    guess: {type: 'pick', answer: owl ? 'night' : 'early', options: [
+      {key: 'night', label: 'Night owl', sub: '9 pm to 3 am', count: night},
+      {key: 'early', label: 'Early bird', sub: '5 to 11 am', count: early},
+    ]},
+    value: owl ? night : early,
+    data: {owl, hourly: H},
+    card: {hero: owl ? 'Night owl' : 'Early bird', fact: `${num(night)} messages from 9 pm to 3 am, ${num(early)} from 5 to 11 am.`,
+      chart: {buckets: H.map((n, h) => [String(h).padStart(2, '0'), n]), top: H.indexOf(Math.max(...H))}},
+  });
+
+  // The busiest day, against an average day you showed up.
+  const pk = report.peakDays[0], [quote = '', quoted = 0] = pk?.topText || [];
+  const longDay = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', ...(all ? {year: 'numeric'} : {})});
+  const pkText = pk ? longDay(pk.date) : '', times = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
+  stories.push({
+    id: 'biggest-day', section: 'rhythm', enough: !!pk && T.activeDays > 1,
+    question: `${did('What was', "What's been")} your biggest day ${period.in}?`,
+    answer: pk ? `${pkText}, with ${plural(pk.count, 'message')}` : 'No messages yet',
+    share: pk ? `My biggest day on Discord ${period.in} was ${pkText}, with ${plural(pk.count, 'message')}.` : '',
+    value: pk?.count || 0,
+    // A message repeated in over a fifth of the day's messages is worth quoting.
+    data: {date: pk?.date, times, quote: quoted > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoted] : null},
+    card: {hero: num(pk?.count || 0), fact: `Messages on ${pkText}.${times > 1 ? ` About ${times}× your usual day.` : ''}`,
+      list: report.peakDays.slice(0, 5).map(p => [day(p.date, all), p.count])},
+  });
+
+  const fast = report.bursts.bestMinute, fastWhen = fast.at ? `${day(fast.at.slice(0, 10), all)} at ${fast.at.slice(11, 16)}` : '';
+  stories.push({
+    id: 'fastest-minute', section: 'rhythm', enough: fast.count >= 5,
+    question: `What was your fastest minute ${period.in}?`,
+    answer: `${plural(fast.count, 'message')} in one minute, on ${fastWhen}`,
+    share: `My fastest minute on Discord ${period.in}: ${plural(fast.count, 'message')} in 60 seconds.`,
+    value: fast.count,
+    data: {when: fastWhen, every: +(60 / Math.max(1, fast.count)).toFixed(1)},
+    card: {hero: num(fast.count), fact: `Messages in one minute, on ${fastWhen}.`},
+  });
+
+  /* ---------- People & servers ---------- */
+  const GROUPS = [['Servers', 'servers'], ['DMs', 'DMs'], ['Group DMs', 'group DMs']];
+  const counts = GROUPS.map(([g]) => Object.values(report.periods).reduce((a, p) => a + (p[g] || 0), 0)), sent = counts.reduce((a, n) => a + n, 0);
+  // Whole percentages that add up to 100: round down, then give the points left to the biggest remainders.
+  const exact = counts.map(n => sent ? 100 * n / sent : 0), pcts = exact.map(Math.floor);
+  exact.map((x, k) => [x - pcts[k], k]).sort((a, b) => b[0] - a[0]).slice(0, sent ? 100 - pcts.reduce((a, x) => a + x, 0) : 0).forEach(([, k]) => pcts[k]++);
+  const went = GROUPS.map(([label, word], k) => ({label, word, count: counts[k], pct: pcts[k]})).filter(g => g.count).sort((a, b) => b.count - a.count);
+  const wentText = went.map(g => `${g.pct}% to ${g.word}`).join(', ').replace(/, ([^,]*)$/, ' and $1');
+  stories.push({
+    id: 'where', section: 'people', enough: went.length > 1,
+    question: `Where ${did('did your messages go', 'have your messages gone')} ${period.in}?`,
+    answer: went.length ? wentText[0].toUpperCase() + wentText.slice(1) : 'No messages yet',
+    share: `Where my Discord messages ${did('went', 'have gone')} ${period.in}: ${wentText}.`,
+    value: went[0]?.pct || 0,
+    data: {groups: went},
+    card: {hero: `${went[0]?.pct || 0}%`, fact: `Of your messages went to ${went[0]?.word || 'servers'}.`, list: went.map(g => [g.label, g.count])},
+  });
+
+  const G = report.guilds, inServers = G.reduce((a, g) => a + g.count, 0), server = G[0] || {name: '', count: 0};
+  const serverPct = Math.round(100 * server.count / Math.max(1, inServers)), servers = G.slice(0, 5).map(g => [g.name, g.count]);
+  stories.push({
+    id: 'top-server', section: 'people', enough: G.length > 1,
+    question: `Which server ${did('did you talk in', 'have you talked in')} most ${period.in}?`,
+    answer: `${server.name}, with ${plural(server.count, 'message')}`,
+    share: `My top Discord server ${period.in}: ${server.name}, with ${plural(server.count, 'message')}.`,
+    value: server.count,
+    data: {name: server.name, pct: serverPct, ranked: servers},
+    card: {hero: server.name, fact: `${plural(server.count, 'message')}, ${serverPct}% of what you sent in servers.`, list: servers, names: servers.map(([name]) => name)},
+  });
+
+  // DM names are private: they show in the reel and on the card (where Redaction can hide them), never in the post.
+  const dms = report.channels.filter(c => c.group === 'DMs').sort((a, b) => b.count - a.count);
+  const inDms = dms.reduce((a, c) => a + c.count, 0), dm = dms[0] || {name: '', count: 0}, dmPct = Math.round(100 * dm.count / Math.max(1, inDms));
+  stories.push({
+    id: 'top-dm', section: 'people', enough: dms.length >= 3,
+    question: `Who ${did('did you DM', 'have you DMed')} most ${period.in}?`,
+    answer: `${dm.name}, with ${plural(dm.count, 'message')}`,
+    share: `${did('I sent', "I've sent")} ${plural(dm.count, 'message')} to the person I DMed most ${period.in}.`,
+    // Seeded by period, so a replay asks the same three names in the same order.
+    guess: {type: 'pick', answer: dm.id, options: pickSet(dms.map(c => ({key: c.id, label: c.name, count: c.count})), `top-dm:${period.label}`)},
+    value: dm.count,
+    data: {name: dm.name, pct: dmPct},
+    card: {hero: dm.name, fact: `${plural(dm.count, 'message')}, ${dmPct}% of your DMs.`, names: [dm.name]},
+  });
+
+  const circle = dms.slice(0, 10), circlePct = Math.round(100 * circle.reduce((a, c) => a + c.count, 0) / Math.max(1, inDms));
+  stories.push({
+    id: 'inner-circle', section: 'people', enough: dms.length > 10,
+    question: `How much of your DMing ${did('went', 'has gone')} to just ten people ${period.in}?`,
+    answer: `${circlePct}% of your DM messages, out of ${plural(dms.length, 'conversation')}`,
+    share: `${circlePct}% of my Discord DMs ${period.in} ${did('went', 'have gone')} to just ten people, out of ${plural(dms.length, 'conversation')}.`,
+    value: circlePct,
+    data: {conversations: dms.length, names: circle.map(c => c.name)},
+    card: {hero: `${circlePct}%`, fact: `Of your DM messages went to your top 10, out of ${plural(dms.length, 'conversation')}.`},
   });
 
   const order = STORY_SECTIONS.map(s => s.id);
