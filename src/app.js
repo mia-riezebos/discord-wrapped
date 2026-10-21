@@ -227,11 +227,11 @@ const reelShare = {
   onShare: (ctx, button, host) => { host.append(pop); openShare(ctx, button.getBoundingClientRect()); },
   onClose: () => { closeShare(); document.body.append(pop); },
 };
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget, ...reelShare});
+$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: reelEnding(P), opener: e.currentTarget, ...reelShare});
 // "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
 $('hero-play').onclick = $('p-play').onclick;
 document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => openReel({stories: buildStories(D, P), theme: KINETIC, section: b.dataset.reel, title: reelTitle(),
-  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b, ...reelShare}));
+  ending: reelEnding(P, b.dataset.reel), opener: b, ...reelShare}));
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
