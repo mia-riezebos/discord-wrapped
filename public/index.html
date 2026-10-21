@@ -302,14 +302,18 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .sp-reply input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
 @media (pointer: coarse) { .sp-platforms button, .sp-actions button { min-height: 40px; } }
 
-/* sponsor rails: only where there is room beside the content column */
+/* sponsor rails: only where there is room beside the content column. Each rail spans the frame, and its slots
+   stick centred in the space under the sticky bars until they meet the footer. --stack is the slots' height. */
+.frame { position: relative; }
 .rail { display: none; }
 @media (min-width: 1480px) {
-  .rail { display: flex; flex-direction: column; gap: 16px; position: fixed; top: 80px; width: 160px; z-index: 1; }
+  .rail { display: block; position: absolute; top: 0; bottom: 16px; width: 160px; z-index: 1; --top: var(--header-h, 57px); --stack: 776px; }
+  body.has-report .rail { --top: calc(var(--header-h, 57px) + var(--period-h, 0px)); }
   .rail.left { left: calc(50% - 520px - 184px); }
   .rail.right { right: calc(50% - 520px - 184px); }
+  .rail-stick { position: sticky; top: max(var(--top) + 16px, (100vh + var(--top) - var(--stack)) / 2); display: flex; flex-direction: column; gap: 16px; }
 }
-@media (max-height: 900px) { .rail .slot-square { display: none; } }
+@media (max-height: 1000px) { .rail { --stack: 600px; } .rail .slot-square { display: none; } }
 @media print { .rail { display: none !important; } }
 /* Ads sit back at half strength and come forward when you point at or tab to them. */
 .rail .slot { opacity: .5; transition: opacity 150ms ease-out; }
@@ -407,6 +411,7 @@ a.button { display: inline-block; text-decoration: none; }
     </nav>
   </div>
 </div></header>
+<div class="frame">
 <main id="landing" class="landing">
   <div class="wrap">
     <h1>Discord Wrapped</h1>
@@ -621,6 +626,9 @@ a.button { display: inline-block; text-decoration: none; }
     </section>
   </div>
 </div>
+<aside class="rail left" aria-label="Sponsors"><div class="rail-stick"><div class="slot slot-tall"></div><div class="slot slot-square"></div></div></aside>
+<aside class="rail right" aria-label="Sponsors"><div class="rail-stick"><div class="slot slot-tall"></div><div class="slot slot-square"></div></div></aside>
+</div>
 <footer class="site">
   <section class="wrap sponsor-grid" id="footer-sponsors" aria-labelledby="footer-sponsors-title"></section>
   <div class="wrap inner">
@@ -649,8 +657,6 @@ a.button { display: inline-block; text-decoration: none; }
     </nav>
   </div>
 </footer>
-<aside class="rail left" aria-label="Sponsors"><div class="slot slot-tall"></div><div class="slot slot-square"></div></aside>
-<aside class="rail right" aria-label="Sponsors"><div class="slot slot-tall"></div><div class="slot slot-square"></div></aside>
 <div class="tip" id="tip" role="presentation"></div>
 <div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
 <script type="text/plain" id="worker-src">/* Parses a Discord data package and computes aggregates. Runs in a Web Worker; never touches the network. */
@@ -1648,6 +1654,7 @@ document.addEventListener('focusin', e => {
 document.addEventListener('focusout', () => tip.classList.remove('show'));
 // The period bar sticks under the header, whose height changes as it wraps.
 new ResizeObserver(([e]) => document.documentElement.style.setProperty('--header-h', e.target.offsetHeight + 'px')).observe(document.querySelector('header.top'));
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--period-h', e.target.offsetHeight + 'px')).observe($('period'));
 document.addEventListener('pointermove', e => {
   const t = e.target.closest?.('[data-tip]');
   if (!t) { tip.classList.remove('show'); return; }
