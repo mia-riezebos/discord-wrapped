@@ -64,7 +64,7 @@ test('a DM name stays out of every post, even a right guess or the summary, but 
   assert.match(unmark(ctx.guess), /I guessed Sam/);
   const summary = summaryCard(people.filter(s => s.section === 'people'), {title: '2025', ending: ''});
   assert.doesNotMatch(summary.text, /Sam/);
-  assert.ok(summary.lines.some(l => unmark(l).startsWith('Sam')));
+  assert.ok(summary.lines.some(l => unmark(l) === 'DMed Sam most, with 900 messages'));
 });
 
 test("the summary card lists every story's answer under the period, with the score", () => {

@@ -234,13 +234,12 @@ async function playReel(opts) {
   if (opts.only) stories = stories.filter(s => s.id === opts.only);
   if (!stories.length) return console.warn(`No story ${opts.only} ${P.in}`);
   const note = !id || theme.id === id ? '' : canLoadThemes ? `The ${id} look didn't load, so this reel plays in the standard look.` : `The ${id} look plays on discordwrapped.app.`;
-  openReel({stories, theme, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, note, ...reelShare, ...opts});
+  openReel({stories, theme, title: reelTitle(), ending: reelEnding(P), note, ...reelShare, ...opts});
 }
 $('p-play').onclick = e => playReel({opener: e.currentTarget});
 // "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
 $('hero-play').onclick = $('p-play').onclick;
-document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel,
-  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b}));
+document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel, ending: reelEnding(P, b.dataset.reel), opener: b}));
 
 /* ---------- themes ---------- */
 // Years with their own theme; build.py fills this in from src/themes/. A saved copy (file://) can't load them.

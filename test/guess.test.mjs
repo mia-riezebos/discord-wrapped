@@ -49,15 +49,16 @@ test('right means within 15% for messages and 10% for days, the boundary include
 test('verdict lines say how close the guess was, never contradicting the score', () => {
   const line = (spec, a, g) => scoreGuess(spec, a, g).line;
   assert.equal(line(DAYS, 200, 200), 'Exactly right.');
-  assert.equal(line(DAYS, 200, 190), 'Spot on. Only 5% under.');
-  assert.equal(line(DAYS, 200, 220), 'Spot on. Only 10% over.');
-  assert.equal(line(MESSAGES, 10000, 10040), 'Spot on. Less than 1% over.');
-  assert.equal(line(MESSAGES, 10000, 11504), 'Close. 16% over.', '15.04% rounds to 15 but is not right, so it reads 16');
-  assert.equal(line(MESSAGES, 10000, 7000), 'Close. 30% under.');
+  assert.equal(line(DAYS, 200, 190), 'Close enough. 5% under.');
+  assert.equal(line(DAYS, 200, 220), 'Close enough. 10% over.');
+  assert.equal(line(MESSAGES, 10000, 10040), 'Close enough. Less than 1% over.');
+  assert.equal(line(MESSAGES, 10000, 11504), 'Nearly. 16% over.', '15.04% rounds to 15 but is not right, so it reads 16');
+  assert.equal(line(MESSAGES, 10000, 7000), 'Nearly. 30% under.');
   assert.equal(line(MESSAGES, 10000, 5500), 'Not quite. 45% under.');
   assert.equal(line(MESSAGES, 10000, 2500), 'Way off. It was 4.0× your guess.');
   assert.equal(line(MESSAGES, 10000, 31000), "Way off. That's 3.1× too high.");
   assert.equal(line(MESSAGES, 10000, 0), 'Way off.');
+  assert.equal(line(MESSAGES, 100, 123456), "Way off. That's 1,235× too high.", 'big ratios round to whole numbers');
 });
 
 test('a skip scores nothing and leaves no line', () => {

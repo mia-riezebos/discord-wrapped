@@ -34,18 +34,19 @@ test('questions, answers and share text carry the period numbers', () => {
   const s = byId(buildStories(report(), YEAR));
   assert.equal(s.messages.question, 'How many messages did you send in 2025?');
   assert.equal(s.messages.answer, `${n(12345)} messages`);
-  assert.equal(s.messages.share, `I sent ${n(12345)} messages on Discord in 2025.`);
+  assert.equal(s.messages.share, `I sent ${n(12345)} messages on Discord in 2025. About 34 a day.`);
   assert.equal(s.messages.value, 12345);
   assert.equal(s.messages.data.perDay, 34);
-  assert.equal(s['active-days'].answer, '200 of 365 days');
+  assert.equal(s['active-days'].answer, 'Active on 200 of 365 days');
+  assert.equal(s['active-days'].share, 'I sent a Discord message on 200 of the 365 days in 2025.');
   assert.equal(s['active-days'].data.pct, 55);
   assert.equal(s.loudest.question, 'Which month were you loudest in 2025?');
   assert.equal(s.loudest.value, 9000);
-  assert.match(s.loudest.answer, new RegExp(`, with ${n(9000)} messages$`));
+  assert.match(s.loudest.answer, new RegExp(`^Loudest in .+, with ${n(9000)} messages$`));
   assert.equal(s.loudest.data.top, 2, 'buckets are in date order, the busiest one marked');
   assert.equal(s.streak.value, 41);
   assert.match(s.streak.answer, /^41 days in a row, /);
-  assert.equal(s.streak.share, 'My longest Discord streak in 2025: 41 days in a row.');
+  assert.equal(s.streak.share, 'I sent a Discord message every day for 41 days straight in 2025.');
 });
 
 test('guess specs size the sliders from the period, not the answer', () => {
@@ -58,11 +59,12 @@ test('guess specs size the sliders from the period, not the answer', () => {
 test('all time asks in the present perfect and names years', () => {
   const s = byId(buildStories(report({unit: 'year', periods: {2019: month(10), 2020: month(500)}}), ALL));
   assert.equal(s.messages.question, 'How many messages have you sent since 2019?');
-  assert.equal(s.messages.share, `I've sent ${n(12345)} messages on Discord since 2019.`);
-  assert.equal(s['active-days'].question, 'How many days have you shown up since 2019?');
+  assert.equal(s.messages.share, `I've sent ${n(12345)} messages on Discord since 2019. About 34 a day.`);
+  assert.equal(s['active-days'].question, 'How many days have you posted since 2019?');
   assert.equal(s.loudest.question, 'Which year were you loudest?');
-  assert.equal(s.loudest.answer, '2020, with 500 messages');
-  assert.equal(s.streak.question, 'How many days in a row have you shown up?');
+  assert.equal(s.loudest.answer, 'Loudest in 2020, with 500 messages');
+  assert.equal(s.loudest.share, '2020 has been my loudest year on Discord so far, with 500 messages.');
+  assert.equal(s.streak.question, 'How many days in a row have you posted?');
 });
 
 test('a thin period still plays every Overview story, marked as not enough', () => {
@@ -77,8 +79,8 @@ test('a thin period still plays every Overview story, marked as not enough', () 
 
 test('a period without streaks or buckets does not throw', () => {
   const s = byId(buildStories(report({totals: {messages: 0, activeDays: 0, calendarDays: 365}, periods: {}, streaks: [], days: []}), YEAR));
-  assert.equal(s.streak.answer, 'No streak yet');
-  assert.equal(s.loudest.answer, 'No messages yet');
+  assert.equal(s.streak.answer, 'No messages in 2025');
+  assert.equal(s.loudest.answer, 'No messages in 2025');
   assert.equal(s.messages.enough, false);
 });
 
@@ -128,24 +130,25 @@ test('night owl or early bird is a pick-one guess between the two windows', () =
     {key: 'early', label: 'Early bird', sub: '5 to 11 am', count: 60},
   ]});
   assert.equal(s.answer, 'Night owl, with 600 messages from 9 pm to 3 am');
-  assert.equal(s.share, 'I was a night owl on Discord in 2025: 600 messages from 9 pm to 3 am, 60 from 5 to 11 am.');
+  assert.equal(s.share, 'I was a night owl on Discord in 2025. 600 messages from 9 pm to 3 am, 60 from 5 to 11 am.');
   assert.equal(s.card.hero, 'Night owl');
   assert.equal(s.card.chart.buckets.length, 24);
   assert.equal(s.card.chart.top, 0, 'the busiest hour');
   const bird = byId(buildStories(rich({hourly: hourly(1, 50)}), ALL))['night-owl'];
   assert.equal(bird.guess.answer, 'early');
   assert.equal(bird.value, 300);
-  assert.match(bird.share, /^I'm an early bird on Discord since 2019: /);
+  assert.equal(bird.share, "I've been an early bird on Discord since 2019. 300 messages from 5 to 11 am, 6 from 9 pm to 3 am.", 'the winning window leads');
 });
 
 test('biggest day, with how it compares to a usual day', () => {
   const s = byId(buildStories(rich(), YEAR))['biggest-day'];
   assert.equal(s.value, 600);
-  assert.match(s.answer, new RegExp(`, with 600 messages$`));
+  assert.match(s.answer, new RegExp(`^Busiest on .+, with 600 messages$`));
+  assert.match(s.share, /^600 Discord messages on .+\. My busiest day in 2025, about 10× my usual day\.$/);
   assert.equal(s.data.times, 10, '600 messages against 12,345 over 200 days');
   assert.deepEqual(s.data.quote, ['lol', 200]);
-  assert.equal(s.card.hero, '600');
-  assert.match(s.card.fact, /About 10× your usual day\.$/);
+  assert.equal(s.card.hero, '600 messages');
+  assert.match(s.card.fact, /^On .+\. About 10× your usual day\.$/);
   assert.deepEqual(s.card.list.map(([, n]) => n), [600, 300]);
   const plain = byId(buildStories(rich({peakDays: [{date: '2025-08-17', count: 600, contexts: [], topText: ['lol', 100]}]}), YEAR))['biggest-day'];
   assert.equal(plain.data.quote, null, 'a message is only quoted when it is over a fifth of the day');
@@ -157,7 +160,7 @@ test('fastest minute', () => {
   assert.equal(s.question, 'What was your fastest minute in 2025?');
   assert.equal(s.value, 32);
   assert.match(s.answer, /^32 messages in one minute, on .+ at 17:38$/);
-  assert.equal(s.share, 'My fastest minute on Discord in 2025: 32 messages in 60 seconds.');
+  assert.equal(s.share, '32 messages in 60 seconds. That was my Discord record in 2025.');
   assert.equal(s.data.every, 1.9);
   assert.equal(s.card.hero, '32');
 });
@@ -166,7 +169,7 @@ test('where messages went adds up to 100%', () => {
   const s = byId(buildStories(rich(), YEAR)).where;
   assert.deepEqual(s.data.groups.map(g => [g.label, g.count, g.pct]), [['Servers', 2000, 67], ['DMs', 950, 32], ['Group DMs', 50, 1]]);
   assert.equal(s.answer, '67% to servers, 32% to DMs and 1% to group DMs');
-  assert.equal(s.share, 'Where my Discord messages went in 2025: 67% to servers, 32% to DMs and 1% to group DMs.');
+  assert.equal(s.share, '67% of my Discord messages in 2025 went to servers, 32% to DMs and 1% to group DMs.');
   assert.equal(s.card.hero, '67%');
   assert.deepEqual(s.card.list, [['Servers', 2000], ['DMs', 950], ['Group DMs', 50]]);
   assert.equal(byId(buildStories(rich(), ALL)).where.question, 'Where have your messages gone since 2019?');
@@ -174,11 +177,14 @@ test('where messages went adds up to 100%', () => {
 
 test('top server names every server on its card', () => {
   const s = byId(buildStories(rich(), YEAR))['top-server'];
-  assert.equal(s.answer, `Synth club, with ${n(1500)} messages`);
-  assert.equal(s.share, `My top Discord server in 2025: Synth club, with ${n(1500)} messages.`);
+  assert.equal(s.answer, `${n(1500)} messages in Synth club`);
+  assert.equal(s.share, `${n(1500)} of my Discord messages in 2025 went to Synth club, my top server.`);
   assert.equal(s.data.pct, 75);
   assert.deepEqual(s.card.list, [['Synth club', 1500], ['Game night', 500]]);
   assert.deepEqual(s.card.names, ['Synth club', 'Game night']);
+  const long = byId(buildStories(rich({guilds: [{name: 'The extremely long server name', count: 1500}, {name: 'Game night', count: 500}]}), YEAR))['top-server'].card;
+  assert.equal(long.hero, 'The extremely long…');
+  assert.ok(long.names.includes(long.hero), 'a clipped name is still a name, so Redaction hides it');
 });
 
 test('who you DMed most guesses between your #1 and two of #2 to #10, and keeps the name out of the post', () => {
@@ -190,8 +196,8 @@ test('who you DMed most guesses between your #1 and two of #2 to #10, and keeps 
   assert.ok(s.guess.options.some(o => o.key === 'a' && o.label === 'ada' && o.count === 300));
   assert.ok(s.guess.options.every(o => o.key !== 's'), 'server channels are never a choice');
   assert.deepEqual(byId(buildStories(rich(), YEAR))['top-dm'].guess, s.guess, 'a replay asks the same choices');
-  assert.equal(s.answer, 'ada, with 300 messages');
-  assert.equal(s.share, 'I sent 300 messages to the person I DMed most in 2025.');
+  assert.equal(s.answer, 'DMed ada most, with 300 messages');
+  assert.equal(s.share, 'I sent one person 300 Discord DMs in 2025. That\'s 31% of all my DMs.');
   assert.doesNotMatch(s.share, /ada/);
   assert.equal(s.card.hero, 'ada');
   assert.deepEqual(s.card.names, ['ada']);
@@ -202,8 +208,8 @@ test('inner circle is the top ten DMs\' share of all DM messages', () => {
   const s = byId(buildStories(rich(), YEAR))['inner-circle'];
   // ada 300, bo 200 and pal0 to pal7 (50 down to 43): 872 of 955.
   assert.equal(s.value, 91);
-  assert.equal(s.answer, '91% of your DMs to your top 10, out of 12 conversations');
-  assert.equal(s.share, '91% of my Discord DMs in 2025 went to just ten people, out of 12 conversations.');
+  assert.equal(s.answer, '91% of DMs to the top 10 of 12 people');
+  assert.equal(s.share, 'I DMed 12 people on Discord in 2025, but 91% of my DMs went to just ten of them.');
   assert.equal(s.data.names.length, 10);
   assert.equal(s.card.hero, '91%');
   assert.equal(s.card.names, undefined, 'the card shows no names');
@@ -238,8 +244,8 @@ test('Words & links and Hall of fame play after Overview, in report order', () =
 test('the top word is a pick-one guess between the real #1 and two of the next nine', () => {
   const {guess, ...s} = byId(buildStories(words(), YEAR))['top-word'];
   assert.equal(s.question, 'Which word did you use most in 2025?');
-  assert.equal(s.answer, '“word1”, 100 times');
-  assert.equal(s.share, 'My top word on Discord in 2025 was “word1”. I used it 100 times.');
+  assert.equal(s.answer, 'The word “word1”, 100 times');
+  assert.equal(s.share, '“word1” was my top Discord word in 2025. I typed it 100 times.');
   assert.equal(guess.type, 'pick');
   assert.equal(guess.answer, 'word1');
   assert.equal(guess.options.length, 3);
@@ -251,29 +257,29 @@ test('the top word is a pick-one guess between the real #1 and two of the next n
 
 test('what you say most, your top custom emoji and where your links go', () => {
   const s = byId(buildStories(words(), YEAR));
-  assert.equal(s['say-most'].answer, '“lol”, 300 times');
+  assert.equal(s['say-most'].answer, 'The message “lol”, 300 times');
   assert.equal(s['say-most'].share, 'I sent “lol” 300 times on Discord in 2025. A whole message, every time.');
   assert.deepEqual(s['say-most'].card.list, [['“lol”', 300], ['“ok”', 120]]);
   assert.equal(s.emoji.question, 'Which custom emoji did you use most in 2025?');
   assert.equal(s.emoji.answer, ':blobheart:, 40 times');
   assert.deepEqual(s.emoji.card, {hero: ':blobheart:', fact: 'Used 40 times.', list: [[':blobheart:', 40], [':kekw:', 12]]});
-  assert.equal(s.links.answer, 'youtube.com, with 250 of your 400 links');
-  assert.equal(s.links.share, 'youtube.com was my most-linked site in 2025. I shared it 250 times on Discord.');
+  assert.equal(s.links.answer, 'youtube.com, with 250 of 400 links');
+  assert.equal(s.links.share, 'I shared 250 links to youtube.com on Discord in 2025. It was my most-linked site.');
   assert.deepEqual(s.links.card, {hero: 'youtube.com', fact: '250 of your 400 links.', list: [['youtube.com', 250], ['github.com', 90]]});
 });
 
 test('the Hall of fame: first message, longest message and longest session', () => {
   const s = byId(buildStories(words(), YEAR));
   assert.equal(s['first-message'].question, 'What was your first message in 2025?');
-  assert.match(s['first-message'].answer, /^“hello there”, on /);
+  assert.match(s['first-message'].answer, /^Started with “hello there”, on /);
   assert.equal(s['first-message'].share, 'My first Discord message in 2025 was “hello there”.');
   assert.equal(s['first-message'].card.hero, '“hello there”');
-  assert.equal(s['longest-message'].answer, '299 characters');
+  assert.equal(s['longest-message'].answer, '299 characters in one message');
   assert.equal(s['longest-message'].share, `299 characters in one Discord message. My longest in 2025 starts “${'a '.repeat(19).trim()}…”.`);
   assert.deepEqual(s['longest-message'].card.chart, {buckets: words().lengths, top: 2}, 'the last bucket with messages holds the longest');
-  assert.equal(s['longest-session'].answer, '480 messages over 3 hours');
-  assert.equal(s['longest-session'].share, 'I once sent 480 Discord messages over 3 hours in 2025, without a 30-minute break.');
-  assert.equal(byId(buildStories(words({bursts: {bestMinute: {count: 0}, largestSessions: [[12, 25, '2025-01-01 10:00']]}}), YEAR))['longest-session'].answer, '12 messages over 25 minutes');
+  assert.equal(s['longest-session'].answer, '480 messages over about 3 hours, no 30-minute break');
+  assert.equal(s['longest-session'].share, 'I once sent 480 Discord messages in one sitting in 2025, over about 3 hours without a 30-minute break.');
+  assert.equal(byId(buildStories(words({bursts: {bestMinute: {count: 0}, largestSessions: [[12, 25, '2025-01-01 10:00']]}}), YEAR))['longest-session'].answer, '12 messages over 25 minutes, no 30-minute break');
 });
 
 test('all time asks about your first ever message, in the present perfect', () => {
@@ -281,7 +287,8 @@ test('all time asks about your first ever message, in the present perfect', () =
   assert.equal(s['first-message'].question, 'What was your first ever message?');
   assert.equal(s['first-message'].share, 'My first ever message on Discord was “hello there”!');
   assert.equal(s['top-word'].question, 'Which word have you used most since 2019?');
-  assert.equal(s.links.question, 'Where have your links gone since 2019?');
+  assert.equal(s.links.question, 'Which site have you linked most since 2019?');
+  assert.equal(s['longest-session'].share, 'My record since 2019 is 480 Discord messages in one sitting, over about 3 hours without a 30-minute break.');
 });
 
 test('Words & links and Hall of fame stories without enough data are skipped', () => {
@@ -296,9 +303,10 @@ test('Words & links and Hall of fame stories without enough data are skipped', (
 test('a first message that opens with a link reads as the site, never as "…" (#21)', () => {
   for (const text of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://youtube.com/watch?v=x look at this', '<https://www.youtube.com/watch?v=x>', 'www.youtube.com']) {
     const s = byId(buildStories(words({fame: {first: msg(text), longest: null}}), YEAR))['first-message'];
-    assert.match(s.answer, /^A link to youtube\.com, on /, text);
+    assert.match(s.answer, /^Started with a link to youtube\.com, on /, text);
     assert.equal(s.share, 'My first Discord message in 2025 was a link to youtube.com.', text);
-    assert.equal(s.card.hero, 'A link to youtube.com', text);
+    assert.equal(s.card.hero, 'youtube.com', text);
+    assert.match(s.card.fact, /^A link, sent on /, text);
     assert.equal(s.data.host, 'youtube.com');
   }
   const later = byId(buildStories(words({fame: {first: msg('look https://youtube.com'), longest: null}}), YEAR))['first-message'];
