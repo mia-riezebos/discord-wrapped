@@ -1,6 +1,7 @@
 /* Kinetic, the default theme: heavy sentence-case type that drops, stacks, rolls and gets swept away, on full-frame
    colour fields that wipe in over the last story. Scenes are keyed by story id; a story without one plays
-   `fallback`. Styles are the k- classes in style.css. */
+   `fallback`. Styles are the k- classes in style.css. Kinetic ships inline, so a saved copy of the page plays it, and
+   every year theme falls back to it (theme.js). */
 export const KINETIC = (() => {
   const PAL = ['c1', 'c2', 'c3', 'c4', 'c5'];
   // Colour conveyor: each story asks on one palette colour and answers on the next, ignoring sections.
@@ -387,5 +388,5 @@ export const KINETIC = (() => {
   };
   // The controls take the text colour of the field on screen.
   const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' || phase === 'guess' ? askCol(i) : revCol(i)})`;
-  return {id: 'kinetic', scenes, fallback, chrome};
+  return defineTheme({id: 'kinetic', scenes, fallback, chrome});
 })();
