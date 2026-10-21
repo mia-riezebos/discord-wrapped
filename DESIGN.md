@@ -65,6 +65,10 @@ chart too. When the headline is a hidden name, the card shows the count instead.
 at 2.5× in a pannable frame, so its small text is tappable. "Edit text" turns the post into a text box; later
 redactions still black out newly hidden terms in it.
 
+Where the browser has a share sheet, "Share…" is the first action, full width, and stays in view while the popover
+scrolls; it sends the image with the post. The seven platforms follow as app-style tiles in their brand colours, each
+mark at least 3:1 on its tile, with the name underneath: one row in the popover, four columns on the phone sheet.
+
 ## Motion
 
 Only opacity and colour transitions under 150 ms. Smooth scrolling and transitions turn off under
