@@ -47,14 +47,14 @@ export function scoreGuess(spec, answer, guess) {
   const right = diff * 100 <= tol * answer, ratio = answer ? guess / answer : guess ? Infinity : 1;
   // Rounded for the line, but never shown as inside the tolerance when it isn't, or outside when it is.
   const pct = right ? Math.min(tol, Math.round(100 * diff / answer) || 0) : Math.max(tol + 1, Math.round(100 * diff / answer));
-  const dir = guess < answer ? 'under' : 'over';
+  const dir = guess < answer ? 'under' : 'over', times = x => x < 10 ? x.toFixed(1) : Math.round(x).toLocaleString();
   let line;
   if (diff === 0) line = 'Exactly right.';
-  else if (right) line = pct ? `Spot on. Only ${pct}% ${dir}.` : `Spot on. Less than 1% ${dir}.`;
-  else if (pct <= 2 * tol) line = `Close. ${pct}% ${dir}.`;
+  else if (right) line = pct ? `Close enough. ${pct}% ${dir}.` : `Close enough. Less than 1% ${dir}.`;
+  else if (pct <= 2 * tol) line = `Nearly. ${pct}% ${dir}.`;
   else if (ratio >= 0.5 && ratio <= 2) line = `Not quite. ${pct}% ${dir}.`;
   else if (!guess || !answer) line = 'Way off.';
-  else line = guess < answer ? `Way off. It was ${(1 / ratio).toFixed(1)}× your guess.` : `Way off. That's ${ratio.toFixed(1)}× too high.`;
+  else line = guess < answer ? `Way off. It was ${times(1 / ratio)}× your guess.` : `Way off. That's ${times(ratio)}× too high.`;
   return {guess, skipped: false, right, ratio, line};
 }
 

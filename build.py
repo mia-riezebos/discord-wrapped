@@ -1,12 +1,16 @@
 """Inline styles, partials and scripts into self-contained HTML pages in public/."""
-import hashlib, json
+import hashlib, json, re, shutil
 from pathlib import Path
 root = Path(__file__).parent
 src = root / 'src'
 read = lambda name: (src / name).read_text()
-SCRIPTS = ('worker.js', 'redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'player.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')
+SCRIPTS = ('worker.js', 'redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')
 assert all('</script' not in read(f).lower() for f in SCRIPTS)
 partials = {f'<!--{name.upper()}-->\n': read(f'partials/{name}.html') for name in ('header', 'footer', 'rails')}
+# Years with their own theme, the src/themes/ folders named for a year, and the files each loads, which the page saves
+# for offline use. Other folders (the example) only play in preview.
+THEME_FILES = {p.name: ['/themes/define.js'] + sorted('/' + f.relative_to(src).as_posix() for f in p.rglob('*') if f.is_file() and not f.name.startswith('.'))
+               for p in sorted((src / 'themes').iterdir()) if p.is_dir() and re.fullmatch(r'\d{4}', p.name)}
 
 def page(template, out, scripts):
     html = read(template)
@@ -15,14 +19,18 @@ def page(template, out, scripts):
     html = html.replace('/*STYLE*/', read('style.css')).replace('/*WORKER*/', read('worker.js'))
     # Each page's script is one module, so the files share one scope.
     html = html.replace(scripts[0], '\n'.join(read(f) for f in scripts[1]))
+    html = html.replace('const THEME_FILES = {};', f'const THEME_FILES = {json.dumps(THEME_FILES)};')
     path = root / 'public' / out
     path.parent.mkdir(exist_ok=True)
     path.write_text(html)
     print(path, len(html.encode()), 'bytes')
 
-page('index.html', 'index.html', ('/*APP*/', ('redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'player.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'offline.js')))
+page('index.html', 'index.html', ('/*APP*/', ('redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'offline.js')))
 page('advertise.html', 'advertise.html', ('/*ADVERTISE*/', ('ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')))
 (root / 'public' / 'manifest.webmanifest').write_text(read('manifest.webmanifest'))
+# Year themes load lazily from /themes/<id>/ and import /themes/define.js, so they ship as files, not inline.
+shutil.rmtree(root / 'public' / 'themes', ignore_errors=True)
+shutil.copytree(src / 'themes', root / 'public' / 'themes', ignore=shutil.ignore_patterns('.*'))
 
 def service_worker():
     """Write public/sw.js with the release in its cache name and the files saved on first visit.

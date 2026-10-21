@@ -46,7 +46,7 @@ async function show(info) {
   saved = info; reports.clear();
   await analyse();
   $('landing').classList.add('hidden'); $('report').classList.remove('hidden'); document.body.classList.add('has-report');
-  window.scrollTo(0, 0); renderAll(); savedNotice();
+  window.scrollTo(0, 0); renderAll(); savedNotice(); prefetchThemes();
 }
 async function open(source) {
   $('status').innerHTML = '<div>Opening package…</div>';
@@ -193,8 +193,11 @@ function periodControls() {
     }
   }
   // Reels exist for a year or All time only.
-  $('p-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
+  $('p-play').hidden = $('hero-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
   $('p-play').textContent = `Play ${reelTitle()}`;
+  // A section's reel button shows when the reel plays and the section has stories to play.
+  const sections = new Set($('p-play').hidden ? [] : buildStories(D, P).map(s => s.section));
+  document.querySelectorAll('[data-reel]').forEach(b => b.hidden = !sections.has(b.dataset.reel));
   $('p-from').min = $('p-to').min = D.bounds.first; $('p-from').max = $('p-to').max = D.bounds.last;
   // Leave a date alone while someone is typing in it.
   if (P.kind === 'custom') for (const [id, v] of [['p-from', P.from], ['p-to', P.to]]) if (document.activeElement !== $(id)) $(id).value = v;
@@ -219,8 +222,90 @@ $('period').addEventListener('change', e => {
   }
 });
 const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
-// No "Share this" until a story can share its own card (#29).
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
+// The share popover moves into the player while it's open, so it stays usable over the modal dialog.
+const reelShare = {
+  onShare: (ctx, button, host) => { host.append(pop); openShare(ctx, button.getBoundingClientRect()); },
+  onClose: () => { closeShare(); document.body.append(pop); },
+};
+// Plays the period's reel in its theme, year stories included. `only` plays one story (the theme preview).
+async function playReel(opts) {
+  const id = themeId(P), theme = await themeOf(id);
+  let stories = await themeStories(theme, buildStories(D, P), {report: D, period: P, reportOf});
+  if (opts.only) stories = stories.filter(s => s.id === opts.only);
+  if (!stories.length) return console.warn(`No story ${opts.only} ${P.in}`);
+  const note = !id || theme.id === id ? ''
+    : !canLoadThemes ? `The ${id} look plays on discordwrapped.app.`
+    : document.documentElement.classList.contains('offline') ? `The ${id} look isn't saved on this device yet, so this reel plays in the standard look.`
+    : `The ${id} look didn't load, so this reel plays in the standard look.`;
+  openReel({stories, theme, title: reelTitle(), ending: reelEnding(P), note, ...reelShare, ...opts});
+}
+$('p-play').onclick = e => playReel({opener: e.currentTarget});
+// "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
+$('hero-play').onclick = $('p-play').onclick;
+document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel, ending: reelEnding(P, b.dataset.reel), opener: b}));
+
+/* ---------- themes ---------- */
+// Years with their own theme and the files each loads; build.py fills this in from src/themes/. A saved copy (file://)
+// can't load them.
+const THEME_FILES = {};
+const THEME_YEARS = Object.keys(THEME_FILES).map(Number);
+const canLoadThemes = /^https?:$/.test(location.protocol);
+// Once a package is open, the service worker saves the themes for its years while the browser is idle, so they play
+// offline too. Safari has no requestIdleCallback, so it waits a few seconds instead.
+const IDLE_WAIT = 5000;
+function prefetchThemes() {
+  const files = themePrefetch(D.bounds, THEME_FILES, navigator.connection);
+  if (!files.length || !canLoadThemes || !('serviceWorker' in navigator)) return;
+  const idle = window.requestIdleCallback || (f => setTimeout(f, IDLE_WAIT));
+  idle(() => navigator.serviceWorker.ready.then(reg => reg.active.postMessage({save: files})), {timeout: IDLE_WAIT});
+}
+// ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
+// its year; any other (the example) on whichever year is selected. Undocumented.
+const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');
+// A year's theme applies only while that year is selected.
+function themeId(p) {
+  if (p.kind !== 'year') return null;
+  if (previewTheme && (previewTheme === p.label || !/^\d{4}$/.test(previewTheme))) return previewTheme;
+  return THEME_YEARS.includes(+p.label) ? p.label : null;
+}
+const themes = new Map();
+// Loaded once per visit. Without one, or where themes can't load, it's Kinetic.
+function themeOf(id) {
+  if (!id || !canLoadThemes) return Promise.resolve(KINETIC);
+  if (!themes.has(id)) themes.set(id, loadTheme(id, KINETIC));
+  return themes.get(id);
+}
+// While a themed year is selected, its tokens, fonts and stylesheet restyle the page; other periods remove them.
+// A saved copy of a themed page may carry the style over, so the first run clears any it finds.
+let themeStyle = null;
+document.querySelectorAll('style[data-theme]').forEach(s => s.remove());
+async function themePage() {
+  const id = themeId(P), theme = await themeOf(id);
+  if (themeId(P) !== id || (themeStyle?.dataset.theme ?? null) === (theme.id === id ? id : null)) return;
+  themeStyle?.remove(); themeStyle = null;
+  delete document.documentElement.dataset.theme;
+  if (theme.id !== id) return;
+  themeStyle = Object.assign(document.createElement('style'), {textContent: themeCss(theme)});
+  themeStyle.dataset.theme = id;
+  document.head.append(themeStyle);
+  document.documentElement.dataset.theme = id;
+  // Share cards draw on a canvas, which only uses a face once it has loaded.
+  theme.fonts.forEach(f => document.fonts.load(`${f.weight || 400} 1em "${f.family}"`).catch(console.error));
+}
+// Another period's report, for year stories that compare. The worker's view goes back to the selected period after.
+async function reportOf(p) {
+  const tz = $('tz').value, r = resolvePeriod(p, D.bounds), key = [tz, topicsText, r.from, r.to].join('|');
+  if (reports.has(key)) return reports.get(key);
+  const report = await call('aggregate', {tz, topics: parseTopics(topicsText), range: {from: r.from, to: r.to}});
+  reports.set(key, report);
+  await call('view', {tz, range: {from: P.from, to: P.to}});
+  return report;
+}
+async function startPreview() {
+  if (!previewTheme) return;
+  if (/^\d{4}$/.test(previewTheme) ? P.label !== previewTheme : P.kind !== 'year') await setPeriod({kind: 'year', anchor: /^\d{4}$/.test(previewTheme) ? `${previewTheme}-12-31` : undefined});
+  if (preview.get('story')) playReel({only: preview.get('story')});
+}
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
@@ -376,7 +461,7 @@ function findings() {
   const pk = D.peakDays[0];
   if (pk) {
     const [txt, n] = pk.topText, notable = n > pk.count * .2 && txt;
-    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day ${esc(P.in)}${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${notable ? ` You sent “${esc(txt.slice(0, 60))}” ${fmt(n)} times.` : ''}`,
+    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day ${esc(P.in)}${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${notable ? ` You sent “${esc(discordText(txt).slice(0, 60))}” ${fmt(n)} times.` : ''}`,
       share('highlight.recordDay', {date: longDate(pk.date), n: pk.count, topText: notable ? txt : '', topCount: notable ? n : 0})]);
   }
   out.push(['length', `<strong>${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before.</strong> ${pct(T.shortMessages, T.messages)} have 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
@@ -475,7 +560,7 @@ function rhythm() {
   $('day').onchange = hours;
   table('streaks', ['From', 'To', 'Days'], D.streaks.slice(0, 6).map(s => [longDate(s[1]), longDate(s[2]), fmt(s[0])]));
   table('gaps', ['After', 'Until', 'Days without messages'], D.gaps.slice(0, 6).map(g => [longDate(g[1]), longDate(g[2]), fmt(g[0])]));
-  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× “${esc(p.topText[0].slice(0, 40))}”</small>` : ''), fmt(p.count)]));
+  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× “${esc(discordText(p.topText[0]).slice(0, 40))}”</small>` : ''), fmt(p.count)]));
   const ks = rateKeys();
   $('wpm-title').textContent = `Words per message, ${per(D.unit)}`;
   const draw = () => {
@@ -509,7 +594,7 @@ function words() {
   drawBump(); draws.push(drawBump);
   $('topics-input').value = topicsText;
   ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i, markQuote)}));
-  ranks('expr-ranks', D.expressions, 12, fmt, (text, n, i) => share('rank.expression', {text, rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(t, 24))}”`)}));
+  ranks('expr-ranks', D.expressions.map(([t, n]) => [discordText(t), n]), 12, fmt, (text, n, i) => share('rank.expression', {text: D.expressions[i][0], rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(plainText(t), 24))}”`)}));
   ranks('link-ranks', D.domains, 10, fmt, (domain, n, i) => share('rank.link', {domain, rank: i + 1, n}, {bars: rankBars(D.domains, i)}));
   const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
   ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
@@ -549,7 +634,7 @@ $('topics-apply').onclick = () => retopic($('topics-input').value);
 $('topics-reset').onclick = () => retopic(DEFAULT_TOPICS);
 
 function messageCard(m, q) {
-  let text = esc(m.text || 'Attachment only');
+  let text = esc(discordText(m.text) || 'Attachment only');
   if (q) text = text.replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), x => `<mark>${x}</mark>`);
   return `<div class="msg"><div class="text">${text}</div><div class="meta" data-private>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}</div></div>`;
 }
@@ -595,13 +680,13 @@ function channels() {
 }
 function fame() {
   const F = D.fame, day = m => longDate(m.at.slice(0, 10));
-  const card = (title, m, extra = '', ctx) => m ? `<article ${shareAttr(ctx)}><h3>${title}</h3><blockquote>${esc((m.text || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
+  const card = (title, m, extra = '', ctx) => m ? `<article ${shareAttr(ctx)}><h3>${title}</h3><blockquote>${esc((discordText(m.text) || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
   const big = (title, n, what, ctx, note = '') => `<article ${shareAttr(ctx)}><h3>${title}</h3><p><strong class="big">${fmt(n)}</strong> ${what}</p>${note}</article>`;
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
   const chars = F.longest ? [...F.longest.text].length : 0, all = P.kind === 'all';
   $('fame').innerHTML = card(all ? 'Your first message' : 'First message', F.first, '', F.first && share('fame.first', {text: F.first.text || 'an attachment', date: day(F.first)}))
     + card('Latest message', F.last, '', F.last && share('fame.latest', {text: F.last.text || 'an attachment', date: day(F.last)}))
-    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${markQuote(quoteOf(t, 24))}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
+    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${markQuote(quoteOf(plainText(t), 24))}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(discordText(F.mostRepeated.text).slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
     + card('Longest message', F.longest, F.longest ? ` · ${fmt(chars)} characters` : '', F.longest && share('fame.longest', {chars, text: F.longest.text}, {chart: 'length-chart'}))
     + big('Fastest minute', bm.count, 'messages in 60 seconds', share('fame.fastestMinute', {n: bm.count}), `<small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small>`)
     + (ls ? big('Longest session', ls[0], 'messages without a 30-minute break', share('fame.longestSession', {n: ls[0], hours: Math.max(1, Math.round(ls[1] / 60))}), `<small>Started ${esc(ls[2])} · about ${fmt(Math.max(1, Math.round(ls[1] / 60)))} hours</small>`) : '')
@@ -615,7 +700,7 @@ async function roast() {
   renderRoast(roastPool.slice(0, 5));
 }
 function renderRoast(items) {
-  $('roast').innerHTML = items.map((m, i) => `<article class="quote"><h3>${esc(m.title || 'Exhibit ' + String.fromCharCode(65 + i))}</h3><blockquote>${esc(m.text)}</blockquote>${m.followup ? `<p class="roastline">${fmt(m.followup.seconds)} seconds later, you sent "${esc(m.followup.text.slice(0, 200))}".</p>` : ''}${m.caption ? `<p class="roastline">${esc(m.caption)}</p>` : ''}<small>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${m.aiScore !== undefined ? ` · AI score ${m.aiScore}/10` : ''}</small></article>`).join('') || '<p class="muted">No roast candidates in this report.</p>';
+  $('roast').innerHTML = items.map((m, i) => `<article class="quote"><h3>${esc(m.title || 'Exhibit ' + String.fromCharCode(65 + i))}</h3><blockquote>${esc(discordText(m.text))}</blockquote>${m.followup ? `<p class="roastline">${fmt(m.followup.seconds)} seconds later, you sent "${esc(discordText(m.followup.text).slice(0, 200))}".</p>` : ''}${m.caption ? `<p class="roastline">${esc(m.caption)}</p>` : ''}<small>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${m.aiScore !== undefined ? ` · AI score ${m.aiScore}/10` : ''}</small></article>`).join('') || '<p class="muted">No roast candidates in this report.</p>';
 }
 $('reroll').onclick = async () => { roastSeed++; await roast(); };
 
@@ -676,7 +761,7 @@ function dataQuality() {
 
 function renderAll() {
   draws.length = 0; shareCtx.clear();
-  periodControls();
+  periodControls(); themePage();
   const empty = !!D.empty;
   document.querySelectorAll('#report section.card').forEach(s => s.classList.toggle('hidden', empty ? s.id !== 's-empty' : s.id === 's-empty'));
   $('nav').hidden = empty;
@@ -703,4 +788,4 @@ document.querySelectorAll('section.card').forEach(s => observer.observe(s));
 startWorker();
 // Reopen the saved copy, if there is one, instead of asking for the zip again.
 $('status').innerHTML = '<div>Checking for a saved report…</div>';
-call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
+call('restore').then(info => info ? show(info).then(startPreview) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });

@@ -3,7 +3,8 @@
    elements and start Web Animations; the player times, skips and crossfades them through getAnimations() on the
    story's stage, so scenes never handle timers or input.
 
-   A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase) => CSS colour for the controls}.
+   A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase, story) => CSS colour for the controls}:
+   Kinetic, or a year theme from loadTheme (theme.js).
    A scene is {ask(stage, story, ctx), reveal(stage, story, guessResult, ctx)}; ctx is {i, total, title, reduced,
    sticker(container, node, prefer)}. guessResult is scoreGuess()'s result for a story with a guess, null without one.
    Guess inputs belong to the player too, so every theme gets the same keyboard, touch and screen-reader behaviour;
@@ -47,11 +48,12 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * Opens the player over the page and plays `stories` (from buildStories) in `theme`, from story `start`, or only
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
- * `onShare(story, button, host, guessResult)` handles "Share this", where `host` is an element inside the dialog for any
- * popover it opens and `guessResult` is the story's scored guess (skipped or not), if it has one; without onShare
- * there is no "Share this". Returns {close}.
+ * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
+ * storyCard (with the story's guess) or summaryCard, plus `snapshot()`, a frozen copy of the frame for the share image, and `host` is an element inside the dialog for any popover it
+ * opens; without onShare neither button shows. `note` is one line shown over the first story (why a year's theme
+ * isn't playing). Returns {close}.
  */
-export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
+export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose, note}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
   const ASK_HOLD = 1500;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -71,15 +73,18 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
           <button type="button" class="reel-prev" aria-label="Previous story">${icon('M15 5l-7 7 7 7')}</button>
           <button type="button" class="reel-next" aria-label="Next story">${icon('M9 5l7 7-7 7')}</button>
           <button type="button" class="reel-close" aria-label="Close reel">${icon('M6 6l12 12M18 6 6 18')}</button></div>
+        <p class="reel-note"${note ? '' : ' hidden'}></p>
       </div>
       <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
-      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
+      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div>${onShare ? '<button type="button" class="reel-share-all">Share</button>' : ''}<button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
       <p class="sr-only" aria-live="polite"></p>
     </div>`;
   const q = s => dialog.querySelector(s);
   const frame = q('.reel-frame'), stages = q('.reel-stages'), label = q('.reel-label'), after = q('.reel-after'), summary = q('.reel-summary'), live = q('[aria-live]');
   const form = q('.reel-guess'), lock = q('.reel-lock');
+  // Screen readers hear the note with the dialog's name as it opens.
+  if (note) { q('.reel-note').textContent = note; q('.reel-note').id = 'reel-note'; dialog.setAttribute('aria-describedby', 'reel-note'); }
   const bars = [...q('.reel-bars').children].map(s => s.firstChild);
   // guesses: story id => scoreGuess() result, skips included, kept for the summary and for sharing.
   const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false, guesses: {}};
@@ -91,7 +96,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime - (a.currentTime ?? 0); return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
   const setPhase = phase => {
     state.phase = phase; frame.dataset.phase = phase;
-    frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase) || '');
+    frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase, list[state.i]) || '');
     q('.reel-next').setAttribute('aria-label', phase === 'guess' ? 'Skip guess' : phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
     bars.forEach((b, k) => b.parentNode.classList.toggle('reel-waiting', phase === 'guess' && k === state.i));
   };
@@ -174,6 +179,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   async function play(i) {
     const my = ++state.token, story = list[i];
     state.i = i; state.skip = null;
+    if (my > 1) q('.reel-note').hidden = true;
     if (summary.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
     summary.hidden = true; hideAfter(); hideGuess();
     bars.forEach((b, k) => { b.getAnimations().forEach(a => a.cancel()); b.style.transform = `scaleX(${k < i ? 1 : 0})`; });
@@ -243,7 +249,9 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     summary.querySelector('h2').textContent = ending;
     // Skipped guesses come off the total, the way a skip leaves no trace anywhere else.
     const played = list.filter(s => state.guesses[s.id] && !state.guesses[s.id].skipped), right = played.filter(s => state.guesses[s.id].right).length;
-    const score = played.length ? `You got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    const got = who => played.length ? `${who} got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    const score = got('You');
+    state.share = summaryCard(list, {title, ending, score: got('I')});
     summary.querySelector('.reel-score').textContent = score;
     summary.querySelector('ol').replaceChildren(...list.map(s => Object.assign(document.createElement('li'), {textContent: s.answer})));
     summary.hidden = false;
@@ -269,7 +277,42 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
   q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
-  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog, state.guesses[list[state.i].id]);
+  // The frame as it stands, for its share image, mounted out of sight in the dialog so the share sheet can redact and
+  // measure it. A story keeps its label and current stage, every animated box held at its end state; the summary
+  // keeps its heading, score and answers, grown to show every answer.
+  const snapshot = () => {
+    const copy = frame.cloneNode(false), {width, height} = frame.getBoundingClientRect();
+    Object.assign(copy.style, {position: 'fixed', left: '-200vw', top: '0', width: width + 'px', height: height + 'px', aspectRatio: 'auto', borderRadius: '0'});
+    if (state.phase === 'summary') {
+      const s = summary.cloneNode(true);
+      s.lastElementChild.remove();
+      Object.assign(s.style, {overflow: 'visible', paddingBottom: 'calc(40px + 10cqw)'});
+      copy.append(s);
+      dialog.append(copy);
+      s.style.bottom = 'auto';
+      copy.style.height = Math.max(height, s.offsetHeight) + 'px';
+      s.style.bottom = '0';
+      return copy;
+    }
+    const live = stages.lastElementChild, stage = live.cloneNode(true);
+    const to = [stage, ...stage.querySelectorAll('*')];
+    [live, ...live.querySelectorAll('*')].forEach((n, k) => {
+      if (!n.getAnimations().length) return;
+      const s = getComputedStyle(n);
+      for (const p of ['transform', 'opacity', 'clip-path', 'translate', 'rotate', 'scale']) to[k].style.setProperty(p, s.getPropertyValue(p));
+    });
+    const chrome = document.createElement('div');
+    chrome.className = 'reel-chrome';
+    chrome.innerHTML = '<div class="reel-ctl"></div>';
+    chrome.firstChild.append(label.cloneNode(true));
+    const stagesCopy = stages.cloneNode(false);
+    stagesCopy.append(stage);
+    copy.append(stagesCopy, chrome);
+    dialog.append(copy);
+    return copy;
+  };
+  q('.reel-share').onclick = e => onShare?.({...storyCard(list[state.i], state.guesses[list[state.i].id]), snapshot}, e.currentTarget, dialog);
+  if (onShare) q('.reel-share-all').onclick = e => onShare({...state.share, snapshot}, e.currentTarget, dialog);
   q('.reel-zone-prev').onclick = prev;
   // Tapping the frame never skips an open guess; Skip, Next and → do.
   q('.reel-zone-next').onclick = () => state.phase !== 'guess' && next();

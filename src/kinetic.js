@@ -1,6 +1,7 @@
 /* Kinetic, the default theme: heavy sentence-case type that drops, stacks, rolls and gets swept away, on full-frame
    colour fields that wipe in over the last story. Scenes are keyed by story id; a story without one plays
-   `fallback`. Styles are the k- classes in style.css. */
+   `fallback`. Styles are the k- classes in style.css. Kinetic ships inline, so a saved copy of the page plays it, and
+   every year theme falls back to it (theme.js). */
 export const KINETIC = (() => {
   const PAL = ['c1', 'c2', 'c3', 'c4', 'c5'];
   // Colour conveyor: each story asks on one palette colour and answers on the next, ignoring sections.
@@ -80,19 +81,29 @@ export const KINETIC = (() => {
     c.sticker(F, tag, prefer);
     pop(tag, at);
   }
-  // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
-  function choices(F, s, r, at) {
-    const {options, answer} = s.guess, max = Math.max(1, ...options.map(o => o.count));
-    const box = el('ol', 'k-picks', null, F);
-    options.forEach((o, k) => {
-      const row = el('li', o.key === answer ? 'on' : null, null, box);
-      el('span', null, o.label + (r && o.key === r.guess ? ' (your guess)' : ''), row);
-      el('b', null, num(o.count), row);
+  // Ranked rows of [label, shown value, count] at the foot of the field, each over a bar of its count, row `on` in full ink.
+  // Row `mine` is marked as your guess; its label clips first, so the mark always shows.
+  function ranked(F, rows, on, at, mine = -1) {
+    const max = Math.max(1, ...rows.map(r => r[2])), box = el('ol', 'k-picks', null, F);
+    rows.forEach(([label, value, n], k) => {
+      const row = el('li', k === on ? 'on' : null, null, box);
+      if (k === mine) {
+        const cell = el('span', 'k-mine', null, row);
+        el('span', null, label, cell);
+        el('em', null, ' (your guess)', cell);
+      } else el('span', null, label, row);
+      el('b', null, value, row);
       const bar = hide(el('i', null, null, row));
-      bar.style.width = `${Math.max(2, 100 * o.count / max)}%`;
+      bar.style.width = `${Math.max(2, 100 * n / max)}%`;
       bar.animate([{transform: 'scaleX(0)'}, {transform: 'none'}], {duration: 520, delay: at + k * 120, easing: ease.out, fill: 'both'});
     });
   }
+  // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
+  function choices(F, s, r, at) {
+    const {options, answer} = s.guess;
+    ranked(F, options.map(o => [o.label, num(o.count), o.count]), options.findIndex(o => o.key === answer), at, r ? options.findIndex(o => o.key === r.guess) : -1);
+  }
+  const plural = (n, one, many = one + 's') => `${num(n)} ${n === 1 ? one : many}`, times = n => plural(n, 'time');
 
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
   const scenes = {
@@ -113,8 +124,8 @@ export const KINETIC = (() => {
         sweep(stage);
         const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
         odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
-        slideIn(el('p', 'k-unit', `of ${num(s.data.of)} days`, box), 1500);
-        slideIn(el('p', 'k-sub', `You showed up on ${s.data.pct}% of them.`, box), 1900);
+        slideIn(el('p', 'k-unit', `of ${plural(s.data.of, 'day')}`, box), 1500);
+        slideIn(el('p', 'k-sub', `You posted on ${s.data.pct}% of them.`, box), 1900);
         // One square per day of the period, filled where you sent something. Long periods skip it.
         const {days, from, of} = s.data;
         if (of <= 400) {
@@ -138,7 +149,7 @@ export const KINETIC = (() => {
         const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
         el('p', 'k-kicker', `Your loudest ${s.data.unit}`, box);
         letters(box, 'k-word', s.data.label, 500);
-        slideIn(el('p', 'k-sub', `${num(s.value)} ${s.value === 1 ? 'message' : 'messages'}`, box), 1300);
+        slideIn(el('p', 'k-sub', plural(s.value, 'message'), box), 1300);
         // The period's buckets as chunky columns rising one after another, the loudest in ink.
         const chart = hide(el('div', 'k-bars', null, F)), max = Math.max(1, ...s.data.buckets.map(b => b[1]));
         s.data.buckets.forEach(([, n], k) => {
@@ -167,6 +178,206 @@ export const KINETIC = (() => {
         }
       },
     },
+
+    /* ---------- Rhythm ---------- */
+    'night-owl': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F), {owl, hourly} = s.data;
+        letters(box, 'k-word', owl ? 'Night owl' : 'Early bird', 450);
+        slideIn(el('p', 'k-sub', `${plural(s.value, 'message')} ${owl ? 'from 9 pm to 3 am' : 'from 5 to 11 am'}.`, box), 1300);
+        // The day's 24 hours as columns, your window in ink.
+        const hours = hide(el('div', 'k-bars k-hours', null, box)), max = Math.max(1, ...hourly), win = owl ? [21, 22, 23, 0, 1, 2] : [5, 6, 7, 8, 9, 10];
+        hourly.forEach((n, h) => {
+          const b = el('i', win.includes(h) ? 'on' : null, null, hours);
+          b.style.height = `${Math.max(3, 100 * n / max)}%`;
+          b.animate([{transform: 'scaleY(0)'}, {transform: 'none'}], {duration: 420, delay: 1500 + h * 30, easing: ease.snap, fill: 'both'});
+        });
+        choices(F, s, r, 2100);
+        verdict(F, s, r, c, 2600, 0.55);
+      },
+    },
+    'biggest-day': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        // The weekday and the date spin in from opposite sides.
+        const date = el('p', 'k-date', null, box), {parts} = s.data;
+        date.setAttribute('aria-label', parts.join(' '));
+        date.style.fontSize = fit(parts.reduce((a, p) => p.length > a.length ? p : a), 86, 0.6, 18);
+        parts.forEach((t, k) => pop(hide(el('span', null, t, date)), 400 + k * 220, `translateX(${k ? '' : '-'}110cqw) rotate(${k ? 14 : -14}deg)`));
+        odometer(box, num(s.value), {at: 1100, dur: 1300}).style.fontSize = fit(num(s.value), 86, 0.62, 26);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'message' : 'messages', box), 2300);
+        if (s.data.times > 1) slideIn(el('p', 'k-sub', `About ${s.data.times}× your usual day.`, box), 2600);
+        if (s.data.quote) {
+          const [text, n] = s.data.quote, tag = el('p', 'k-sticker', `${num(n)}× “${text}”`, F);
+          c.sticker(F, tag, 0.8);
+          pop(tag, 3100);
+        }
+      },
+    },
+    'fastest-minute': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack k-center', null, F), n = Math.min(s.value, 60);
+        // One pill per message (up to 60) fires in over the time the number rolls.
+        const burst = hide(el('div', 'k-burst', null, F));
+        for (let k = 0; k < n; k++) pop(el('i', null, null, burst), 300 + k * 1100 / n, 'scale(0)');
+        odometer(box, num(s.value), {at: 300, dur: 1300}).style.fontSize = fit(num(s.value), 70, 0.62, 44);
+        slideIn(el('p', 'k-unit', 'messages in one minute', box), 1700);
+        slideIn(el('p', 'k-sub', `${s.data.when}. ${s.data.every === 1 ? 'One a second' : `One every ${s.data.every} seconds`}.`, box), 2000);
+      },
+    },
+
+    /* ---------- People & servers ---------- */
+    where: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F), [top] = s.data.groups;
+        el('p', 'k-kicker', 'Of your messages', box);
+        odometer(box, `${top.pct}%`, {at: 400}).style.fontSize = fit(`${top.pct}%`, 70, 0.62, 40);
+        slideIn(el('p', 'k-unit', `went to ${top.word}`, box), 1500);
+        ranked(F, s.data.groups.map(g => [g.label, g.pct ? `${g.pct}%` : 'Under 1%', g.count]), 0, 1900);
+      },
+    },
+    'top-server': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
+        el('p', 'k-kicker', 'Your top server', box);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-sub', `${plural(s.value, 'message')}, ${s.data.pct}% of what you sent in servers.`, box), 1500);
+        ranked(F, s.data.ranked.map(([name, n]) => [name, num(n), n]), 0, 1900);
+      },
+    },
+    'top-dm': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
+        el('p', 'k-kicker', 'You DMed most', box);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-sub', `${plural(s.value, 'message')}, ${s.data.pct}% of your DMs.`, box), 1500);
+        choices(F, s, r, 1900);
+        verdict(F, s, r, c, 2500, 0.5);
+      },
+    },
+    'inner-circle': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack k-fill', null, F);
+        odometer(box, `${s.value}%`, {at: 400}).style.fontSize = fit(`${s.value}%`, 70, 0.62, 26);
+        slideIn(el('p', 'k-unit', 'of your DMs', box), 1500);
+        slideIn(el('p', 'k-sub', `went to just ten people, out of ${plural(s.data.conversations, 'conversation')}.`, box), 1800);
+        // Your ten fall in and pile up in the space left at the foot, slightly askew.
+        const pile = hide(el('div', 'k-pile', null, box));
+        s.data.names.forEach((name, k) => {
+          const chip = el('span', null, name, pile);
+          chip.style.rotate = `${[-6, 4, -3, 7, -5, 3, -7, 5, -2, 6][k]}deg`;
+          chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 2100 + k * 100, easing: ease.in, fill: 'both'});
+        });
+      },
+    },
+    /* ---------- Words & links ---------- */
+    'top-word': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.word, 500);
+        slideIn(el('p', 'k-unit', times(s.value), box), 900 + s.data.word.length * 70);
+        choices(F, s, r, 1700);
+        verdict(F, s, r, c, 2400, 0.5);
+      },
+    },
+    'say-most': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F), said = `“${s.data.text}”`;
+        const q = el('p', 'k-say', said, box);
+        q.style.fontSize = fit(said, 86, 0.55, 22);
+        pop(q, 450, 'scale(2.4) rotate(-8deg)');
+        slideIn(el('p', 'k-unit', times(s.value), box), 1100);
+        // The same message again and again below, one copy per send (up to 60), stamping down in quick succession.
+        const echo = hide(el('div', 'k-echo', null, F)), n = Math.min(60, s.value);
+        for (let k = 0; k < n; k++) pop(el('span', null, said, echo), 1500 + k * 45, `scale(1.8) rotate(${k % 2 ? 6 : -6}deg)`);
+      },
+    },
+    emoji: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-unit', times(s.value), box), 900 + s.data.name.length * 70);
+        // The runners-up fall and pile up at the bottom, slightly askew.
+        const pile = hide(el('div', 'k-pile', null, F));
+        s.data.ranked.forEach((name, k) => {
+          const chip = el('span', null, name, pile);
+          chip.style.rotate = [-7, 5, -3, 8, -5, 3][k] + 'deg';
+          chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 1800 + k * 110, easing: ease.in, fill: 'both'});
+        });
+      },
+    },
+    links: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.site, 450);
+        slideIn(el('p', 'k-sub', `${num(s.value)} of your ${plural(s.data.of, 'link')}`, box), 900 + s.data.site.length * 70);
+        ranked(F, s.data.ranked.map(([label, count]) => [label, num(count), count]), 0, 1800);
+      },
+    },
+
+    /* ---------- Hall of fame ---------- */
+    'first-message': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F), {text, host, lead, date} = s.data;
+        slideIn(el('p', 'k-sub', date, box), 400);
+        // The message lands as a chat bubble; one that opens with a link shows the site it links to, one that's only mentions says so.
+        const bubble = el('p', 'k-bubble', null, box), said = lead ? '' : `“${text}”`;
+        if (said) bubble.textContent = said;
+        else { el('span', null, lead, bubble); if (host) el('b', null, host, bubble); }
+        bubble.style.fontSize = `${said.length > 120 ? 5.5 : said.length > 50 ? 7 : 9.5}cqw`;
+        pop(bubble, 700, 'translateY(40cqh) scale(.3)');
+      },
+    },
+    'longest-message': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack k-fill', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'character' : 'characters', box), 1500);
+        // The message itself rolls up underneath, ending on its last line.
+        const roll = el('p', 'k-scroll', s.data.text, el('div', 'k-ticker-box', null, box));
+        roll.animate([{transform: 'translateY(100%)'}, {transform: 'none'}], {duration: 3000, delay: 1700, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
+      },
+    },
+    'longest-session': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', 'messages', box), 1500);
+        slideIn(el('p', 'k-sub', `Over ${s.data.lasted}, never 30 minutes apart.`, box), 1900);
+        // One dot per message (up to 270), filling in like a feed scrolling by.
+        const dots = hide(el('div', 'k-days', null, F));
+        for (let k = 0; k < Math.min(270, s.value); k++) el('i', 'on', null, dots);
+        dots.animate([{clipPath: 'inset(0 0 100% 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 1400, delay: 2200, easing: ease.out, fill: 'both'});
+      },
+    },
   };
   // Any story without its own scene: the question, then the answer set large.
   const fallback = {
@@ -182,5 +393,5 @@ export const KINETIC = (() => {
   };
   // The controls take the text colour of the field on screen.
   const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' || phase === 'guess' ? askCol(i) : revCol(i)})`;
-  return {id: 'kinetic', scenes, fallback, chrome};
+  return defineTheme({id: 'kinetic', scenes, fallback, chrome});
 })();

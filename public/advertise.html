@@ -24,10 +24,11 @@
   color-scheme: light dark;
   --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
   --accent: #4f5bd5; --accent-fg: #ffffff;
-  --c1: #4f5bd5; --c2: #d6409f; --c3: #1f9d63; --c4: #d48a00; --c5: #0e8fc7;
+  --c1: #4f5bd5; --c2: #c2338f; --c3: #1f9d63; --c4: #c07d00; --c5: #0e8fc7;
   /* Text on each palette colour field, at least 4.5:1. */
-  --on-c1: #ffffff; --on-c2: #000000; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
+  --on-c1: #ffffff; --on-c2: #ffffff; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
   --radius: 10px; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* A year theme may also set --display, one face for headings and big numbers; body text stays in --font. */
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #111216; --surface: #191a20; --fg: #ecedf1; --muted: #9a9daa; --border: #2c2e37; --soft: #22242c;
@@ -41,6 +42,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 64px; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
 a { color: inherit; text-underline-offset: 3px; }
 h1, h2, h3 { font-weight: 600; line-height: 1.2; }
+h1, h2, .metric strong, .fame .big { font-family: var(--display, var(--font)); }
 h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; letter-spacing: -0.02em; }
 h2 { font-size: 22px; margin: 0 0 6px; }
 h3 { font-size: 16px; margin: 28px 0 10px; }
@@ -265,7 +267,13 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 /* sharing */
 .sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .share-btn { padding: 5px 12px; font-size: 13px; border-radius: 99px; }
+.reel-btn { margin-left: auto; }
 .share-tip { font-size: 13px; }
+.sechead h2 { margin-right: auto; }
+.sechead .reel-btn { margin-right: -4px; }
+.reel-btn::before, .play-cta::before { content: ""; display: inline-block; width: .62em; height: .72em; margin-right: .45em; background: currentColor; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.play-cta { display: inline-flex; align-items: center; margin: 6px 0 14px; padding: 13px 26px; border-radius: 99px; font-size: 17px; font-weight: 650; }
+@media (max-width: 520px) { .play-cta { display: flex; justify-content: center; width: 100%; } }
 [data-share] { cursor: text; }
 [data-share-click] { cursor: pointer; }
 .sharepop { position: fixed; z-index: 30; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 14px; }
@@ -303,13 +311,25 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .sp-shape { margin-top: 8px; }
 .sp-label { display: flex; align-items: center; margin: 12px 0 0; font-size: 13px; color: var(--muted); }
 .sp-text { margin-top: 4px; min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
-.sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.sp-platforms button, .sp-actions button { padding: 6px 10px; font-size: 13px; }
+/* The system share sheet leads and stays in view while the sheet scrolls; the platforms follow as app-style tiles,
+   in one row on the popover and a grid on the phone sheet, where seven labels would run together. */
+.sp-native { position: sticky; bottom: -14px; margin: 6px -14px 0; padding: 6px 14px 14px; background: var(--surface); }
+.sp-native button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; font-size: 15px; font-weight: 600; }
+.sp-native svg { width: 18px; height: 18px; }
+.sp-native button[aria-disabled=true] { opacity: .6; cursor: progress; filter: none; }
+.sp-native + .sp-platforms { margin-top: 0; }
+.sp-platforms { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 0; margin-top: 12px; }
+.sp-platforms button { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 44px; padding: 4px 0; border: 0; border-radius: 10px; background: none; font-size: 12px; line-height: 1.2; }
+.sp-platforms button:hover { background: var(--soft); }
+.sharepop.sheet .sp-platforms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 4px; }
+.sp-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; color: #fff; }
+.sp-icon svg { width: 20px; height: 20px; fill: currentColor; }
+@media (prefers-color-scheme: dark) { .sp-icon { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); } }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.sp-actions button { padding: 6px 10px; font-size: 13px; }
 .sp-step ol { margin: 10px 0 6px; padding-left: 18px; color: var(--muted); }
 .sp-step p { margin: 8px 0 0; }
-.sp-reply { display: flex; gap: 6px; margin-top: 6px; }
-.sp-reply input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
-@media (pointer: coarse) { .sp-platforms button, .sp-actions button { min-height: 40px; } }
+@media (pointer: coarse) { .sp-actions button { min-height: 40px; } .sp-native button { min-height: 48px; } }
 
 /* sponsor rails: only where there is room beside the content column. Each rail spans the frame, and its slots
    stick centred in the space under the sticky bars until they meet the footer. --stack is the slots' height. */
@@ -413,6 +433,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
 .reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
 .reel-ctl { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
+.reel-host { position: absolute; left: 0; right: 0; bottom: 3cqh; z-index: 6; margin: 0; text-align: center; color: var(--reel-chrome, var(--fg)); font-size: 4cqw; font-weight: 750; }
 .reel-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* An open guess stops the bar, hatches what's left of it and says so beside the label. */
 .reel-bars span.reel-waiting { background: repeating-linear-gradient(-45deg, color-mix(in srgb, currentColor 55%, transparent) 0 2px, color-mix(in srgb, currentColor 15%, transparent) 2px 5px); }
@@ -422,6 +443,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-ctl button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 .reel-ctl svg { width: 22px; height: 22px; }
 .reel-frame :focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.reel-note { margin: 0 44px 0 0; font-size: 13px; font-weight: 600; line-height: 1.3; opacity: .85; }
 .reel-docked { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--fg); color: var(--bg); }
 /* After a reveal the story holds on its answer and offers a share; Next moves on. */
 .reel-after { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 10px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); animation: reel-in 200ms ease-out both; }
@@ -463,14 +485,14 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-picks label:has(:checked) i::after { content: "✓"; color: var(--fg); }
 .reel-picks label:has(:focus-visible) { outline: 3px solid var(--reel-chrome, var(--fg)); outline-offset: 4px; }
 @keyframes reel-in { from { opacity: 0; } }
-.reel-summary { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 90px 8cqw 40px; background: var(--c4); color: var(--on-c4); }
+.reel-summary { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: safe center; overflow-y: auto; gap: 16px; padding: 90px 8cqw 40px; background: var(--c4); color: var(--on-c4); }
 .reel-summary h2 { margin: 0; font-size: 11cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
 .reel-score { margin: 0; font-size: max(18px, 6.5cqw); font-weight: 850; line-height: 1.15; }
 .reel-score:empty { display: none; }
 .reel-summary ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: max(16px, 5cqw); font-weight: 700; line-height: 1.2; }
 .reel-summary div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 .reel-summary button { min-height: 48px; padding: 0 22px; border: 0; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 16px; font-weight: 700; }
-.reel-summary .reel-done { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
+.reel-summary .reel-done, .reel-share-all ~ .reel-again { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
 @media (prefers-reduced-motion: reduce) { .reel-after, .reel-guess { animation: none; } }
 
 /* Kinetic, the default reel theme (scenes in kinetic.js) */
@@ -480,6 +502,12 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-line:nth-child(even) { background: transparent; color: inherit; }
 .k-stack { position: absolute; left: 7cqw; right: 7cqw; top: 18cqh; display: flex; flex-direction: column; align-items: flex-start; gap: 3cqw; }
 .k-stack > * { margin: 0; }
+/* A reveal with a foot block (list, chips, bars) stacks it under the headline in one column, so the two never overlap. */
+.k-field:has(> .k-stack) { display: flex; flex-direction: column; gap: 5cqw; padding: 18cqh 7cqw 14cqh; box-sizing: border-box; }
+.k-field > .k-stack { position: static; flex: none; }
+.k-field > .k-fill { flex: 1; min-height: 0; }
+:is(.k-field, .k-stack) > :is(.k-picks, .k-bars, .k-days, .k-echo, .k-pile) { position: static; flex: none; align-self: stretch; margin-top: auto; }
+:is(.k-field, .k-stack) > .k-echo { flex-shrink: 1; min-height: 0; }
 .k-center { align-items: center; text-align: center; }
 .k-kicker { font-size: 6.5cqw; font-weight: 800; }
 .k-odo { display: flex; margin-left: -.04em; font-weight: 900; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -506,7 +534,26 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-picks li { display: grid; grid-template-columns: 1fr auto; gap: 1cqw 3cqw; font-size: 5.5cqw; font-weight: 800; }
 .k-picks i { grid-column: 1 / -1; height: 4cqw; border-radius: 1cqw; background: currentColor; opacity: .35; transform-origin: left; }
 .k-picks li.on i { opacity: 1; }
+.k-say { max-width: 100%; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; overflow-wrap: anywhere; }
+.k-echo { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; height: 30cqh; display: flex; flex-wrap: wrap; align-content: flex-end; gap: 1cqw 3cqw; overflow: hidden; font-size: 5cqw; font-weight: 850; opacity: .4; mask-image: linear-gradient(transparent, #000 45%); }
+.k-echo span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-pile { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5cqw; }
+.k-pile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1.5cqw 4cqw; border-radius: 99px; box-shadow: inset 0 0 0 .7cqw currentColor; font-size: 5.5cqw; font-weight: 800; }
+.k-bubble { display: grid; gap: .15em; max-width: 100%; padding: .45em .75em .55em; border-radius: .9em .9em .9em .2em; background: var(--fg); color: var(--bg); font-weight: 850; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere; transform-origin: 0 100%; }
+.k-bubble span { font-size: .55em; font-weight: 750; letter-spacing: 0; }
+.k-scroll { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; font-size: 5cqw; font-weight: 750; line-height: 1.3; white-space: pre-wrap; overflow-wrap: anywhere; opacity: .5; }
 .k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
+.k-picks span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-mine { display: flex; gap: .3em; }
+.k-mine em { flex: none; font-style: normal; }
+.k-hours { position: static; width: 100%; height: 12cqh; gap: .8cqw; }
+.k-hours i { border-radius: .8cqw .8cqw 0 0; }
+.k-date { font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+.k-date span { display: block; }
+.k-burst { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.4cqw; }
+.k-burst i { width: 7cqw; height: 3.2cqw; border-radius: 99px; background: currentColor; }
+.k-pile { margin-top: auto; align-self: stretch; min-height: 0; overflow: hidden; padding: 3cqw 0; display: flex; align-content: flex-end; flex-wrap: wrap; justify-content: center; gap: 1.6cqw 1.2cqw; }
+.k-pile span { max-width: 86cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: .25em .7em; border-radius: 99px; box-shadow: inset 0 0 0 .6cqw currentColor; font-size: 4cqw; font-weight: 800; }
 </style>
 </head>
 <body id="top" class="page-advertise">

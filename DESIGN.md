@@ -65,6 +65,10 @@ chart too. When the headline is a hidden name, the card shows the count instead.
 at 2.5× in a pannable frame, so its small text is tappable. "Edit text" turns the post into a text box; later
 redactions still black out newly hidden terms in it.
 
+Where the browser has a share sheet, "Share…" is the first action, full width, and stays in view while the popover
+scrolls; it sends the image with the post. The seven platforms follow as app-style tiles in their brand colours, each
+mark at least 3:1 on its tile, with the name underneath: one row in the popover, four columns on the phone sheet.
+
 ## Motion
 
 Only opacity and colour transitions under 150 ms. Smooth scrolling and transitions turn off under
@@ -82,3 +86,21 @@ scale, days linear), or pick-one cards. Nothing counts until "Lock it in" or Ent
 the frame never skips a guess. While a guess is open the story's bar stops, the rest of it is hatched, and "Waiting
 for you" shows beside the label. The reveal adds a sticker with the guess and a verdict line, placed where it covers
 no data; pick-one reveals show every choice as a bar. The summary gives the score, leaving skipped guesses out.
+
+## Year themes
+
+A year can have its own theme (`src/themes/<year>/`, declared with `defineTheme`). While that year is the selected
+period it restyles the reel, the report and the share cards; every other period, All time and Custom look standard,
+and the theme's injected style is removed as soon as the period changes. Within the report a theme may change the
+colour tokens, one display face for headings and big numbers (`--display`; body text stays in the system font),
+radius, borders and shadows, spacing within ±25%, the hero's one free slot, a section's inner layout and chart marks.
+Section order, headings, column width, the period bar's layout, controls, labelled axes, "Show the numbers" and all
+data stay as they are. A theme replaces scenes, never facts, and may reword a core question but not its answer.
+Anything that fails falls back to Kinetic: a missing or broken scene plays Kinetic's, a theme that fails to load
+plays the whole reel in Kinetic with one line saying so, and a broken year story is skipped. A saved copy of the page
+always plays Kinetic. `?theme=<year>&story=<id>` previews one story; `src/themes/example/` (a newspaper front page)
+is the worked example, reachable only through that preview. `pnpm check` runs the theme guard over Kinetic and every theme, and fails the
+build when one sets a token outside the colours and `--display`, gives text under 4.5:1 or chart marks and the focus
+ring under 3:1 against `--bg`, `--surface` (and `--soft` for text) in light or dark, hides an outline, or moves
+anything other than through `element.animate()`. The themes for the years in an opened package are saved for offline
+use while the browser is idle; offline, a year whose look isn't saved yet plays in Kinetic with one line saying so.

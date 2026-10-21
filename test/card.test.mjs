@@ -28,6 +28,21 @@ for (const shape of SHAPES) {
     });
   });
 
+  test(`${shape}: a long summary shrinks its lines and keeps the score clear of the footer`, () => {
+    const lines = Array.from({length: 18}, (_, i) => `Answer number ${i + 1}`);
+    const L = layoutCard({hero: '2025', question: 'That was your 2025', lines, guess: 'I got 3 of 5 guesses right.', host: 'discordwrapped.app'}, shape, measure);
+    const host = L.runs.find(r => r.role === 'host'), drawn = L.runs.filter(r => r.role === 'line'), guess = L.runs.find(r => r.role === 'guess');
+    assert.ok(drawn.length >= 4, `${drawn.length} lines fit, at least Overview's four`);
+    assert.ok(drawn.at(-1).y < guess.y - guess.size, 'the score sits below the last line');
+    assert.ok(guess.y < host.y - host.size, 'the score sits above the footer');
+  });
+
+  test(`${shape}: every bar ends before its value starts`, () => {
+    const L = layoutCard({...ranked, bars: {items: [['Big Hall', 19333, '19,333'], ['Cozy Corner', 7696, '7,696']], highlight: 0}}, shape, measure);
+    const values = L.runs.filter(r => r.role === 'bar-value');
+    L.bars.forEach((b, i) => assert.ok(b.x + b.w < values[i].x, `bar ${i} stops short of ${values[i].text}`));
+  });
+
   test(`${shape}: a long headline shrinks to fit two lines instead of being cut`, () => {
     const hero = 'Wednesday, 17 September 2025 was my busiest day ever';
     for (const model of [{...plain, hero}, {...charted, hero}]) {

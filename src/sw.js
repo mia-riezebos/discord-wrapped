@@ -8,7 +8,14 @@ const CACHE = `dw-${VERSION}`;
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, {cache: 'reload'}))))));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('dw-') && k !== CACHE).map(k => caches.delete(k))))));
 // A new release waits until every tab has closed. The page only asks it to take over when someone chooses Reload.
-self.addEventListener('message', e => { if (e.data === 'activate') self.skipWaiting(); });
+// The page also sends the year-theme files for the years in its package ({save: [url]}) to save while it's idle. A file
+// that can't be saved now (offline, storage full) is saved on first use instead.
+self.addEventListener('message', e => {
+  if (e.data === 'activate') self.skipWaiting();
+  if (e.data?.save) e.waitUntil(caches.open(CACHE).then(c => Promise.all(e.data.save.map(async u => {
+    if (!(await c.match(u))) await c.add(u).catch(err => console.warn(`Couldn't save ${u} for offline use`, err));
+  }))));
+});
 
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
