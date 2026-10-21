@@ -21,6 +21,11 @@ const SHARE_COPY = (() => {
   };
   // Quotes (messages, words, search terms) and Discord names are marked for redaction; name() is for other labels.
   const quote = (value, limit = 62) => `“${markQuote(excerpt(value, limit - 2))}”`;
+  // A whole message: a quote, or "a link to youtube.com" when it opens with a link and so has no words to quote (#21).
+  const said = (value, limit, start = false) => {
+    const host = linkHost(value);
+    return host ? `${start ? 'A' : 'a'} link to ${markQuote(host)}` : quote(value, limit);
+  };
   const name = value => excerpt(value, 32);
   const who = value => markName(name(value));
   // alt replaces a headline that is only a name while that name is hidden.
@@ -87,7 +92,7 @@ const SHARE_COPY = (() => {
       const lead = `${v.n} Discord ${noun(v.nRaw, 'message')} in one day! ${v.date} was my busiest day ${p.in}.`;
       const ending = ` ${times(v.topCount, v.topCountRaw)}.`;
       return card(v.topText
-        ? `${lead} I sent ${quote(v.topText, Math.min(62, 199 - lead.length - 8 - ending.length))}${ending}`
+        ? `${lead} I sent ${said(v.topText, Math.min(62, 199 - lead.length - 8 - ending.length))}${ending}`
         : lead,
       `${v.n} in one day`, `My busiest day · ${v.date}`);
     },
@@ -144,16 +149,16 @@ const SHARE_COPY = (() => {
       quote(v.query, 40), caption(`In ${v.n} ${noun(v.nRaw, 'message')}`, p)),
 
     'fame.first': (v, p) => card(
-      p.kind === 'all' ? `My first ever message on Discord was ${quote(v.text)}!` : `My first Discord message ${p.in} was ${quote(v.text)}.`,
-      quote(v.text, 40), `My first${p.kind === 'all' ? ' ever' : ''} message · ${v.date}`),
+      p.kind === 'all' ? `My first ever message on Discord was ${said(v.text)}!` : `My first Discord message ${p.in} was ${said(v.text)}.`,
+      said(v.text, 40, true), `My first${p.kind === 'all' ? ' ever' : ''} message · ${v.date}`),
 
     'fame.latest': (v, p) => card(
-      p.kind === 'all' ? `My most recent Discord message was ${quote(v.text)}.` : `My last Discord message ${p.in} was ${quote(v.text)}.`,
-      quote(v.text, 40), `My latest message · ${v.date}`),
+      p.kind === 'all' ? `My most recent Discord message was ${said(v.text)}.` : `My last Discord message ${p.in} was ${said(v.text)}.`,
+      said(v.text, 40, true), `My latest message · ${v.date}`),
 
     'fame.mostRepeated': (v, p) => card(
-      `${quote(v.text)} was my most-sent Discord message ${p.in}. ${sent(p)} it ${times(v.n, v.nRaw)}!`,
-      quote(v.text, 40), caption(`Most repeated message · Sent ${times(v.n, v.nRaw)}`, p)),
+      `${said(v.text, 62, true)} was my most-sent Discord message ${p.in}. ${sent(p)} it ${times(v.n, v.nRaw)}!`,
+      said(v.text, 40, true), caption(`Most repeated message · Sent ${times(v.n, v.nRaw)}`, p)),
 
     'fame.longest': (v, p) => card(
       `${v.chars} ${noun(v.charsRaw, 'character')} in one Discord message. My longest ${p.in} starts ${quote(v.text)}.`,

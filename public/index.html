@@ -290,6 +290,11 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .share-btn { padding: 5px 12px; font-size: 13px; border-radius: 99px; }
 .reel-btn { margin-left: auto; }
 .share-tip { font-size: 13px; }
+.sechead h2 { margin-right: auto; }
+.sechead .reel-btn { margin-right: -4px; }
+.reel-btn::before, .play-cta::before { content: ""; display: inline-block; width: .62em; height: .72em; margin-right: .45em; background: currentColor; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.play-cta { display: inline-flex; align-items: center; margin: 6px 0 14px; padding: 13px 26px; border-radius: 99px; font-size: 17px; font-weight: 650; }
+@media (max-width: 520px) { .play-cta { display: flex; justify-content: center; width: 100%; } }
 [data-share] { cursor: text; }
 [data-share-click] { cursor: pointer; }
 .sharepop { position: fixed; z-index: 30; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 14px; }
@@ -530,6 +535,14 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-picks li { display: grid; grid-template-columns: 1fr auto; gap: 1cqw 3cqw; font-size: 5.5cqw; font-weight: 800; }
 .k-picks i { grid-column: 1 / -1; height: 4cqw; border-radius: 1cqw; background: currentColor; opacity: .35; transform-origin: left; }
 .k-picks li.on i { opacity: 1; }
+.k-say { max-width: 100%; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; overflow-wrap: anywhere; }
+.k-echo { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; height: 30cqh; display: flex; flex-wrap: wrap; align-content: flex-end; gap: 1cqw 3cqw; overflow: hidden; font-size: 5cqw; font-weight: 850; opacity: .4; mask-image: linear-gradient(transparent, #000 45%); }
+.k-echo span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-pile { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5cqw; }
+.k-pile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1.5cqw 4cqw; border-radius: 99px; box-shadow: inset 0 0 0 .7cqw currentColor; font-size: 5.5cqw; font-weight: 800; }
+.k-bubble { display: grid; gap: .15em; max-width: 100%; padding: .45em .75em .55em; border-radius: .9em .9em .9em .2em; background: var(--fg); color: var(--bg); font-weight: 850; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere; transform-origin: 0 100%; }
+.k-bubble span { font-size: .55em; font-weight: 750; letter-spacing: 0; }
+.k-scroll { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; font-size: 5cqw; font-weight: 750; line-height: 1.3; white-space: pre-wrap; overflow-wrap: anywhere; opacity: .5; }
 .k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
 .k-picks span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .k-hours { position: static; width: 100%; height: 12cqh; gap: .8cqw; }
@@ -650,11 +663,11 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
       <div class="custom" id="p-custom" hidden><label>From<input type="date" id="p-from"></label><label>To<input type="date" id="p-to"></label></div>
       <button type="button" class="play primary" id="p-play" hidden></button>
     </div>
-    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><button type="button" class="play-cta primary" id="hero-play" hidden>Play your Wrapped</button><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
     <section class="card empty-period hidden" id="s-empty"><h2 id="empty-title">No messages in this period</h2><p>Pick another period, or choose All time.</p></section>
 
     <section class="card" id="s-overview">
-      <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
+      <div class="sechead"><h2>Overview</h2><button class="share-btn reel-btn" type="button" data-reel="overview" aria-label="Play Overview" hidden>Play</button><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
       <div class="metrics" id="counts"></div>
       <h3 id="period-chart-title">Messages per year</h3>
       <div class="legend" id="group-legend"></div>
@@ -707,7 +720,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
     </section>
 
     <section class="card" id="s-words">
-      <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn" type="button" data-share-section="words">Share</button></div>
+      <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn reel-btn" type="button" data-reel="words" aria-label="Play Words &amp; links" hidden>Play</button><button class="share-btn" type="button" data-share-section="words">Share</button></div>
       <h3>Topics over time</h3>
       <div class="legend" id="topic-legend"></div>
       <div id="topic-chart"></div>
@@ -755,7 +768,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
     </section>
 
     <section class="card" id="s-fame">
-      <div class="sechead"><h2>Hall of fame</h2><button class="share-btn" type="button" data-share-section="fame">Share</button></div>
+      <div class="sechead"><h2>Hall of fame</h2><button class="share-btn reel-btn" type="button" data-reel="fame" aria-label="Play Hall of fame" hidden>Play</button><button class="share-btn" type="button" data-share-section="fame">Share</button></div>
       <div class="fame" id="fame"></div>
     </section>
 
@@ -1544,6 +1557,11 @@ const SHARE_COPY = (() => {
   };
   // Quotes (messages, words, search terms) and Discord names are marked for redaction; name() is for other labels.
   const quote = (value, limit = 62) => `“${markQuote(excerpt(value, limit - 2))}”`;
+  // A whole message: a quote, or "a link to youtube.com" when it opens with a link and so has no words to quote (#21).
+  const said = (value, limit, start = false) => {
+    const host = linkHost(value);
+    return host ? `${start ? 'A' : 'a'} link to ${markQuote(host)}` : quote(value, limit);
+  };
   const name = value => excerpt(value, 32);
   const who = value => markName(name(value));
   // alt replaces a headline that is only a name while that name is hidden.
@@ -1610,7 +1628,7 @@ const SHARE_COPY = (() => {
       const lead = `${v.n} Discord ${noun(v.nRaw, 'message')} in one day! ${v.date} was my busiest day ${p.in}.`;
       const ending = ` ${times(v.topCount, v.topCountRaw)}.`;
       return card(v.topText
-        ? `${lead} I sent ${quote(v.topText, Math.min(62, 199 - lead.length - 8 - ending.length))}${ending}`
+        ? `${lead} I sent ${said(v.topText, Math.min(62, 199 - lead.length - 8 - ending.length))}${ending}`
         : lead,
       `${v.n} in one day`, `My busiest day · ${v.date}`);
     },
@@ -1667,16 +1685,16 @@ const SHARE_COPY = (() => {
       quote(v.query, 40), caption(`In ${v.n} ${noun(v.nRaw, 'message')}`, p)),
 
     'fame.first': (v, p) => card(
-      p.kind === 'all' ? `My first ever message on Discord was ${quote(v.text)}!` : `My first Discord message ${p.in} was ${quote(v.text)}.`,
-      quote(v.text, 40), `My first${p.kind === 'all' ? ' ever' : ''} message · ${v.date}`),
+      p.kind === 'all' ? `My first ever message on Discord was ${said(v.text)}!` : `My first Discord message ${p.in} was ${said(v.text)}.`,
+      said(v.text, 40, true), `My first${p.kind === 'all' ? ' ever' : ''} message · ${v.date}`),
 
     'fame.latest': (v, p) => card(
-      p.kind === 'all' ? `My most recent Discord message was ${quote(v.text)}.` : `My last Discord message ${p.in} was ${quote(v.text)}.`,
-      quote(v.text, 40), `My latest message · ${v.date}`),
+      p.kind === 'all' ? `My most recent Discord message was ${said(v.text)}.` : `My last Discord message ${p.in} was ${said(v.text)}.`,
+      said(v.text, 40, true), `My latest message · ${v.date}`),
 
     'fame.mostRepeated': (v, p) => card(
-      `${quote(v.text)} was my most-sent Discord message ${p.in}. ${sent(p)} it ${times(v.n, v.nRaw)}!`,
-      quote(v.text, 40), caption(`Most repeated message · Sent ${times(v.n, v.nRaw)}`, p)),
+      `${said(v.text, 62, true)} was my most-sent Discord message ${p.in}. ${sent(p)} it ${times(v.n, v.nRaw)}!`,
+      said(v.text, 40, true), caption(`Most repeated message · Sent ${times(v.n, v.nRaw)}`, p)),
 
     'fame.longest': (v, p) => card(
       `${v.chars} ${noun(v.charsRaw, 'character')} in one Discord message. My longest ${p.in} starts ${quote(v.text)}.`,
@@ -1911,7 +1929,7 @@ function periodControls() {
     }
   }
   // Reels exist for a year or All time only.
-  $('p-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
+  $('p-play').hidden = $('hero-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
   $('p-play').textContent = `Play ${reelTitle()}`;
   // A section's reel button shows when the reel plays and the section has stories to play.
   const sections = new Set($('p-play').hidden ? [] : buildStories(D, P).map(s => s.section));
@@ -1942,6 +1960,8 @@ $('period').addEventListener('change', e => {
 const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
 // No "Share this" until a story can share its own card (#29).
 $('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
+// "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
+$('hero-play').onclick = $('p-play').onclick;
 document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => openReel({stories: buildStories(D, P), theme: KINETIC, section: b.dataset.reel, title: reelTitle(),
   ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b}));
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
@@ -2953,7 +2973,19 @@ export const STORY_SECTIONS = [
   {id: 'overview', name: 'Overview'},
   {id: 'rhythm', name: 'Rhythm'},
   {id: 'people', name: 'People & servers'},
+  {id: 'words', name: 'Words & links'},
+  {id: 'fame', name: 'Hall of fame'},
 ];
+
+/**
+ * The site a message opens with ("youtube.com"), when it opens with a web link; '' otherwise. Quotes stop at a link,
+ * so a message that starts with one has no words to quote: share copy and stories describe it as a link instead (#21).
+ */
+export function linkHost(text) {
+  const url = /^\s*<?((?:https?:\/\/|www\.)[^\s<>]+)/i.exec(text || '')?.[1];
+  if (!url) return '';
+  try { return new URL(/^www\./i.test(url) ? 'https://' + url : url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
 
 /**
  * The core stories for one period report, in reel order. `period` is the app's resolved period
@@ -3036,10 +3068,10 @@ export function buildStories(report, period) {
   });
 
   // The busiest day, against an average day you showed up.
-  const pk = report.peakDays[0], [quote = '', quoted = 0] = pk?.topText || [];
+  const pk = report.peakDays[0], [quote = '', quoteN = 0] = pk?.topText || [];
   const longDay = (iso, opts) => new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', ...opts});
   const dayOpts = {day: 'numeric', month: 'long', ...(all ? {year: 'numeric'} : {})};
-  const pkText = pk ? longDay(pk.date, {weekday: 'long', ...dayOpts}) : '', times = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
+  const pkText = pk ? longDay(pk.date, {weekday: 'long', ...dayOpts}) : '', usual = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
   stories.push({
     id: 'biggest-day', section: 'rhythm', enough: !!pk && T.activeDays > 1,
     question: `${did('What was', "What's been")} your biggest day ${period.in}?`,
@@ -3047,8 +3079,8 @@ export function buildStories(report, period) {
     share: pk ? `My biggest day on Discord ${period.in} was ${pkText}, with ${plural(pk.count, 'message')}.` : '',
     value: pk?.count || 0,
     // A message repeated in over a fifth of the day's messages is worth quoting.
-    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times, quote: quoted > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoted] : null},
-    card: {hero: num(pk?.count || 0), fact: `Messages on ${pkText}.${times > 1 ? ` About ${times}× your usual day.` : ''}`,
+    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times: usual, quote: quoteN > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoteN] : null},
+    card: {hero: num(pk?.count || 0), fact: `Messages on ${pkText}.${usual > 1 ? ` About ${usual}× your usual day.` : ''}`,
       list: report.peakDays.slice(0, 5).map(p => [day(p.date, all), p.count])},
   });
 
@@ -3117,6 +3149,100 @@ export function buildStories(report, period) {
     value: circlePct,
     data: {conversations: dms.length, names: circle.map(c => c.name)},
     card: {hero: `${circlePct}%`, fact: `Of your DM messages went to your top 10, out of ${plural(dms.length, 'conversation')}.`},
+  });
+
+  /* ---------- Words & links ---------- */
+  // Ranked lists are [text, count], most first. A top pick said only once isn't a habit, so it needs a count of 2.
+  const times = n => plural(n, 'time'), quoted = t => `“${t}”`;
+  const [word = '', wordN = 0] = report.words[0] || [];
+  stories.push({
+    id: 'top-word', section: 'words', enough: report.words.length >= 3,
+    question: `Which word ${did('did you use', 'have you used')} most ${period.in}?`,
+    answer: `${quoted(word)}, ${times(wordN)}`,
+    share: `My top word on Discord ${period.in} was ${quoted(word)}. ${did('I used', "I've used")} it ${times(wordN)}.`,
+    // Seeded by period, so a replay asks the same three words in the same order.
+    guess: {type: 'pick', answer: word, options: pickSet(report.words.slice(0, 10).map(([w, n]) => ({key: w, label: w, count: n})), `top-word:${period.label}`)},
+    value: wordN,
+    data: {word},
+    card: {hero: quoted(word), fact: `Used ${times(wordN)}.`, list: report.words.slice(0, 5)},
+  });
+
+  const [said = '', saidN = 0] = report.expressions[0] || [];
+  stories.push({
+    id: 'say-most', section: 'words', enough: saidN >= 2,
+    question: `What ${did('did you say', 'have you said')} most ${period.in}?`,
+    answer: `${quoted(said)}, ${times(saidN)}`,
+    share: `${did('I sent', "I've sent")} ${quoted(said)} ${times(saidN)} on Discord ${period.in}. A whole message, every time.`,
+    value: saidN,
+    data: {text: said},
+    card: {hero: quoted(said), fact: `Sent ${times(saidN)} as a whole message.`, list: report.expressions.slice(0, 5).map(([t, n]) => [quoted(t), n])},
+  });
+
+  // Custom emoji only: the export writes them as <:name:id>; other emoji are plain text.
+  const [emoji = '', emojiN = 0] = report.emoji[0] || [];
+  stories.push({
+    id: 'emoji', section: 'words', enough: emojiN >= 2,
+    question: `Which custom emoji ${did('did you use', 'have you used')} most ${period.in}?`,
+    answer: `:${emoji}:, ${times(emojiN)}`,
+    share: `:${emoji}: was my most-used custom emoji on Discord ${period.in}. ${did('I used', "I've used")} it ${times(emojiN)}.`,
+    value: emojiN,
+    data: {name: `:${emoji}:`, ranked: report.emoji.slice(1, 7).map(([e]) => `:${e}:`)},
+    card: {hero: `:${emoji}:`, fact: `Used ${times(emojiN)}.`, list: report.emoji.slice(0, 5).map(([e, n]) => [`:${e}:`, n])},
+  });
+
+  const [site = '', siteN = 0] = report.domains[0] || [], sites = report.domains.slice(0, 5);
+  stories.push({
+    id: 'links', section: 'words', enough: siteN >= 2,
+    question: `Where ${did('did your links go', 'have your links gone')} ${period.in}?`,
+    answer: `${site}, with ${num(siteN)} of your ${plural(T.urls, 'link')}`,
+    share: `${site} was my most-linked site ${period.in}. ${did('I shared', "I've shared")} it ${times(siteN)} on Discord.`,
+    value: siteN,
+    data: {site, of: T.urls, ranked: sites},
+    card: {hero: site, fact: `${num(siteN)} of your ${plural(T.urls, 'link')}.`, list: sites},
+  });
+
+  /* ---------- Hall of fame ---------- */
+  // Quotes are exact prefixes, cut at a word.
+  const clip = (t, max) => t.length <= max ? t : t.slice(0, max - 1).replace(/\s+\S*$/, '').trimEnd() + '…';
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const first = report.fame.first, firstText = first?.text || '', host = linkHost(firstText);
+  // A message that opens with a link reads as the link's site, never as an empty quote (#21).
+  const firstSaid = !firstText ? 'an attachment' : host ? `a link to ${host}` : quoted(clip(firstText, 60));
+  const firstDay = first ? day(first.at.slice(0, 10), all) : '';
+  stories.push({
+    id: 'first-message', section: 'fame', enough: !!first,
+    question: all ? 'What was your first ever message?' : `What was your first message ${period.in}?`,
+    answer: `${cap(firstSaid)}, on ${firstDay}`,
+    share: all ? `My first ever message on Discord was ${firstSaid}!` : `My first Discord message ${period.in} was ${firstSaid}.`,
+    value: null,
+    data: {text: clip(firstText, 200), host, date: firstDay},
+    card: {hero: cap(host || !firstText ? firstSaid : quoted(clip(firstText, 40))), fact: `Sent on ${firstDay}.`},
+  });
+
+  // The worker skips messages with links when it picks the longest, so its text always quotes.
+  const longest = report.fame.longest?.text || '', chars = [...longest].length;
+  const lastBucket = report.lengths.findLastIndex(([, n]) => n > 0);
+  stories.push({
+    id: 'longest-message', section: 'fame', enough: chars > 0 && T.messages > 1,
+    question: `How long was your longest message ${period.in}?`,
+    answer: plural(chars, 'character'),
+    share: `${plural(chars, 'character')} in one Discord message. My longest ${period.in} starts ${quoted(clip(longest, 40))}.`,
+    value: chars,
+    data: {text: clip(longest, 1200)},
+    card: {hero: num(chars), fact: `${chars === 1 ? 'Character' : 'Characters'} in your longest message.`, chart: {buckets: report.lengths, top: lastBucket}},
+  });
+
+  // Sessions are runs of messages with no gap of 30 minutes; the worker gives [messages, minutes, local start].
+  const [run = 0, mins = 0, began = ''] = report.bursts.largestSessions[0] || [];
+  const lasted = mins < 60 ? plural(Math.max(1, mins), 'minute') : plural(Math.round(mins / 60), 'hour');
+  stories.push({
+    id: 'longest-session', section: 'fame', enough: run >= 2,
+    question: `How long was your longest session ${period.in}?`,
+    answer: `${plural(run, 'message')} over ${lasted}`,
+    share: `I once sent ${plural(run, 'Discord message')} over ${lasted} ${period.in}, without a 30-minute break.`,
+    value: run,
+    data: {lasted, began: began && `${day(began.slice(0, 10), all)}, ${began.slice(11, 16)}`},
+    card: {hero: num(run), fact: `Messages over ${lasted}, never 30 minutes apart.`},
   });
 
   const order = STORY_SECTIONS.map(s => s.id);
@@ -3605,6 +3731,7 @@ export const KINETIC = (() => {
     const {options, answer} = s.guess;
     ranked(F, options.map(o => [o.label + (r && o.key === r.guess ? ' (your guess)' : ''), num(o.count), o.count]), options.findIndex(o => o.key === answer), at);
   }
+  const times = n => `${num(n)} ${n === 1 ? 'time' : 'times'}`;
 
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
   const scenes = {
@@ -3783,6 +3910,100 @@ export const KINETIC = (() => {
           chip.style.rotate = `${[-6, 4, -3, 7, -5, 3, -7, 5, -2, 6][k]}deg`;
           chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 2100 + k * 100, easing: ease.in, fill: 'both'});
         });
+      },
+    },
+    /* ---------- Words & links ---------- */
+    'top-word': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.word, 500);
+        slideIn(el('p', 'k-unit', times(s.value), box), 900 + s.data.word.length * 70);
+        choices(F, s, r, 1700);
+        verdict(F, s, r, c, 2400, 0.5);
+      },
+    },
+    'say-most': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F), said = `“${s.data.text}”`;
+        const q = el('p', 'k-say', said, box);
+        q.style.fontSize = fit(said, 86, 0.55, 22);
+        pop(q, 450, 'scale(2.4) rotate(-8deg)');
+        slideIn(el('p', 'k-unit', times(s.value), box), 1100);
+        // The same message again and again below, one copy per send (up to 60), stamping down in quick succession.
+        const echo = hide(el('div', 'k-echo', null, F)), n = Math.min(60, s.value);
+        for (let k = 0; k < n; k++) pop(el('span', null, said, echo), 1500 + k * 45, `scale(1.8) rotate(${k % 2 ? 6 : -6}deg)`);
+      },
+    },
+    emoji: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-unit', times(s.value), box), 900 + s.data.name.length * 70);
+        // The runners-up fall and pile up at the bottom, slightly askew.
+        const pile = hide(el('div', 'k-pile', null, F));
+        s.data.ranked.forEach((name, k) => {
+          const chip = el('span', null, name, pile);
+          chip.style.rotate = [-7, 5, -3, 8, -5, 3][k] + 'deg';
+          chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 1800 + k * 110, easing: ease.in, fill: 'both'});
+        });
+      },
+    },
+    links: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.site, 450);
+        slideIn(el('p', 'k-sub', `${num(s.value)} of your ${num(s.data.of)} ${s.data.of === 1 ? 'link' : 'links'}`, box), 900 + s.data.site.length * 70);
+        ranked(F, s.data.ranked.map(([label, count]) => [label, num(count), count]), 0, 1800);
+      },
+    },
+
+    /* ---------- Hall of fame ---------- */
+    'first-message': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F), {text, host, date} = s.data;
+        slideIn(el('p', 'k-sub', date, box), 400);
+        // The message lands as a chat bubble; one that opens with a link shows the site it links to.
+        const bubble = el('p', 'k-bubble', null, box), said = host || !text ? '' : `“${text}”`;
+        if (said) bubble.textContent = said;
+        else { el('span', null, host ? 'A link to' : 'An attachment', bubble); if (host) el('b', null, host, bubble); }
+        bubble.style.fontSize = `${said.length > 120 ? 5.5 : said.length > 50 ? 7 : 9.5}cqw`;
+        pop(bubble, 700, 'translateY(40cqh) scale(.3)');
+      },
+    },
+    'longest-message': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack k-fill', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'character' : 'characters', box), 1500);
+        // The message itself rolls up underneath, ending on its last line.
+        const roll = el('p', 'k-scroll', s.data.text, el('div', 'k-ticker-box', null, box));
+        roll.animate([{transform: 'translateY(100%)'}, {transform: 'none'}], {duration: 3000, delay: 1700, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
+      },
+    },
+    'longest-session': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', 'messages', box), 1500);
+        slideIn(el('p', 'k-sub', `Over ${s.data.lasted}, never 30 minutes apart.`, box), 1900);
+        // One dot per message (up to 270), filling in like a feed scrolling by.
+        const dots = hide(el('div', 'k-days', null, F));
+        for (let k = 0; k < Math.min(270, s.value); k++) el('i', 'on', null, dots);
+        dots.animate([{clipPath: 'inset(0 0 100% 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 1400, delay: 2200, easing: ease.out, fill: 'both'});
       },
     },
   };

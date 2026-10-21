@@ -267,6 +267,11 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .share-btn { padding: 5px 12px; font-size: 13px; border-radius: 99px; }
 .reel-btn { margin-left: auto; }
 .share-tip { font-size: 13px; }
+.sechead h2 { margin-right: auto; }
+.sechead .reel-btn { margin-right: -4px; }
+.reel-btn::before, .play-cta::before { content: ""; display: inline-block; width: .62em; height: .72em; margin-right: .45em; background: currentColor; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.play-cta { display: inline-flex; align-items: center; margin: 6px 0 14px; padding: 13px 26px; border-radius: 99px; font-size: 17px; font-weight: 650; }
+@media (max-width: 520px) { .play-cta { display: flex; justify-content: center; width: 100%; } }
 [data-share] { cursor: text; }
 [data-share-click] { cursor: pointer; }
 .sharepop { position: fixed; z-index: 30; width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 14px; }
@@ -507,6 +512,14 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-picks li { display: grid; grid-template-columns: 1fr auto; gap: 1cqw 3cqw; font-size: 5.5cqw; font-weight: 800; }
 .k-picks i { grid-column: 1 / -1; height: 4cqw; border-radius: 1cqw; background: currentColor; opacity: .35; transform-origin: left; }
 .k-picks li.on i { opacity: 1; }
+.k-say { max-width: 100%; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; overflow-wrap: anywhere; }
+.k-echo { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; height: 30cqh; display: flex; flex-wrap: wrap; align-content: flex-end; gap: 1cqw 3cqw; overflow: hidden; font-size: 5cqw; font-weight: 850; opacity: .4; mask-image: linear-gradient(transparent, #000 45%); }
+.k-echo span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-pile { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5cqw; }
+.k-pile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1.5cqw 4cqw; border-radius: 99px; box-shadow: inset 0 0 0 .7cqw currentColor; font-size: 5.5cqw; font-weight: 800; }
+.k-bubble { display: grid; gap: .15em; max-width: 100%; padding: .45em .75em .55em; border-radius: .9em .9em .9em .2em; background: var(--fg); color: var(--bg); font-weight: 850; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere; transform-origin: 0 100%; }
+.k-bubble span { font-size: .55em; font-weight: 750; letter-spacing: 0; }
+.k-scroll { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; font-size: 5cqw; font-weight: 750; line-height: 1.3; white-space: pre-wrap; overflow-wrap: anywhere; opacity: .5; }
 .k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
 .k-picks span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .k-hours { position: static; width: 100%; height: 12cqh; gap: .8cqw; }

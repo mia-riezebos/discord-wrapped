@@ -97,6 +97,7 @@ export const KINETIC = (() => {
     const {options, answer} = s.guess;
     ranked(F, options.map(o => [o.label + (r && o.key === r.guess ? ' (your guess)' : ''), num(o.count), o.count]), options.findIndex(o => o.key === answer), at);
   }
+  const times = n => `${num(n)} ${n === 1 ? 'time' : 'times'}`;
 
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
   const scenes = {
@@ -275,6 +276,100 @@ export const KINETIC = (() => {
           chip.style.rotate = `${[-6, 4, -3, 7, -5, 3, -7, 5, -2, 6][k]}deg`;
           chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 2100 + k * 100, easing: ease.in, fill: 'both'});
         });
+      },
+    },
+    /* ---------- Words & links ---------- */
+    'top-word': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.word, 500);
+        slideIn(el('p', 'k-unit', times(s.value), box), 900 + s.data.word.length * 70);
+        choices(F, s, r, 1700);
+        verdict(F, s, r, c, 2400, 0.5);
+      },
+    },
+    'say-most': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F), said = `“${s.data.text}”`;
+        const q = el('p', 'k-say', said, box);
+        q.style.fontSize = fit(said, 86, 0.55, 22);
+        pop(q, 450, 'scale(2.4) rotate(-8deg)');
+        slideIn(el('p', 'k-unit', times(s.value), box), 1100);
+        // The same message again and again below, one copy per send (up to 60), stamping down in quick succession.
+        const echo = hide(el('div', 'k-echo', null, F)), n = Math.min(60, s.value);
+        for (let k = 0; k < n; k++) pop(el('span', null, said, echo), 1500 + k * 45, `scale(1.8) rotate(${k % 2 ? 6 : -6}deg)`);
+      },
+    },
+    emoji: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-unit', times(s.value), box), 900 + s.data.name.length * 70);
+        // The runners-up fall and pile up at the bottom, slightly askew.
+        const pile = hide(el('div', 'k-pile', null, F));
+        s.data.ranked.forEach((name, k) => {
+          const chip = el('span', null, name, pile);
+          chip.style.rotate = [-7, 5, -3, 8, -5, 3][k] + 'deg';
+          chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 1800 + k * 110, easing: ease.in, fill: 'both'});
+        });
+      },
+    },
+    links: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        letters(box, 'k-word', s.data.site, 450);
+        slideIn(el('p', 'k-sub', `${num(s.value)} of your ${num(s.data.of)} ${s.data.of === 1 ? 'link' : 'links'}`, box), 900 + s.data.site.length * 70);
+        ranked(F, s.data.ranked.map(([label, count]) => [label, num(count), count]), 0, 1800);
+      },
+    },
+
+    /* ---------- Hall of fame ---------- */
+    'first-message': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F), {text, host, date} = s.data;
+        slideIn(el('p', 'k-sub', date, box), 400);
+        // The message lands as a chat bubble; one that opens with a link shows the site it links to.
+        const bubble = el('p', 'k-bubble', null, box), said = host || !text ? '' : `“${text}”`;
+        if (said) bubble.textContent = said;
+        else { el('span', null, host ? 'A link to' : 'An attachment', bubble); if (host) el('b', null, host, bubble); }
+        bubble.style.fontSize = `${said.length > 120 ? 5.5 : said.length > 50 ? 7 : 9.5}cqw`;
+        pop(bubble, 700, 'translateY(40cqh) scale(.3)');
+      },
+    },
+    'longest-message': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack k-fill', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'character' : 'characters', box), 1500);
+        // The message itself rolls up underneath, ending on its last line.
+        const roll = el('p', 'k-scroll', s.data.text, el('div', 'k-ticker-box', null, box));
+        roll.animate([{transform: 'translateY(100%)'}, {transform: 'none'}], {duration: 3000, delay: 1700, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
+      },
+    },
+    'longest-session': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', 'messages', box), 1500);
+        slideIn(el('p', 'k-sub', `Over ${s.data.lasted}, never 30 minutes apart.`, box), 1900);
+        // One dot per message (up to 270), filling in like a feed scrolling by.
+        const dots = hide(el('div', 'k-days', null, F));
+        for (let k = 0; k < Math.min(270, s.value); k++) el('i', 'on', null, dots);
+        dots.animate([{clipPath: 'inset(0 0 100% 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 1400, delay: 2200, easing: ease.out, fill: 'both'});
       },
     },
   };

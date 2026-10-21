@@ -18,7 +18,8 @@ const report = (over = {}) => ({
   streaks: [[41, '2025-03-01', '2025-04-10'], [3, '2025-01-02', '2025-01-04']],
   days: [[20089, 4]],
   range: {from: '2025-01-01', to: '2025-12-31'},
-  hourly: Array(24).fill(0), peakDays: [], bursts: {bestMinute: {count: 0}}, guilds: [], channels: [],
+  hourly: Array(24).fill(0), peakDays: [], guilds: [], channels: [],
+  words: [], expressions: [], emoji: [], domains: [], lengths: [], fame: {first: null, longest: null}, bursts: {bestMinute: {count: 0}, largestSessions: []},
   ...over,
 });
 const byId = stories => Object.fromEntries(stories.map(s => [s.id, s]));
@@ -89,7 +90,7 @@ const rich = (over = {}) => report({
   periods: {'2025-01': month(1000, {Servers: 600, DMs: 400, 'Group DMs': 0}), '2025-02': month(2000, {Servers: 1400, DMs: 550, 'Group DMs': 50})},
   hourly: hourly(100, 10),
   peakDays: [{date: '2025-08-17', count: 600, contexts: [['general', 400]], topText: ['lol', 200]}, {date: '2025-02-01', count: 300, contexts: [], topText: ['', 0]}],
-  bursts: {bestMinute: {count: 32, at: '2025-02-17 17:38', channel: 'general'}},
+  bursts: {largestSessions: [], bestMinute: {count: 32, at: '2025-02-17 17:38', channel: 'general'}},
   guilds: [{name: 'Synth club', count: 1500}, {name: 'Game night', count: 500}],
   channels: [dm('a', 'ada', 300), {id: 's', name: 'general', count: 900, group: 'Servers'}, dm('b', 'bo', 200),
     ...Array.from({length: 10}, (_, k) => dm('d' + k, 'pal' + k, 50 - k))],
@@ -109,7 +110,7 @@ test('stories without enough data are skipped', () => {
   assert.ok(!ids({hourly: hourly(5, 5)}).includes('night-owl'), 'a tie has no answer');
   assert.ok(!ids({totals: {messages: 50, activeDays: 1, calendarDays: 365}}).includes('biggest-day'), 'one day is not a biggest day');
   assert.ok(!ids({peakDays: []}).includes('biggest-day'));
-  assert.ok(!ids({bursts: {bestMinute: {count: 4, at: '2025-02-17 17:38'}}}).includes('fastest-minute'));
+  assert.ok(!ids({bursts: {largestSessions: [], bestMinute: {count: 4, at: '2025-02-17 17:38'}}}).includes('fastest-minute'));
   assert.ok(!ids({periods: {'2025-01': month(10, {Servers: 10, DMs: 0, 'Group DMs': 0})}}).includes('where'), 'all in one place');
   assert.ok(!ids({guilds: [{name: 'Synth club', count: 1500}]}).includes('top-server'), 'one server has no ranking');
   const twoDms = ids({channels: [dm('a', 'ada', 300), dm('b', 'bo', 200)]});
@@ -212,4 +213,95 @@ test('a share under 1% stays in the list but out of the sentence', () => {
   const s = byId(buildStories(rich({periods: {'2025-01': month(1000, {Servers: 800, DMs: 198, 'Group DMs': 2})}}), YEAR)).where;
   assert.deepEqual(s.data.groups.map(g => g.pct), [80, 20, 0]);
   assert.equal(s.answer, '80% to servers and 20% to DMs');
+});
+
+/* ---------- Words & links and Hall of fame ---------- */
+const ranked = (prefix, k) => Array.from({length: k}, (_, i) => [`${prefix}${i + 1}`, 100 - i]);
+const msg = (text, at = '2025-01-03 09:15') => ({text, at, channel: 'general'});
+// Twelve ranked words and sites, a repeated message, custom emoji, and the three Hall of fame records.
+const words = (over = {}) => report({
+  totals: {messages: 12345, activeDays: 200, calendarDays: 365, urls: 400},
+  words: ranked('word', 12), expressions: [['lol', 300], ['ok', 120]], emoji: [['blobheart', 40], ['kekw', 12]], domains: [['youtube.com', 250], ['github.com', 90]],
+  lengths: [['1–20', 900], ['21–100', 300], ['101–500', 20], ['500+', 0]],
+  fame: {first: msg('hello there'), longest: msg('a '.repeat(150).trim())},
+  bursts: {bestMinute: {count: 0}, largestSessions: [[480, 200, '2025-08-17 21:04'], [90, 50, '2025-02-01 10:00']]},
+  ...over,
+});
+const WORDS = ['top-word', 'say-most', 'emoji', 'links'], FAME = ['first-message', 'longest-message', 'longest-session'];
+
+test('Words & links and Hall of fame play after Overview, in report order', () => {
+  const stories = buildStories(words(), YEAR);
+  assert.deepEqual(stories.map(s => s.id), ['messages', 'active-days', 'loudest', 'streak', ...WORDS, ...FAME]);
+  assert.deepEqual(stories.map(s => s.section).slice(4), [...WORDS.map(() => 'words'), ...FAME.map(() => 'fame')]);
+});
+
+test('the top word is a pick-one guess between the real #1 and two of the next nine', () => {
+  const {guess, ...s} = byId(buildStories(words(), YEAR))['top-word'];
+  assert.equal(s.question, 'Which word did you use most in 2025?');
+  assert.equal(s.answer, '“word1”, 100 times');
+  assert.equal(s.share, 'My top word on Discord in 2025 was “word1”. I used it 100 times.');
+  assert.equal(guess.type, 'pick');
+  assert.equal(guess.answer, 'word1');
+  assert.equal(guess.options.length, 3);
+  assert.ok(guess.options.some(o => o.key === 'word1'));
+  assert.ok(guess.options.every(o => +o.key.slice(4) <= 10), 'the others come from #2 to #10');
+  assert.deepEqual(byId(buildStories(words(), YEAR))['top-word'].guess, guess, 'a replay asks the same choices');
+  assert.deepEqual(s.card, {hero: '“word1”', fact: 'Used 100 times.', list: ranked('word', 5)});
+});
+
+test('what you say most, your top custom emoji and where your links go', () => {
+  const s = byId(buildStories(words(), YEAR));
+  assert.equal(s['say-most'].answer, '“lol”, 300 times');
+  assert.equal(s['say-most'].share, 'I sent “lol” 300 times on Discord in 2025. A whole message, every time.');
+  assert.deepEqual(s['say-most'].card.list, [['“lol”', 300], ['“ok”', 120]]);
+  assert.equal(s.emoji.question, 'Which custom emoji did you use most in 2025?');
+  assert.equal(s.emoji.answer, ':blobheart:, 40 times');
+  assert.deepEqual(s.emoji.card, {hero: ':blobheart:', fact: 'Used 40 times.', list: [[':blobheart:', 40], [':kekw:', 12]]});
+  assert.equal(s.links.answer, 'youtube.com, with 250 of your 400 links');
+  assert.equal(s.links.share, 'youtube.com was my most-linked site in 2025. I shared it 250 times on Discord.');
+  assert.deepEqual(s.links.card, {hero: 'youtube.com', fact: '250 of your 400 links.', list: [['youtube.com', 250], ['github.com', 90]]});
+});
+
+test('the Hall of fame: first message, longest message and longest session', () => {
+  const s = byId(buildStories(words(), YEAR));
+  assert.equal(s['first-message'].question, 'What was your first message in 2025?');
+  assert.match(s['first-message'].answer, /^“hello there”, on /);
+  assert.equal(s['first-message'].share, 'My first Discord message in 2025 was “hello there”.');
+  assert.equal(s['first-message'].card.hero, '“hello there”');
+  assert.equal(s['longest-message'].answer, '299 characters');
+  assert.equal(s['longest-message'].share, `299 characters in one Discord message. My longest in 2025 starts “${'a '.repeat(19).trim()}…”.`);
+  assert.deepEqual(s['longest-message'].card.chart, {buckets: words().lengths, top: 2}, 'the last bucket with messages holds the longest');
+  assert.equal(s['longest-session'].answer, '480 messages over 3 hours');
+  assert.equal(s['longest-session'].share, 'I once sent 480 Discord messages over 3 hours in 2025, without a 30-minute break.');
+  assert.equal(byId(buildStories(words({bursts: {bestMinute: {count: 0}, largestSessions: [[12, 25, '2025-01-01 10:00']]}}), YEAR))['longest-session'].answer, '12 messages over 25 minutes');
+});
+
+test('all time asks about your first ever message, in the present perfect', () => {
+  const s = byId(buildStories(words(), ALL));
+  assert.equal(s['first-message'].question, 'What was your first ever message?');
+  assert.equal(s['first-message'].share, 'My first ever message on Discord was “hello there”!');
+  assert.equal(s['top-word'].question, 'Which word have you used most since 2019?');
+  assert.equal(s.links.question, 'Where have your links gone since 2019?');
+});
+
+test('Words & links and Hall of fame stories without enough data are skipped', () => {
+  const thin = words({
+    words: ranked('word', 2), expressions: [['lol', 1]], emoji: [['kekw', 1]], domains: [['github.com', 1]],
+    fame: {first: null, longest: null}, bursts: {bestMinute: {count: 0}, largestSessions: [[1, 0, '2025-01-01 10:00']]},
+  });
+  assert.deepEqual(buildStories(thin, YEAR).map(s => s.id), ['messages', 'active-days', 'loudest', 'streak']);
+  assert.deepEqual(buildStories(report(), YEAR).map(s => s.id), ['messages', 'active-days', 'loudest', 'streak'], 'an empty report has none');
+});
+
+test('a first message that opens with a link reads as the site, never as "…" (#21)', () => {
+  for (const text of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://youtube.com/watch?v=x look at this', '<https://www.youtube.com/watch?v=x>', 'www.youtube.com']) {
+    const s = byId(buildStories(words({fame: {first: msg(text), longest: null}}), YEAR))['first-message'];
+    assert.match(s.answer, /^A link to youtube\.com, on /, text);
+    assert.equal(s.share, 'My first Discord message in 2025 was a link to youtube.com.', text);
+    assert.equal(s.card.hero, 'A link to youtube.com', text);
+    assert.equal(s.data.host, 'youtube.com');
+  }
+  const later = byId(buildStories(words({fame: {first: msg('look https://youtube.com'), longest: null}}), YEAR))['first-message'];
+  assert.equal(later.share, 'My first Discord message in 2025 was “look https://youtube.com”.', 'a link after words stays in the quote');
+  assert.equal(byId(buildStories(words({fame: {first: msg(''), longest: null}}), YEAR))['first-message'].share, 'My first Discord message in 2025 was an attachment.');
 });

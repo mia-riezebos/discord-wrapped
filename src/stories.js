@@ -6,7 +6,19 @@ export const STORY_SECTIONS = [
   {id: 'overview', name: 'Overview'},
   {id: 'rhythm', name: 'Rhythm'},
   {id: 'people', name: 'People & servers'},
+  {id: 'words', name: 'Words & links'},
+  {id: 'fame', name: 'Hall of fame'},
 ];
+
+/**
+ * The site a message opens with ("youtube.com"), when it opens with a web link; '' otherwise. Quotes stop at a link,
+ * so a message that starts with one has no words to quote: share copy and stories describe it as a link instead (#21).
+ */
+export function linkHost(text) {
+  const url = /^\s*<?((?:https?:\/\/|www\.)[^\s<>]+)/i.exec(text || '')?.[1];
+  if (!url) return '';
+  try { return new URL(/^www\./i.test(url) ? 'https://' + url : url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
 
 /**
  * The core stories for one period report, in reel order. `period` is the app's resolved period
@@ -89,10 +101,10 @@ export function buildStories(report, period) {
   });
 
   // The busiest day, against an average day you showed up.
-  const pk = report.peakDays[0], [quote = '', quoted = 0] = pk?.topText || [];
+  const pk = report.peakDays[0], [quote = '', quoteN = 0] = pk?.topText || [];
   const longDay = (iso, opts) => new Date(iso + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', ...opts});
   const dayOpts = {day: 'numeric', month: 'long', ...(all ? {year: 'numeric'} : {})};
-  const pkText = pk ? longDay(pk.date, {weekday: 'long', ...dayOpts}) : '', times = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
+  const pkText = pk ? longDay(pk.date, {weekday: 'long', ...dayOpts}) : '', usual = pk ? Math.round(pk.count * T.activeDays / Math.max(1, T.messages)) : 0;
   stories.push({
     id: 'biggest-day', section: 'rhythm', enough: !!pk && T.activeDays > 1,
     question: `${did('What was', "What's been")} your biggest day ${period.in}?`,
@@ -100,8 +112,8 @@ export function buildStories(report, period) {
     share: pk ? `My biggest day on Discord ${period.in} was ${pkText}, with ${plural(pk.count, 'message')}.` : '',
     value: pk?.count || 0,
     // A message repeated in over a fifth of the day's messages is worth quoting.
-    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times, quote: quoted > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoted] : null},
-    card: {hero: num(pk?.count || 0), fact: `Messages on ${pkText}.${times > 1 ? ` About ${times}× your usual day.` : ''}`,
+    data: {parts: pk ? [longDay(pk.date, {weekday: 'long'}), longDay(pk.date, dayOpts)] : [], times: usual, quote: quoteN > (pk?.count || 0) * 0.2 ? [quote.slice(0, 60), quoteN] : null},
+    card: {hero: num(pk?.count || 0), fact: `Messages on ${pkText}.${usual > 1 ? ` About ${usual}× your usual day.` : ''}`,
       list: report.peakDays.slice(0, 5).map(p => [day(p.date, all), p.count])},
   });
 
@@ -170,6 +182,100 @@ export function buildStories(report, period) {
     value: circlePct,
     data: {conversations: dms.length, names: circle.map(c => c.name)},
     card: {hero: `${circlePct}%`, fact: `Of your DM messages went to your top 10, out of ${plural(dms.length, 'conversation')}.`},
+  });
+
+  /* ---------- Words & links ---------- */
+  // Ranked lists are [text, count], most first. A top pick said only once isn't a habit, so it needs a count of 2.
+  const times = n => plural(n, 'time'), quoted = t => `“${t}”`;
+  const [word = '', wordN = 0] = report.words[0] || [];
+  stories.push({
+    id: 'top-word', section: 'words', enough: report.words.length >= 3,
+    question: `Which word ${did('did you use', 'have you used')} most ${period.in}?`,
+    answer: `${quoted(word)}, ${times(wordN)}`,
+    share: `My top word on Discord ${period.in} was ${quoted(word)}. ${did('I used', "I've used")} it ${times(wordN)}.`,
+    // Seeded by period, so a replay asks the same three words in the same order.
+    guess: {type: 'pick', answer: word, options: pickSet(report.words.slice(0, 10).map(([w, n]) => ({key: w, label: w, count: n})), `top-word:${period.label}`)},
+    value: wordN,
+    data: {word},
+    card: {hero: quoted(word), fact: `Used ${times(wordN)}.`, list: report.words.slice(0, 5)},
+  });
+
+  const [said = '', saidN = 0] = report.expressions[0] || [];
+  stories.push({
+    id: 'say-most', section: 'words', enough: saidN >= 2,
+    question: `What ${did('did you say', 'have you said')} most ${period.in}?`,
+    answer: `${quoted(said)}, ${times(saidN)}`,
+    share: `${did('I sent', "I've sent")} ${quoted(said)} ${times(saidN)} on Discord ${period.in}. A whole message, every time.`,
+    value: saidN,
+    data: {text: said},
+    card: {hero: quoted(said), fact: `Sent ${times(saidN)} as a whole message.`, list: report.expressions.slice(0, 5).map(([t, n]) => [quoted(t), n])},
+  });
+
+  // Custom emoji only: the export writes them as <:name:id>; other emoji are plain text.
+  const [emoji = '', emojiN = 0] = report.emoji[0] || [];
+  stories.push({
+    id: 'emoji', section: 'words', enough: emojiN >= 2,
+    question: `Which custom emoji ${did('did you use', 'have you used')} most ${period.in}?`,
+    answer: `:${emoji}:, ${times(emojiN)}`,
+    share: `:${emoji}: was my most-used custom emoji on Discord ${period.in}. ${did('I used', "I've used")} it ${times(emojiN)}.`,
+    value: emojiN,
+    data: {name: `:${emoji}:`, ranked: report.emoji.slice(1, 7).map(([e]) => `:${e}:`)},
+    card: {hero: `:${emoji}:`, fact: `Used ${times(emojiN)}.`, list: report.emoji.slice(0, 5).map(([e, n]) => [`:${e}:`, n])},
+  });
+
+  const [site = '', siteN = 0] = report.domains[0] || [], sites = report.domains.slice(0, 5);
+  stories.push({
+    id: 'links', section: 'words', enough: siteN >= 2,
+    question: `Where ${did('did your links go', 'have your links gone')} ${period.in}?`,
+    answer: `${site}, with ${num(siteN)} of your ${plural(T.urls, 'link')}`,
+    share: `${site} was my most-linked site ${period.in}. ${did('I shared', "I've shared")} it ${times(siteN)} on Discord.`,
+    value: siteN,
+    data: {site, of: T.urls, ranked: sites},
+    card: {hero: site, fact: `${num(siteN)} of your ${plural(T.urls, 'link')}.`, list: sites},
+  });
+
+  /* ---------- Hall of fame ---------- */
+  // Quotes are exact prefixes, cut at a word.
+  const clip = (t, max) => t.length <= max ? t : t.slice(0, max - 1).replace(/\s+\S*$/, '').trimEnd() + '…';
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const first = report.fame.first, firstText = first?.text || '', host = linkHost(firstText);
+  // A message that opens with a link reads as the link's site, never as an empty quote (#21).
+  const firstSaid = !firstText ? 'an attachment' : host ? `a link to ${host}` : quoted(clip(firstText, 60));
+  const firstDay = first ? day(first.at.slice(0, 10), all) : '';
+  stories.push({
+    id: 'first-message', section: 'fame', enough: !!first,
+    question: all ? 'What was your first ever message?' : `What was your first message ${period.in}?`,
+    answer: `${cap(firstSaid)}, on ${firstDay}`,
+    share: all ? `My first ever message on Discord was ${firstSaid}!` : `My first Discord message ${period.in} was ${firstSaid}.`,
+    value: null,
+    data: {text: clip(firstText, 200), host, date: firstDay},
+    card: {hero: cap(host || !firstText ? firstSaid : quoted(clip(firstText, 40))), fact: `Sent on ${firstDay}.`},
+  });
+
+  // The worker skips messages with links when it picks the longest, so its text always quotes.
+  const longest = report.fame.longest?.text || '', chars = [...longest].length;
+  const lastBucket = report.lengths.findLastIndex(([, n]) => n > 0);
+  stories.push({
+    id: 'longest-message', section: 'fame', enough: chars > 0 && T.messages > 1,
+    question: `How long was your longest message ${period.in}?`,
+    answer: plural(chars, 'character'),
+    share: `${plural(chars, 'character')} in one Discord message. My longest ${period.in} starts ${quoted(clip(longest, 40))}.`,
+    value: chars,
+    data: {text: clip(longest, 1200)},
+    card: {hero: num(chars), fact: `${chars === 1 ? 'Character' : 'Characters'} in your longest message.`, chart: {buckets: report.lengths, top: lastBucket}},
+  });
+
+  // Sessions are runs of messages with no gap of 30 minutes; the worker gives [messages, minutes, local start].
+  const [run = 0, mins = 0, began = ''] = report.bursts.largestSessions[0] || [];
+  const lasted = mins < 60 ? plural(Math.max(1, mins), 'minute') : plural(Math.round(mins / 60), 'hour');
+  stories.push({
+    id: 'longest-session', section: 'fame', enough: run >= 2,
+    question: `How long was your longest session ${period.in}?`,
+    answer: `${plural(run, 'message')} over ${lasted}`,
+    share: `I once sent ${plural(run, 'Discord message')} over ${lasted} ${period.in}, without a 30-minute break.`,
+    value: run,
+    data: {lasted, began: began && `${day(began.slice(0, 10), all)}, ${began.slice(11, 16)}`},
+    card: {hero: num(run), fact: `Messages over ${lasted}, never 30 minutes apart.`},
   });
 
   const order = STORY_SECTIONS.map(s => s.id);
