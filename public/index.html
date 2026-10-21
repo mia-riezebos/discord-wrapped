@@ -448,12 +448,17 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-dial input::-moz-range-track { height: 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); }
 .reel-dial input::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 99px; background: currentColor; }
 .reel-picks fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
-.reel-picks label { display: flex; flex-direction: column; justify-content: center; gap: 2px; color: inherit; min-height: 56px; padding: 8px 18px; border-radius: 16px; box-shadow: inset 0 0 0 2px currentColor; font-size: min(5.5cqw, 22px); font-weight: 800; line-height: 1.15; cursor: pointer; }
-.reel-picks small { font-size: 14px; font-weight: 650; opacity: .8; }
+/* Text, borders and the check circle use the field's on-colour (4.5:1 or more on every palette colour). The chosen
+   card is filled with --fg, ringed in the on-colour so its edge still shows, and gets a check. */
+.reel-picks label { display: flex; flex-direction: row; align-items: center; gap: 14px; min-height: 56px; padding: 8px 18px; border-radius: 16px; color: var(--reel-chrome, var(--fg)); box-shadow: inset 0 0 0 2px var(--reel-chrome, var(--fg)); font-size: min(5.5cqw, 22px); font-weight: 800; line-height: 1.15; cursor: pointer; }
+.reel-picks span { display: flex; flex-direction: column; gap: 2px; }
+.reel-picks small { font-size: 14px; font-weight: 650; }
 .reel-picks input { position: absolute; opacity: 0; pointer-events: none; }
-.reel-picks label:has(:checked) { background: var(--fg); color: var(--bg); box-shadow: none; }
-.reel-picks label:has(:focus-visible) { outline: 3px solid currentColor; outline-offset: 2px; }
-.reel-picks label:has(:checked:focus-visible) { outline-color: var(--reel-chrome, var(--fg)); }
+.reel-picks i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 99px; box-shadow: inset 0 0 0 2px currentColor; font: 900 15px/1 var(--font); font-style: normal; }
+.reel-picks label:has(:checked) { background: var(--fg); color: var(--bg); box-shadow: 0 0 0 2px var(--reel-chrome, var(--fg)); }
+.reel-picks label:has(:checked) i { background: currentColor; }
+.reel-picks label:has(:checked) i::after { content: "✓"; color: var(--fg); }
+.reel-picks label:has(:focus-visible) { outline: 3px solid var(--reel-chrome, var(--fg)); outline-offset: 4px; }
 @keyframes reel-in { from { opacity: 0; } }
 .reel-summary { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 90px 8cqw 40px; background: var(--c4); color: var(--on-c4); }
 .reel-summary h2 { margin: 0; font-size: 11cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
@@ -2889,7 +2894,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       lock.disabled = false;
     } else {
       box.className = 'reel-picks';
-      box.innerHTML = `<fieldset><legend class="sr-only">Your guess</legend>${spec.options.map(() => '<label><input type="radio" name="reel-pick"><span></span></label>').join('')}</fieldset>`;
+      box.innerHTML = `<fieldset><legend class="sr-only">Your guess</legend>${spec.options.map(() => '<label><input type="radio" name="reel-pick"><i aria-hidden="true"></i><span></span></label>').join('')}</fieldset>`;
       box.querySelectorAll('label').forEach((l, k) => {
         const o = spec.options[k], input = l.firstChild, text = l.lastChild;
         text.textContent = o.label;

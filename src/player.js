@@ -147,7 +147,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       lock.disabled = false;
     } else {
       box.className = 'reel-picks';
-      box.innerHTML = `<fieldset><legend class="sr-only">Your guess</legend>${spec.options.map(() => '<label><input type="radio" name="reel-pick"><span></span></label>').join('')}</fieldset>`;
+      box.innerHTML = `<fieldset><legend class="sr-only">Your guess</legend>${spec.options.map(() => '<label><input type="radio" name="reel-pick"><i aria-hidden="true"></i><span></span></label>').join('')}</fieldset>`;
       box.querySelectorAll('label').forEach((l, k) => {
         const o = spec.options[k], input = l.firstChild, text = l.lastChild;
         text.textContent = o.label;
