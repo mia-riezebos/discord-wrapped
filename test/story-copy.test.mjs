@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {buildStories, reelEnding, STORY_SECTIONS} from '../src/stories.js';
 import {guessText, pickSet, scoreGuess} from '../src/guess.js';
+import {defineTheme} from '../src/themes/define.js';
 
 globalThis.pickSet = pickSet;
 
@@ -105,7 +106,7 @@ const node = () => ({
 // What a scene shows: every node's text and label. Odometer strips are digits only and read through their label.
 const shown = n => [n.className === 'k-strip' ? '' : n.textContent, n.attrs?.['aria-label'] || '', ...n.children.flatMap(shown)].filter(Boolean);
 const scenes = (() => {
-  const context = {document: {createElement: node}, guessText};
+  const context = {document: {createElement: node}, guessText, defineTheme};
   vm.runInNewContext(readFileSync(new URL('../src/kinetic.js', import.meta.url), 'utf8').replace(/^export /gm, '') + ';this.K = KINETIC;', context);
   return context.K;
 })();
