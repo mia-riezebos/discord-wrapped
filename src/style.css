@@ -309,6 +309,13 @@ footer.site .sponsor-level li { flex: 0 0 calc((100% - (var(--cols) - 1) * var(-
 .level-hero a { min-height: 120px; }
 .level-featured a { min-height: 72px; }
 @media (max-width: 760px) { footer.site .sponsor-level { --cols: 3 !important; } footer.site .level-grid, footer.site .level-featured { --cols: 2 !important; } footer.site .level-hero { --cols: 1 !important; } }
+/* Offline there are no sponsors to show, so the rails and footer grid go rather than show invitations. */
+.offline .rail, .offline .sponsor-grid { display: none !important; }
+
+/* "New version ready": waits at the bottom until you reload, and stays out of the way while a modal (the story player) is open. */
+.update-notice { position: fixed; z-index: 25; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / .2); font-size: 14px; white-space: nowrap; }
+body:has([aria-modal="true"]:not([hidden])) .update-notice { display: none; }
+@media print { .update-notice { display: none; } }
 
 /* advertise page */
 .advertise { padding-top: 32px; }

@@ -15,7 +15,7 @@ async function startRails() {
   try {
     const r = await fetch('/api/ads', {signal: AbortSignal.timeout(5000)});
     if (r.ok) data = await r.json();
-  } catch { /* Offline or opened from a file: show the invitation instead. */ }
+  } catch { document.documentElement.classList.add('offline'); /* No network: hide the rails (style.css). */ }
   const placements = data?.placements ?? PLACEMENT_FALLBACK;
   for (const [placement, conf] of Object.entries(placements)) {
     const ads = (data?.ads ?? []).filter(a => a.placement === placement).map(a => ({...a, width: conf.width, height: conf.height}));
@@ -46,7 +46,7 @@ async function startFooterGrid() {
   try {
     const r = await fetch('/api/footer', {signal: AbortSignal.timeout(5000)});
     if (r.ok) data = await r.json();
-  } catch { /* Offline: the invitation below still shows. */ }
+  } catch { document.documentElement.classList.add('offline'); }
   const levels = (data?.levels ?? []).filter(l => l.sponsors.length);
   host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${l.columns}">${l.sponsors.map(s => `<li><a href="${adEsc(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
     <p class="muted">${levels.length ? 'Thank you. ' : ''}<a href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor monthly on GitHub</a> to appear here.</p>`;
