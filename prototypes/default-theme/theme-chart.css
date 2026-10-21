@@ -1,0 +1,68 @@
+/* PROTOTYPE variant C, "Chart hero". Quiet neutral page, mono labels, colour only on the mark that matters. */
+.frame { border-radius: 14px; background: var(--bg); }
+.chrome { --chrome: var(--fg); }
+[data-phase="reveal"]:not([data-story="streak"]) .chrome { --chrome: var(--on-c1); }
+[data-phase="reveal"][data-section="rhythm"] .chrome { --chrome: var(--on-c4); }
+[data-phase="reveal"][data-section="words"] .chrome { --chrome: var(--on-c2); }
+.ctl-label { font-family: var(--mono); font-weight: 500; font-size: 12px; }
+.seg { height: 2px; }
+.c-layer, .c-field, .c-page { position: absolute; inset: 0; }
+.c-page { background: var(--bg); }
+.c-kicker { position: absolute; left: 6cqw; top: 13cqh; margin: 0; font: 500 3.4cqw/1 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.c-q { position: absolute; left: 6cqw; right: 8cqw; top: 16.5cqh; margin: 0; font-size: 8.6cqw; font-weight: 650; line-height: 1.08; letter-spacing: -.03em; }
+.c-axis { position: absolute; left: 6%; right: 6%; height: 2px; background: var(--fg); transform-origin: left; }
+.c-months { position: absolute; left: 6%; right: 6%; display: flex; justify-content: space-between; font: 500 3cqw/1 var(--mono); opacity: .75; }
+.c-bars { position: absolute; left: 6%; right: 6%; display: flex; align-items: flex-end; gap: 0; }
+.c-bars i { flex: 1; background: currentColor; transform-origin: bottom; min-width: 0; }
+.c-bars.is-ghost i { opacity: .35; }
+.c-num { position: absolute; left: 6cqw; right: 6cqw; top: 13cqh; margin: 0; font-size: 23cqw; font-weight: 750; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.c-label { position: absolute; left: 6cqw; right: 6cqw; top: calc(13cqh + 25cqw); margin: 0; font: 500 3.6cqw/1.35 var(--mono); }
+.c-line { position: absolute; left: 6cqw; right: 6cqw; bottom: 7cqh; margin: 0; font-size: 6cqw; font-weight: 700; line-height: 1.15; }
+.c-meta { position: absolute; left: 6cqw; right: 6cqw; top: calc(13cqh + 34cqw); margin: 0; font-size: 5.4cqw; font-weight: 650; }
+.c-quote { position: absolute; left: 6cqw; right: 6cqw; bottom: 8cqh; margin: 0; font-size: 6cqw; font-weight: 700; }
+.c-ruler { position: absolute; left: 8%; right: 8%; top: 74%; height: 8cqh; }
+.c-ruler-line { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: currentColor; opacity: .6; }
+.c-ruler-gap { position: absolute; top: calc(50% - 3px); height: 6px; background: currentColor; }
+.c-mark { position: absolute; top: calc(50% - 7px); width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: currentColor; }
+.c-mark.is-guess { background: transparent; border: 2px solid currentColor; }
+.c-mark span { position: absolute; left: 50%; translate: -50% 0; bottom: 20px; font: 600 3.2cqw/1 var(--mono); white-space: nowrap; }
+.c-mark.is-guess span { bottom: auto; top: 20px; }
+.c-ruler-ends { position: absolute; left: 0; right: 0; top: calc(50% + 10px); display: flex; justify-content: space-between; font: 500 2.6cqw/1 var(--mono); opacity: .7; display: none; }
+.c-cal { position: absolute; left: 6%; right: 6%; top: 36%; display: grid; grid-template-columns: repeat(18, 1fr); gap: .8cqw; }
+.c-cal i { aspect-ratio: 1; border-radius: 1px; background: var(--soft); }
+.c-cal i.on { background: color-mix(in srgb, var(--fg) 22%, var(--bg)); }
+.c-num-dark { top: 13cqh; font-size: 24cqw; }
+.c-label-dark { top: calc(13cqh + 25cqw); color: var(--fg); }
+.c-pin { position: absolute; width: 0; height: 0; }
+.c-pin span { position: absolute; bottom: 4px; left: 0; translate: -50% 0; font: 600 3.2cqw/1 var(--mono); background: var(--fg); color: var(--bg); padding: 3px 6px; border-radius: 4px; white-space: nowrap; }
+.c-hbars { position: absolute; left: 6cqw; right: 6cqw; top: 36%; margin: 0; padding: 0; list-style: none; display: grid; gap: 1.6cqh; }
+.c-hbars li { display: flex; align-items: center; gap: 3cqw; height: 3.6cqh; position: relative; padding-right: 22cqw; }
+/* "Your pick" sits in its own column to the right of the bars, so it never covers one. */
+.c-rank { font: 500 3.2cqw/1 var(--mono); color: var(--muted); width: 6cqw; }
+.c-hbars b { display: flex; align-items: center; height: 100%; background: color-mix(in srgb, var(--fg) 26%, var(--bg)); transform-origin: left; min-width: 12cqw; border-radius: 2px; }
+.c-hbars li:first-child b { background: var(--fg); }
+.c-wordlabel { opacity: 0; font: 600 3.6cqw/1 var(--mono); color: var(--fg); padding-left: 2cqw; white-space: nowrap; }
+.c-hbars li:first-child .c-wordlabel { color: var(--bg); }
+.c-pick { position: absolute; right: 0; font: 600 3cqw/1 var(--mono); background: var(--fg); color: var(--bg); padding: 3px 6px; border-radius: 4px; }
+.c-word { font-size: 30cqw; top: 22cqh; }
+.c-word + .c-label { top: calc(24cqh + 34cqw); }
+
+/* guess: drawn like an axis — hairline track with ticks, mono readout, outlined button */
+.guess { background: var(--bg); color: var(--fg); border-top: 1px solid var(--border); padding-top: 4cqw; }
+.guess-prompt { font: 500 3.2cqw/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.guess-read { font-size: 13cqw; font-weight: 750; }
+.guess input[type=range] { appearance: none; -webkit-appearance: none; background:
+  repeating-linear-gradient(90deg, var(--muted) 0 1px, transparent 1px calc(100% / 11.0)) center / 100% 12px no-repeat; }
+.guess input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--fg); }
+.guess input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 4px; height: 34px; margin-top: -16px; background: var(--c1); border-radius: 2px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--c1) 25%, transparent); }
+.guess input[type=range]::-moz-range-track { height: 2px; background: var(--fg); }
+.guess input[type=range]::-moz-range-thumb { width: 4px; height: 34px; background: var(--c1); border: 0; border-radius: 2px; }
+.guess-scale { font-family: var(--mono); }
+.guess-go { background: transparent; border: 2px solid var(--fg); color: var(--fg); font-weight: 650; border-radius: 8px; }
+.guess-go:hover { background: var(--fg); color: var(--bg); }
+.guess-picks { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.guess-pick { background: transparent; border: 2px solid var(--fg); color: var(--fg); font: 650 4.4cqw/1 var(--mono); border-radius: 8px; }
+.guess-pick:hover, .guess-pick:focus-visible { background: var(--c2); border-color: var(--c2); color: var(--on-c2); }
+.guess-skip { color: var(--muted); }
+.outro { background: var(--bg); color: var(--fg); }
+.outro button { background: var(--fg); color: var(--bg); border-radius: 8px; }

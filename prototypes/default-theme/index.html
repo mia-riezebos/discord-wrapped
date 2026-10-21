@@ -1,0 +1,183 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway (issue #13 "Default theme look and motion").
+     Three variants of the default theme's look and motion, switchable via ?variant=poster|kinetic|chart
+     and the floating bar. Real 2025 data from ../report-fixture.json. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prototype: default theme look and motion</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
+  --accent: #4f5bd5; --accent-fg: #ffffff;
+  --c1: #4f5bd5; --c2: #d6409f; --c3: #1f9d63; --c4: #d48a00; --c5: #0e8fc7;
+  /* text on each palette field: white only where it clears contrast, ink elsewhere */
+  --ink: #17181c; --paper: #ffffff;
+  --on-c1: #ffffff; --on-c2: #ffffff; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
+  --on-fg: var(--bg); --on-bg: var(--fg);
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111216; --surface: #191a20; --fg: #ecedf1; --muted: #9a9daa; --border: #2c2e37; --soft: #22242c;
+    --accent: #8790ff; --accent-fg: #0d0e14; --c1: #8790ff; --c2: #f070b8; --c3: #4cc98c; --c4: #f2b33d; --c5: #4cbcf0;
+    --ink: #0d0e14; --on-c1: #0d0e14; --on-c2: #0d0e14; --on-c3: #0d0e14; --on-c4: #0d0e14; --on-c5: #0d0e14; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the report behind, dimmed */
+.backdrop { position: fixed; inset: 0; }
+.mock { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+.mock header { height: 56px; display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.m-period { display: flex; gap: 8px; align-items: center; padding: 12px 0; }
+.m-period span { border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; } .m-period .on { background: var(--fg); color: var(--bg); }
+.m-period b { margin-left: auto; font-size: 18px; }
+.mock section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin: 16px 0; }
+.mock h2 { margin: 0 0 12px; font-size: 22px; font-weight: 600; }
+.m-nums { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.m-nums small { display: block; color: var(--muted); } .m-nums strong { font-size: 26px; font-weight: 650; letter-spacing: -.02em; }
+.m-chart { display: flex; align-items: end; gap: 2px; height: 140px; margin-top: 18px; } .m-chart i { flex: 1; background: var(--c1); border-radius: 2px 2px 0 0; }
+.backdrop::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, #000 62%, transparent); }
+.cta { position: fixed; left: 50%; top: 50%; translate: -50% -50%; z-index: 5; font-size: 20px; font-weight: 650; padding: 18px 28px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+
+/* the 9:16 frame */
+.reel { position: fixed; inset: 0; display: grid; place-items: center; z-index: 2; }
+.frame { position: relative; height: min(100dvh - 40px, 920px); aspect-ratio: 9 / 16; overflow: hidden; border-radius: 14px;
+  container-type: size; background: var(--bg); color: var(--fg); isolation: isolate; outline: none; user-select: none; -webkit-user-select: none; }
+@media (max-width: 600px), (max-aspect-ratio: 10/16) {
+  .frame { width: 100vw; height: 100dvh; aspect-ratio: auto; border-radius: 0; }
+}
+.stages, .stage { position: absolute; inset: 0; }
+.stage { overflow: hidden; }
+
+/* chrome: bars and controls */
+.chrome { position: absolute; inset: 0 0 auto; z-index: 4; padding: 10px 10px 0; pointer-events: none; }
+.bars { display: flex; gap: 4px; }
+.seg { flex: 1; height: 4px; border-radius: 2px; background: var(--bar-track, color-mix(in srgb, currentColor 28%, transparent)); overflow: hidden; }
+.seg i { display: block; height: 100%; background: var(--bar-fill, currentColor); transform-origin: left; transform: scaleX(0); }
+.ctl { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.ctl-label { flex: 1; font-size: 13px; font-weight: 600; letter-spacing: .01em; padding-left: 2px; }
+/* A guess verdict with no empty space left in the story rides in the header instead of covering data. */
+.docked { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--chrome, currentColor); color: var(--bg); font-weight: 700; }
+.docked.is-right { background: var(--c3); color: var(--on-c3); }
+.ctl button { pointer-events: auto; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; border-radius: 8px; cursor: pointer; }
+.ctl button svg { width: 22px; height: 22px; }
+.ctl-pause .i-play, .ctl-pause[data-paused="true"] .i-pause { display: none; }
+.ctl-pause[data-paused="true"] .i-play { display: block; }
+.chrome { color: var(--chrome, var(--fg)); mix-blend-mode: var(--chrome-blend, normal); }
+
+/* tap zones: left third goes back, the rest goes forward; holding pauses */
+.zone { position: absolute; top: 70px; bottom: 0; z-index: 3; border: 0; background: transparent; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: none; }
+.zone-prev { left: 0; width: 30%; }
+.zone-next { right: 0; width: 70%; }
+.zone:focus-visible { outline-offset: -4px; }
+
+/* guess panel (player-owned; themes restyle with CSS only) */
+.guess { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 20px 20px max(24px, env(safe-area-inset-bottom)); display: grid; gap: 12px; }
+.guess-prompt { margin: 0; font-size: 14px; font-weight: 600; }
+.guess-read { font-size: 44px; font-weight: 750; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.guess input[type=range] { width: 100%; margin: 0; height: 44px; accent-color: currentColor; }
+.guess-scale { display: flex; justify-content: space-between; font-size: 12px; opacity: .8; margin-top: -8px; }
+.guess-go, .guess-pick { min-height: 52px; border-radius: 10px; border: 0; font-size: 18px; font-weight: 700; cursor: pointer; }
+.guess-picks { display: grid; gap: 10px; }
+.guess-skip { justify-self: center; background: none; border: 0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; padding: 8px 14px; cursor: pointer; opacity: .85; }
+
+/* outro (player-drawn) */
+/* After a story: it holds on its answer and invites a share; Next moves on. */
+.after { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 10px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgb(0 0 0 / .35)); }
+.after button { flex: 1; min-height: 48px; border: 0; border-radius: 12px; font: 700 16px/1 var(--font); cursor: pointer; }
+.after-share { background: var(--fg); color: var(--bg); }
+.after-next { background: color-mix(in srgb, var(--bg) 82%, transparent); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); backdrop-filter: blur(8px); flex: 0 0 auto !important; padding: 0 20px; }
+.after { animation: after-in 240ms ease-out both; }
+@keyframes after-in { from { opacity: 0; translate: 0 12px; } }
+@media (prefers-reduced-motion: reduce) { .after { animation: none; } }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; max-height: 92%; overflow: auto; display: grid; gap: 10px; padding: 14px 16px max(18px, env(safe-area-inset-bottom)); background: var(--bg); color: var(--fg); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgb(0 0 0 / .35); }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; }
+.sheet-close { border: 0; background: none; color: inherit; font-size: 26px; line-height: 1; cursor: pointer; }
+.sheet-shape { display: flex; gap: 14px; font-size: 14px; }
+.sheet-img { display: block; max-height: 46vh; max-width: 100%; margin: 0 auto; border-radius: 10px; border: 1px solid rgb(127 127 127 / .3); }
+.sheet-label { display: grid; gap: 4px; font-size: 13px; }
+.sheet-text { font: 15px/1.4 var(--font); padding: 8px; border-radius: 8px; border: 1px solid rgb(127 127 127 / .4); background: transparent; color: inherit; resize: vertical; }
+.sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet-actions button { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid rgb(127 127 127 / .4); background: transparent; color: inherit; font-weight: 600; cursor: pointer; }
+.sheet-actions .primary { background: var(--fg); color: var(--bg); border-color: transparent; }
+.sheet-note { margin: 0; font-size: 12px; opacity: .7; }
+.outro { position: absolute; inset: 0; z-index: 6; display: grid; place-content: center; text-align: center; gap: 8px; background: var(--fg); color: var(--bg); padding: 24px; }
+.outro-year { font-size: 7cqw; font-weight: 700; margin: 0; }
+.outro-score { font-size: 26cqw; font-weight: 800; line-height: .9; letter-spacing: -.05em; margin: 0; }
+.outro-sub { font-size: 5cqw; margin: 0 0 20px; }
+.outro button { justify-self: center; min-height: 48px; padding: 0 22px; border-radius: 10px; border: 0; background: var(--bg); color: var(--fg); font-weight: 700; font-size: 17px; cursor: pointer; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* prototype switcher: not part of the design */
+.proto { position: fixed; left: 50%; bottom: 10px; translate: -50% 0; z-index: 50; display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px; border-radius: 999px; background: #000; color: #fff; font: 12px/1.2 var(--mono); box-shadow: 0 6px 24px #0008; white-space: nowrap; max-width: calc(100vw - 12px); }
+.proto button { background: #fff2; border: 0; color: #fff; border-radius: 999px; min-width: 30px; height: 30px; padding: 0 10px; cursor: pointer; font: inherit; }
+.proto .p-name { font-weight: 700; padding: 0 4px; }
+.proto .p-state { opacity: .8; overflow: hidden; text-overflow: ellipsis; }
+/* on phones the bar takes the bottom 40px and the frame sits above it */
+@media (max-width: 600px), (max-aspect-ratio: 10/16) { .proto { bottom: 4px; font-size: 10px; padding: 3px; } .proto button { height: 26px; min-width: 26px; padding: 0 7px; }
+  .reel { bottom: 40px; } .frame { height: calc(100dvh - 40px); } }
+</style>
+<link id="theme-css" rel="stylesheet" href="">
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"><div class="mock"></div></div>
+<button class="cta" type="button" hidden>Play your 2025 Wrapped</button>
+
+<div class="reel" role="dialog" aria-modal="true" aria-label="Your 2025 reel">
+  <div class="frame" tabindex="-1">
+    <div class="stages"></div>
+    <button class="zone zone-prev" type="button" aria-label="Previous story"></button>
+    <button class="zone zone-next" type="button" aria-label="Next story"></button>
+    <div class="chrome">
+      <div class="bars"></div>
+      <div class="ctl">
+        <span class="ctl-label"></span>
+        <button class="ctl-pause" type="button" aria-label="Pause" data-paused="false">
+          <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>
+        </button>
+        <button class="ctl-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="guess" hidden></div>
+    <div class="after" hidden><button type="button" class="after-share">Share this</button><button type="button" class="after-next">Next <span aria-hidden="true">→</span></button></div>
+    <div class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet-head"><strong id="sheet-title">Share this story</strong><button type="button" class="sheet-close" aria-label="Close sharing">×</button></div>
+      <div class="sheet-shape" role="radiogroup" aria-label="Card shape"><label><input type="radio" name="shape" value="tall" checked> Story 9:16</label><label><input type="radio" name="shape" value="wide"> Post 16:9</label></div>
+      <img class="sheet-img" alt="">
+      <label class="sheet-label">Post text<textarea class="sheet-text" rows="3"></textarea></label>
+      <div class="sheet-actions"><button type="button" data-act="native" class="primary">Share…</button><button type="button" data-act="copy">Copy image</button><button type="button" data-act="download">Download</button></div>
+      <p class="sheet-note">Platform buttons, redaction and posting live in the redaction prototype; this checks the moment you're invited to share.</p>
+    </div>
+    <div class="outro" hidden>
+      <p class="outro-year">That was your 2025</p>
+      <p class="outro-score"></p>
+      <p class="outro-sub"></p>
+      <button type="button">Play again</button>
+    </div>
+    <div class="sr" aria-live="polite"></div>
+  </div>
+</div>
+
+<div class="proto" role="toolbar" aria-label="Prototype variants">
+  <button class="p-prev" type="button" aria-label="Previous variant">‹</button>
+  <span class="p-name"></span>
+  <button class="p-next" type="button" aria-label="Next variant">›</button>
+  <span class="p-state"></span>
+  <button class="p-motion" type="button"></button>
+</div>
+<script type="module" src="./player.js"></script>
+</body>
+</html>

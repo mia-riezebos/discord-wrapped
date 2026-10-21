@@ -1,0 +1,52 @@
+/* PROTOTYPE variant A, "Poster". Square corners, black-weight type, flat fields, no gradients. */
+.frame { border-radius: 0; font-family: var(--font); }
+.chrome { --chrome: var(--bg); }
+[data-phase="reveal"][data-section="overview"] .chrome { --chrome: var(--on-c1); }
+[data-phase="reveal"][data-section="rhythm"] .chrome { --chrome: var(--on-c4); }
+[data-phase="reveal"][data-section="words"] .chrome { --chrome: var(--on-c2); }
+.ctl-label { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
+.p-block { position: absolute; }
+.p-full { inset: 0; }
+.p-q { position: absolute; left: 6cqw; right: 5cqw; top: 15cqh; margin: 0; color: var(--bg); text-transform: uppercase;
+  font-size: 12.6cqw; line-height: .9; font-weight: 900; letter-spacing: -.045em; }
+.p-q .p-key { background: var(--key); color: var(--key-on); box-shadow: .06em 0 0 var(--key), -.06em 0 0 var(--key); }
+.p-foot { left: 0; right: 0; bottom: 0; height: 36cqh; }
+.p-tag { position: absolute; left: 6cqw; bottom: 12cqh; padding: 2cqw 4cqw; font-size: 7cqw; font-weight: 900; text-transform: uppercase; letter-spacing: -.02em; rotate: -4deg; }
+.p-kicker { position: absolute; left: 6cqw; top: 16cqh; margin: 0; font-size: 6.4cqw; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.p-num { position: absolute; left: 4cqw; right: 4cqw; top: 22cqh; margin: 0; font-weight: 900; line-height: .86; letter-spacing: -.06em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.p-unit { position: absolute; left: 6cqw; top: calc(22cqh + 26cqw); margin: 0; font-size: 13cqw; font-weight: 900; text-transform: uppercase; letter-spacing: -.04em; line-height: .9; }
+.p-footline { position: absolute; left: 6cqw; right: 6cqw; bottom: 16cqh; margin: 0; font-size: 5.6cqw; font-weight: 700; line-height: 1.15; }
+.p-num-top { top: 14cqh; font-size: 62cqw; }
+.p-unit-top { top: calc(14cqh + 52cqw); font-size: 10.5cqw; }
+.p-low { left: 0; right: 0; bottom: 0; height: 38cqh; background: var(--fg); color: var(--bg); padding: 7cqw 6cqw; }
+.p-low .p-footline { position: static; margin-top: 2cqw; }
+.p-range { margin: 0; font-size: 13cqw; font-weight: 900; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.p-lownum { margin: 0; font-size: 20cqw; font-weight: 900; letter-spacing: -.05em; line-height: .9; font-variant-numeric: tabular-nums; }
+.p-day { top: 18cqh; font-size: 68cqw; line-height: .8; }
+.p-month { top: calc(18cqh + 57cqw); font-size: 14cqw; }
+.p-word { top: 22cqh; line-height: 1; }
+.p-unit-word { top: calc(24cqh + 34cqw); }
+.p-runners { position: absolute; left: 6cqw; right: 6cqw; bottom: 13cqh; margin: 0; padding: 0; list-style: none; counter-reset: r 1; font-size: 5.2cqw; font-weight: 700; }
+.p-runners li { counter-increment: r; display: flex; gap: 3cqw; border-top: 2px solid currentColor; padding: 1.4cqw 0; }
+.p-runners li::before { content: "#" counter(r); width: 9cqw; }
+.p-runners li b { flex: 1; }
+.p-stamp { position: absolute; right: 5cqw; top: 58cqh; max-width: 62cqw; padding: 2.4cqw 3.6cqw; background: var(--fg); color: var(--bg);
+  font-size: 4.6cqw; font-weight: 800; line-height: 1.15; rotate: 5deg; }
+.p-stamp.is-right { background: var(--c3); color: var(--on-c3); }
+
+/* guess: the bottom block is the guess, flat and square */
+.guess { color: var(--on-c1); background: var(--c1); padding: 5cqw 6cqw max(7cqw, env(safe-area-inset-bottom)); border-radius: 0; gap: 2.6cqw; min-height: 36cqh; align-content: end; }
+[data-section="words"] .guess { background: var(--c2); color: var(--on-c2); }
+.guess-prompt { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
+.guess-read { font-size: 15cqw; font-weight: 900; letter-spacing: -.05em; }
+.guess input[type=range] { appearance: none; -webkit-appearance: none; height: 44px; background: transparent; }
+.guess input[type=range]::-webkit-slider-runnable-track { height: 10px; background: currentColor; }
+.guess input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 44px; margin-top: -17px; background: var(--fg); border: 3px solid currentColor; }
+.guess input[type=range]::-moz-range-track { height: 10px; background: currentColor; }
+.guess input[type=range]::-moz-range-thumb { width: 30px; height: 44px; border-radius: 0; background: var(--fg); border: 3px solid currentColor; }
+.guess-go, .guess-pick { border-radius: 0; background: var(--fg); color: var(--bg); text-transform: uppercase; font-weight: 900; letter-spacing: .02em; }
+.guess-pick { font-size: 7cqw; text-transform: none; letter-spacing: -.03em; text-align: left; padding: 0 5cqw; }
+.guess-pick:hover, .guess-go:hover { background: var(--bg); color: var(--fg); }
+.guess-skip { color: inherit; }
+.outro { background: var(--c1); color: var(--on-c1); }
+.outro button { border-radius: 0; background: var(--fg); color: var(--bg); text-transform: uppercase; }

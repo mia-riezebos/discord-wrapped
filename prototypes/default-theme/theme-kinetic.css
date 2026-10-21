@@ -1,0 +1,66 @@
+/* PROTOTYPE variant B, "Kinetic". Rounded, bouncy, heavy type in sentence case. */
+.frame { border-radius: 22px; }
+.k-field { position: absolute; inset: 0; }
+.k-q { position: absolute; left: 6cqw; right: 6cqw; top: 17cqh; margin: 0; display: grid; justify-items: start; gap: 1.2cqw; }
+.k-line { display: block; font-size: 11.5cqw; font-weight: 850; line-height: 1; letter-spacing: -.035em; padding: .04em .18em .1em; margin-left: -.18em;
+  background: var(--fg); color: var(--bg); border-radius: .22em; }
+.k-line:nth-child(even) { background: transparent; color: inherit; }
+.k-kicker { position: absolute; left: 7cqw; top: 15cqh; margin: 0; font-size: 6.5cqw; font-weight: 800; }
+.k-odo { position: absolute; left: 5cqw; right: 3cqw; top: 22cqh; display: flex; font-weight: 900; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.k-col { display: inline-block; height: 1em; overflow: hidden; }
+.k-strip { display: block; white-space: pre; line-height: 1em; }
+.k-sep { display: inline-block; }
+.k-streak { font-size: 58cqw; top: 20cqh; justify-content: center; left: 0; right: 0; }
+.k-mid { font-size: 25cqw; top: 54cqh; }
+.k-unit { position: absolute; left: 7cqw; right: 7cqw; top: calc(24cqh + 24cqw); margin: 0; font-size: 12cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
+.k-streak ~ .k-unit { top: calc(22cqh + 58cqw); text-align: center; }
+.k-unit-sm { top: calc(56cqh + 26cqw); font-size: 6cqw; font-weight: 750; line-height: 1.15; letter-spacing: -.01em; }
+.k-sub { position: absolute; left: 7cqw; right: 7cqw; top: calc(26cqh + 38cqw); margin: 0; font-size: 6cqw; font-weight: 750; }
+.k-streak ~ .k-sub { top: calc(24cqh + 72cqw); text-align: center; }
+.k-ticker { position: absolute; left: 0; right: 0; top: 0; text-align: center; white-space: pre; font-size: 9cqw; font-weight: 800; line-height: 1.1; opacity: .22; }
+.k-date { position: absolute; left: 6cqw; right: 6cqw; top: 14cqh; margin: 0; display: grid; justify-items: start; }
+.k-dw { display: block; font-size: 22cqw; font-weight: 900; letter-spacing: -.045em; line-height: .95; }
+.k-dw:nth-child(2) { font-size: 34cqw; justify-self: center; }
+.k-dw:nth-child(3) { justify-self: end; }
+.k-quote { position: absolute; left: 7cqw; right: 7cqw; bottom: 9cqh; margin: 0; font-size: 6cqw; font-weight: 800; background: var(--fg); color: var(--bg); padding: 2cqw 4cqw; border-radius: 4cqw; }
+.k-word { position: absolute; left: 4cqw; right: 4cqw; top: 21cqh; margin: 0; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; white-space: nowrap; }
+.k-word span { display: inline-block; }
+.k-word ~ .k-unit { top: 52cqh; }
+.k-pile { position: absolute; left: 5cqw; right: 5cqw; bottom: 6cqh; display: flex; flex-wrap: wrap-reverse; justify-content: center; gap: 1.5cqw; }
+.k-chip { background: var(--fg); color: var(--bg); font-weight: 800; font-size: 6.5cqw; padding: 1.2cqw 4cqw; border-radius: 99px; }
+.k-guess { position: absolute; left: 6cqw; right: 6cqw; bottom: 9cqh; margin: 0; display: grid; gap: 1cqw; padding: 4cqw 5cqw; border-radius: 5cqw; background: var(--fg); color: var(--bg); }
+.k-guess.is-right { background: var(--paper); color: var(--ink); }
+.k-guess-you { font-size: 4.4cqw; font-weight: 700; opacity: .8; }
+.k-guess-line { font-size: 6.2cqw; font-weight: 850; line-height: 1.1; }
+
+/* chrome follows the colour on screen */
+.chrome { --chrome: var(--on-c1); }
+[data-story="messages"][data-phase="reveal"] .chrome { --chrome: var(--on-c2); }
+[data-story="streak"] .chrome { --chrome: var(--on-c3); }
+[data-story="streak"][data-phase="reveal"] .chrome { --chrome: var(--on-c4); }
+[data-story="biggest-day"] .chrome { --chrome: var(--on-c5); }
+[data-story="biggest-day"][data-phase="reveal"] .chrome { --chrome: var(--on-c1); }
+[data-story="top-word"] .chrome { --chrome: var(--on-c2); }
+[data-story="top-word"][data-phase="reveal"] .chrome { --chrome: var(--on-c3); }
+.seg { border-radius: 99px; }
+
+/* guess: the live number floats big in the middle of the frame; the slider is a fat pill */
+.guess { background: transparent; color: var(--on-c1); gap: 14px; }
+[data-story="top-word"] .guess { color: var(--on-c2); }
+.guess-prompt { font-size: 5cqw; font-weight: 750; text-align: center; }
+.guess-read { text-align: center; font-size: 22cqw; margin-bottom: 2cqw; font-weight: 900; letter-spacing: -.05em;
+  transform: rotate(calc((var(--t, .5) - .5) * 14deg)) scale(calc(.75 + var(--t, .5) * .5)); transition: transform 120ms ease-out; }
+.guess input[type=range] { appearance: none; -webkit-appearance: none; height: 56px; background: transparent; }
+.guess input[type=range]::-webkit-slider-runnable-track { height: 56px; border-radius: 99px; background: color-mix(in srgb, currentColor 22%, transparent); }
+.guess input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 56px; height: 56px; border-radius: 50%; background: var(--fg); box-shadow: 0 0 0 5px currentColor inset; }
+.guess input[type=range]::-moz-range-track { height: 56px; border-radius: 99px; background: color-mix(in srgb, currentColor 22%, transparent); }
+.guess input[type=range]::-moz-range-thumb { width: 56px; height: 56px; border-radius: 50%; background: var(--fg); border: 5px solid currentColor; }
+.guess-scale { padding: 0 8px; margin-top: 0; font-weight: 700; }
+.guess-go, .guess-pick { border-radius: 99px; background: var(--fg); color: var(--bg); font-weight: 850; }
+.guess-picks { gap: 12px; }
+.guess-pick { font-size: 8cqw; min-height: 64px; rotate: calc((var(--k) - 1) * -3deg); transition: scale 120ms ease-out; }
+.guess-pick:hover, .guess-pick:focus-visible { scale: 1.05; }
+.guess-skip { color: inherit; }
+@media (prefers-reduced-motion: reduce) { .guess-read, .guess-pick { transition: none; } }
+.outro { background: var(--c4); color: var(--on-c4); }
+.outro button { border-radius: 99px; background: var(--fg); color: var(--bg); }
