@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {CARD_SHAPES, drawCard, layoutCard} from '../src/card.js';
-import {markName, newRedaction, redactCard} from '../src/redaction.js';
+import {markName, newRedaction, redactCard, setToggle} from '../src/redaction.js';
 
 // Every character is 0.55 em wide, so widths are predictable.
 const measure = (t, size) => t.length * size * .55;
@@ -100,7 +100,7 @@ for (const shape of SHAPES) {
   test(`${shape}: drawCard scribbles hidden names, bar labels included, and keeps the rest as text`, () => {
     const g = fakeCanvas();
     try {
-      const {words} = drawCard(named, shape, theme, m => redactCard(m, newRedaction()));
+      const {words} = drawCard(named, shape, theme, m => redactCard(m, setToggle(newRedaction(), 'name', true)));
       assert.equal(g.strokes, 3, 'one mark per bar label');
       assert.ok(!g.texts.some(t => /Hall|Cozy|Server/.test(t)), 'no name is written');
       assert.ok(g.texts.includes('4,210') && g.texts.includes('messages'), 'the hero falls back to the count');

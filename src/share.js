@@ -256,8 +256,9 @@ pop.addEventListener('click', async e => {
       // From here the post is the person's own text; later redactions still black out newly hidden terms in it.
       const area = Object.assign(document.createElement('textarea'), {className: 'sp-text', rows: 3, value: postText()});
       area.setAttribute('aria-labelledby', 'sp-post-label');
+      const note = Object.assign(document.createElement('p'), {className: 'sp-hint', textContent: 'Words you hide now are blacked out here too. Showing them again won’t restore them.'});
       current.edited = true;
-      pop.querySelector('.sp-post').replaceWith(area);
+      pop.querySelector('.sp-post').replaceWith(area, note);
       b.remove();
       area.focus();
     } else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }

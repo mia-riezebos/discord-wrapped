@@ -59,7 +59,7 @@ bottom left.
 
 Every word on the card preview and in the post is a button: a tap hides it in both, and another tap brings it back.
 A hidden word is a felt-tip scribble on the card and ████ in the post, one fixed width whatever it covers, and
-neighbouring hidden words merge into one mark. "Hide names" (on by default) covers server, channel and DM names
+neighbouring hidden words merge into one mark. Nothing starts hidden. "Hide names" covers server, channel and DM names
 everywhere, bar labels included; "Hide quotes" covers quoted messages, ranked words and search terms, on the bump
 chart too. When the headline is a hidden name, the card shows the count instead. On phones, "Zoom in" shows the card
 at 2.5× in a pannable frame, so its small text is tappable. "Edit text" turns the post into a text box; later

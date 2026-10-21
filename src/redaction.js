@@ -24,9 +24,9 @@ export const HIDDEN = '████';
 /**
  * One redaction state per share sheet. names and quotes are the two toggles; words are single words hidden by a tap;
  * hidden and shown are names or quotes hidden by a tap, or brought back while their toggle is on.
- * Names start hidden: a card shows them only once revealed.
+ * Nothing starts hidden.
  */
-export const newRedaction = () => ({names: true, quotes: false, words: [], hidden: [], shown: []});
+export const newRedaction = () => ({names: false, quotes: false, words: [], hidden: [], shown: []});
 
 // A name or quote is matched by its text, so a clipped copy ("Programming Ser…") matches the whole one.
 const entity = (kind, text) => {

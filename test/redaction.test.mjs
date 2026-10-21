@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {HIDDEN, blackOut, kindsIn, markName, markQuote, newRedaction, redactCard, redactText, setToggle, tap, tokenize, units, unmark} from '../src/redaction.js';
 
 const fresh = newRedaction();
-const shown = setToggle(fresh, 'name', false);
+const names = setToggle(fresh, 'name', true);
 const server = {
   text: `4,210 of my Discord messages in 2025 went to ${markName('Cozy Corner')}.`,
   model: {hero: markName('Cozy Corner'), heroAlt: '4,210 messages', fact: 'Number 2 server · 4,210 messages in 2025', host: 'discordwrapped.app',
@@ -22,38 +22,40 @@ const cardText = (model, s) => {
 };
 const unitOf = (text, s, core) => units(tokenize(text), s).find(u => u.tokens.some(t => t.core === core));
 
-test('names start hidden, in the post, the hero and every bar label', () => {
-  assert.equal(redactText(server.text, fresh), `4,210 of my Discord messages in 2025 went to ${HIDDEN}.`);
-  assert.deepEqual(cardText(server.model, fresh).bars, [HIDDEN, HIDDEN, HIDDEN]);
+test('nothing starts hidden', () => {
+  assert.equal(redactText(server.text, fresh), '4,210 of my Discord messages in 2025 went to Cozy Corner.');
+  assert.deepEqual(cardText(server.model, fresh), {hero: 'Cozy Corner', fact: server.model.fact, bars: ['Big Hall', 'Cozy Corner', 'Tiny Room']});
+  assert.equal(redactText(fame, fresh), unmark(fame));
+  assert.deepEqual(cardText(word.model, fresh).bars, ['the', 'lol']);
 });
 
-test('Hide names off shows every name', () => {
-  assert.equal(redactText(server.text, shown), '4,210 of my Discord messages in 2025 went to Cozy Corner.');
-  assert.deepEqual(cardText(server.model, shown), {hero: 'Cozy Corner', fact: server.model.fact, bars: ['Big Hall', 'Cozy Corner', 'Tiny Room']});
+test('Hide names covers the post, the hero and every bar label', () => {
+  assert.equal(redactText(server.text, names), `4,210 of my Discord messages in 2025 went to ${HIDDEN}.`);
+  assert.deepEqual(cardText(server.model, names).bars, [HIDDEN, HIDDEN, HIDDEN]);
 });
 
 test('a hidden name as the hero falls back to the count', () => {
-  assert.equal(cardText(server.model, fresh).hero, '4,210 messages');
-  const revealed = tap(fresh, unitOf(server.model.hero, fresh, 'Cozy'));
+  assert.equal(cardText(server.model, names).hero, '4,210 messages');
+  const revealed = tap(names, unitOf(server.model.hero, names, 'Cozy'));
   assert.equal(cardText(server.model, revealed).hero, 'Cozy Corner');
 });
 
 test('Hide quotes covers quoted messages and ranked words, keeping the quote marks', () => {
-  const q = setToggle(shown, 'quote', true);
+  const q = setToggle(fresh, 'quote', true);
   assert.equal(redactText(fame, q), `My first Discord message in 2025 was “${HIDDEN}”.`);
   assert.equal(redactText(word.text, q), `“${HIDDEN}” was my number 2 word on Discord in 2025, used 900 times.`);
   assert.deepEqual(cardText(word.model, q), {hero: `“${HIDDEN}”`, fact: word.model.fact, bars: [HIDDEN, HIDDEN]});
-  assert.equal(redactText(fame, shown), unmark(fame));
+  assert.equal(redactText(fame, fresh), unmark(fame));
 });
 
 test('neighbouring hidden words merge into one mark, so a mark never tells how many words it covers', () => {
-  const q = setToggle(shown, 'quote', true);
+  const q = setToggle(fresh, 'quote', true);
   assert.equal(redactText(fame, q).split(HIDDEN).length, 2);
   assert.equal(units(tokenize(fame), q).filter(u => u.hidden).length, 1);
 });
 
 test('tapping a word in the post hides it on the card too, and tapping again restores it', () => {
-  const s = tap(shown, unitOf(word.text, shown, 'lol'));
+  const s = tap(fresh, unitOf(word.text, fresh, 'lol'));
   assert.match(redactText(word.text, s), new RegExp(`^“${HIDDEN}” was`));
   assert.deepEqual(cardText(word.model, s).bars, ['the', HIDDEN]);
   const back = tap(s, unitOf(word.text, s, 'lol'));
@@ -62,21 +64,21 @@ test('tapping a word in the post hides it on the card too, and tapping again res
 });
 
 test('tapping a plain word hides it wherever it appears', () => {
-  const s = tap(shown, unitOf(word.text, shown, '2025'));
+  const s = tap(fresh, unitOf(word.text, fresh, '2025'));
   assert.equal(redactText(word.text, s), `“lol” was my number 2 word on Discord in ${HIDDEN}, used 900 times.`);
   assert.equal(cardText(word.model, s).fact, `Number 2 word · 900 times in ${HIDDEN}`);
 });
 
 test('tapping a word of a name on the card hides the whole name everywhere, clipped copies included', () => {
   const long = markName('Programming Server Deluxe'), clipped = markName('Programming Ser…');
-  const s = tap(shown, unitOf(long, shown, 'Server'));
+  const s = tap(fresh, unitOf(long, fresh, 'Server'));
   assert.equal(redactText(`I talk in ${long}`, s), `I talk in ${HIDDEN}`);
   assert.equal(redactText(clipped, s), HIDDEN);
   assert.equal(redactText(markName('Programming Club'), s), 'Programming Club');
 });
 
 test('a name shown by a tap stays shown while Hide names is on, until the toggle is set again', () => {
-  const s = tap(fresh, unitOf(server.text, fresh, 'Cozy'));
+  const s = tap(names, unitOf(server.text, names, 'Cozy'));
   assert.ok(s.names);
   assert.match(redactText(server.text, s), /Cozy Corner/);
   assert.deepEqual(cardText(server.model, s).bars, [HIDDEN, 'Cozy Corner', HIDDEN]);
@@ -84,9 +86,9 @@ test('a name shown by a tap stays shown while Hide names is on, until the toggle
 });
 
 test('punctuation on its own never hides, and tapping it changes nothing', () => {
-  const text = 'Number 2 · 900 times', s = tap(shown, unitOf(text, shown, '·'));
-  assert.equal(s, shown);
-  assert.equal(redactText(text, setToggle(shown, 'quote', true)), text);
+  const text = 'Number 2 · 900 times', s = tap(fresh, unitOf(text, fresh, '·'));
+  assert.equal(s, fresh);
+  assert.equal(redactText(text, setToggle(fresh, 'quote', true)), text);
 });
 
 test('kindsIn lists the toggles a share needs', () => {
