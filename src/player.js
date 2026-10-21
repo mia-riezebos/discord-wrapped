@@ -45,7 +45,7 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
  * `onShare(story, button, host)` handles "Share this", where `host` is an element inside the dialog for any
- * popover it opens. Returns {close}.
+ * popover it opens; without it there is no "Share this". Returns {close}.
  */
 export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
@@ -68,7 +68,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
           <button type="button" class="reel-next" aria-label="Next story">${icon('M9 5l7 7-7 7')}</button>
           <button type="button" class="reel-close" aria-label="Close reel">${icon('M6 6l12 12M18 6 6 18')}</button></div>
       </div>
-      <div class="reel-after" hidden><button type="button" class="reel-share">Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
+      <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
       <div class="reel-summary" hidden><h2></h2><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
       <p class="sr-only" aria-live="polite"></p>
     </div>`;

@@ -219,10 +219,8 @@ $('period').addEventListener('change', e => {
   }
 });
 const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
-// "Share this" opens the story's section share for now, in a popover moved into the player so it stays usable.
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget,
-  onShare: (story, button, host) => { const ctx = sectionShare(story.section); if (ctx) { host.append(pop); openShare(ctx, button.getBoundingClientRect()); } },
-  onClose: () => { closeShare(); document.body.append(pop); }});
+// No "Share this" until a story can share its own card (#29).
+$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
