@@ -80,18 +80,22 @@ export const KINETIC = (() => {
     c.sticker(F, tag, prefer);
     pop(tag, at);
   }
-  // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
-  function choices(F, s, r, at) {
-    const {options, answer} = s.guess, max = Math.max(1, ...options.map(o => o.count));
-    const box = el('ol', 'k-picks', null, F);
-    options.forEach((o, k) => {
-      const row = el('li', o.key === answer ? 'on' : null, null, box);
-      el('span', null, o.label + (r && o.key === r.guess ? ' (your guess)' : ''), row);
-      el('b', null, num(o.count), row);
+  // Ranked rows of [label, shown value, count] at the foot of the field, each over a bar of its count, row `on` in full ink.
+  function ranked(F, rows, on, at) {
+    const max = Math.max(1, ...rows.map(r => r[2])), box = el('ol', 'k-picks', null, F);
+    rows.forEach(([label, value, n], k) => {
+      const row = el('li', k === on ? 'on' : null, null, box);
+      el('span', null, label, row);
+      el('b', null, value, row);
       const bar = hide(el('i', null, null, row));
-      bar.style.width = `${Math.max(2, 100 * o.count / max)}%`;
+      bar.style.width = `${Math.max(2, 100 * n / max)}%`;
       bar.animate([{transform: 'scaleX(0)'}, {transform: 'none'}], {duration: 520, delay: at + k * 120, easing: ease.out, fill: 'both'});
     });
+  }
+  // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
+  function choices(F, s, r, at) {
+    const {options, answer} = s.guess;
+    ranked(F, options.map(o => [o.label + (r && o.key === r.guess ? ' (your guess)' : ''), num(o.count), o.count]), options.findIndex(o => o.key === answer), at);
   }
 
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
@@ -165,6 +169,112 @@ export const KINETIC = (() => {
           tick.textContent = Array.from({length: n}, (_, k) => new Date(end - (n - 1 - k) * 864e5).toLocaleDateString(undefined, {day: 'numeric', month: 'short', timeZone: 'UTC'})).join('\n');
           tick.animate([{transform: 'translateY(100%)'}, {transform: 'none'}], {duration: 3200, delay: 300, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
         }
+      },
+    },
+
+    /* ---------- Rhythm ---------- */
+    'night-owl': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F), {owl, hourly} = s.data;
+        letters(box, 'k-word', owl ? 'Night owl' : 'Early bird', 450);
+        slideIn(el('p', 'k-sub', `${num(s.value)} ${s.value === 1 ? 'message' : 'messages'} ${owl ? 'from 9 pm to 3 am' : 'from 5 to 11 am'}.`, box), 1300);
+        // The day's 24 hours as columns, your window in ink.
+        const hours = hide(el('div', 'k-bars k-hours', null, box)), max = Math.max(1, ...hourly), win = owl ? [21, 22, 23, 0, 1, 2] : [5, 6, 7, 8, 9, 10];
+        hourly.forEach((n, h) => {
+          const b = el('i', win.includes(h) ? 'on' : null, null, hours);
+          b.style.height = `${Math.max(3, 100 * n / max)}%`;
+          b.animate([{transform: 'scaleY(0)'}, {transform: 'none'}], {duration: 420, delay: 1500 + h * 30, easing: ease.snap, fill: 'both'});
+        });
+        choices(F, s, r, 2100);
+        verdict(F, s, r, c, 2600, 0.55);
+      },
+    },
+    'biggest-day': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        // The weekday and the date spin in from opposite sides.
+        const date = el('p', 'k-date', null, box), {parts} = s.data;
+        date.setAttribute('aria-label', parts.join(' '));
+        date.style.fontSize = fit(parts.reduce((a, p) => p.length > a.length ? p : a), 86, 0.6, 18);
+        parts.forEach((t, k) => pop(hide(el('span', null, t, date)), 400 + k * 220, `translateX(${k ? '' : '-'}110cqw) rotate(${k ? 14 : -14}deg)`));
+        odometer(box, num(s.value), {at: 1100, dur: 1300}).style.fontSize = fit(num(s.value), 86, 0.62, 26);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'message' : 'messages', box), 2300);
+        if (s.data.times > 1) slideIn(el('p', 'k-sub', `About ${s.data.times}× your usual day.`, box), 2600);
+        if (s.data.quote) {
+          const [text, n] = s.data.quote, tag = el('p', 'k-sticker', `${num(n)}× “${text}”`, F);
+          c.sticker(F, tag, 0.8);
+          pop(tag, 3100);
+        }
+      },
+    },
+    'fastest-minute': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack k-center', null, F), n = Math.min(s.value, 60);
+        // One pill per message (up to 60) fires in over the time the number rolls.
+        const burst = hide(el('div', 'k-burst', null, F));
+        for (let k = 0; k < n; k++) pop(el('i', null, null, burst), 300 + k * 1100 / n, 'scale(0)');
+        odometer(box, num(s.value), {at: 300, dur: 1300}).style.fontSize = fit(num(s.value), 70, 0.62, 44);
+        slideIn(el('p', 'k-unit', 'messages in one minute', box), 1700);
+        slideIn(el('p', 'k-sub', `${s.data.when}. ${s.data.every === 1 ? 'One a second' : `One every ${s.data.every} seconds`}.`, box), 2000);
+      },
+    },
+
+    /* ---------- People & servers ---------- */
+    where: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F), [top] = s.data.groups;
+        el('p', 'k-kicker', 'Of your messages', box);
+        odometer(box, `${top.pct}%`, {at: 400}).style.fontSize = fit(`${top.pct}%`, 70, 0.62, 40);
+        slideIn(el('p', 'k-unit', `went to ${top.word}`, box), 1500);
+        ranked(F, s.data.groups.map(g => [g.label, g.pct ? `${g.pct}%` : 'Under 1%', g.count]), 0, 1900);
+      },
+    },
+    'top-server': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
+        el('p', 'k-kicker', 'Your top server', box);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-sub', `${num(s.value)} messages, ${s.data.pct}% of what you sent in servers.`, box), 1500);
+        ranked(F, s.data.ranked.map(([name, n]) => [name, num(n), n]), 0, 1900);
+      },
+    },
+    'top-dm': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
+        el('p', 'k-kicker', 'You DMed most', box);
+        letters(box, 'k-word', s.data.name, 450);
+        slideIn(el('p', 'k-sub', `${num(s.value)} messages, ${s.data.pct}% of your DMs.`, box), 1500);
+        choices(F, s, r, 1900);
+        verdict(F, s, r, c, 2500, 0.5);
+      },
+    },
+    'inner-circle': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack k-fill', null, F);
+        odometer(box, `${s.value}%`, {at: 400}).style.fontSize = fit(`${s.value}%`, 70, 0.62, 26);
+        slideIn(el('p', 'k-unit', 'of your DMs', box), 1500);
+        slideIn(el('p', 'k-sub', `went to just ten people, out of ${num(s.data.conversations)} conversations.`, box), 1800);
+        // Your ten fall in and pile up in the space left at the foot, slightly askew.
+        const pile = hide(el('div', 'k-pile', null, box));
+        s.data.names.forEach((name, k) => {
+          const chip = el('span', null, name, pile);
+          chip.style.rotate = `${[-6, 4, -3, 7, -5, 3, -7, 5, -2, 6][k]}deg`;
+          chip.animate([{transform: 'translateY(-120cqh)'}, {transform: 'none', offset: .8}, {transform: 'translateY(-2cqw)', offset: .9}, {transform: 'none'}], {duration: 650, delay: 2100 + k * 100, easing: ease.in, fill: 'both'});
+        });
       },
     },
   };
