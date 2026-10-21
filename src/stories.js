@@ -28,13 +28,18 @@ export function linkHost(text) {
 }
 
 /**
- * A message as it reads in Discord, for quoting. The export writes mentions and custom emoji as markup with ids
- * (<@id>, <@&id>, <#id>, <:name:id>), and has no names for them: a person reads as @someone, a role as @role, a channel
- * as "a channel" (posts never carry a #), a custom emoji as :name:. A quote stops at a link, with an ellipsis.
+ * A message as it reads in Discord, links and all; the report shows messages this way. The export writes mentions and
+ * custom emoji as markup with ids (<@id>, <@&id>, <#id>, <:name:id>), and has no names for them: a person reads as
+ * @someone, a role as @role, a channel as "a channel" (posts never carry a #), a custom emoji as :name:.
  */
-export function plainText(text) {
+export function discordText(text) {
   return String(text || '').replace(/<a?(:\w+:)\d+>/g, '$1').replace(/<@!?\d+>/g, '@someone').replace(/<@&\d+>/g, '@role')
-    .replace(/<#\d+>/g, 'a channel').replace(/\s*<?\b(?:https?:\/\/|www\.)[\s\S]*$/i, '…');
+    .replace(/<#\d+>/g, 'a channel');
+}
+
+/** A message as a story or share quotes it: as it reads in Discord (discordText), stopping at a link with an ellipsis. */
+export function plainText(text) {
+  return discordText(text).replace(/\s*<?\b(?:https?:\/\/|www\.)[\s\S]*$/i, '…');
 }
 
 /** Whether a message is nothing but mentions, so it reads as "a mention" instead of a quote of placeholders. */

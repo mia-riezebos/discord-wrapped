@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {buildStories} from '../src/stories.js';
+import {buildStories, discordText, plainText} from '../src/stories.js';
 import {pickSet} from '../src/guess.js';
 
 // On the page all scripts share one scope, so stories.js finds pickSet there.
@@ -312,4 +312,10 @@ test('a first message that opens with a link reads as the site, never as "…" (
   const later = byId(buildStories(words({fame: {first: msg('look https://youtube.com'), longest: null}}), YEAR))['first-message'];
   assert.equal(later.share, 'My first Discord message in 2025 was “look…”.', 'a quote stops at a link, as the report\'s posts do');
   assert.equal(byId(buildStories(words({fame: {first: msg(''), longest: null}}), YEAR))['first-message'].share, 'My first Discord message in 2025 was an attachment.');
+});
+
+test('the report shows a message as Discord does, links kept; a quote also stops at its first link', () => {
+  const text = 'hey <@!400140550503923713> and <@&400140550503923714>, see <#400140550503923715> <a:party:400140550503923716> https://youtube.com/x';
+  assert.equal(discordText(text), 'hey @someone and @role, see a channel :party: https://youtube.com/x');
+  assert.equal(plainText(text), 'hey @someone and @role, see a channel :party:…');
 });

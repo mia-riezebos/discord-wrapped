@@ -128,6 +128,14 @@ test('every Kinetic scene shows real plurals and no raw markup, at 0, 1 and larg
   }
 });
 
+test('a pick-one reveal marks your guess apart from its label, so a long label clips and the mark stays', () => {
+  const s = buildStories(cases.at(-1).r, ALL).find(s => s.guess?.type === 'pick'), {options} = s.guess, stage = node();
+  scenes.scenes[s.id].reveal(stage, s, {guess: options[1].key, line: 'Close.'}, {i: 0, sticker() {}});
+  const all = n => [n, ...n.children.flatMap(all)], mine = all(stage).filter(n => n.className === 'k-mine');
+  assert.equal(mine.length, 1);
+  assert.deepEqual(mine[0].children.map(shown), [[options[1].label], [' (your guess)']]);
+});
+
 test('reel endings name the period, or the section, in its tense', () => {
   for (const p of [YEAR, ALL]) for (const section of [undefined, ...STORY_SECTIONS.map(s => s.id)]) {
     const ending = reelEnding(p, section);

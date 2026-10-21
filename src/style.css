@@ -503,6 +503,8 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-scroll { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; font-size: 5cqw; font-weight: 750; line-height: 1.3; white-space: pre-wrap; overflow-wrap: anywhere; opacity: .5; }
 .k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
 .k-picks span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-mine { display: flex; gap: .3em; }
+.k-mine em { flex: none; font-style: normal; }
 .k-hours { position: static; width: 100%; height: 12cqh; gap: .8cqw; }
 .k-hours i { border-radius: .8cqw .8cqw 0 0; }
 .k-date { font-weight: 900; letter-spacing: -.04em; line-height: 1; }

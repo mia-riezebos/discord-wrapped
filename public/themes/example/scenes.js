@@ -47,12 +47,14 @@ function columns(page, {buckets, top}, at) {
     bar.animate([{transform: 'scaleY(0)'}, {transform: 'none'}], {duration: 500, delay: at + k * 35, easing: ease.out, fill: 'both'});
   });
 }
-// A box score: ranked rows with dotted leaders, the row that matters set in red.
-function table(page, rows, on, at) {
+// A box score: ranked rows with dotted leaders, the row that matters set in red. Row `mine` is marked as your guess;
+// its label clips first, so the mark always shows.
+function table(page, rows, on, at, mine = -1) {
   const box = el('ol', 'n-table', null, page);
   rows.forEach(([label, value], k) => {
     const row = el('li', k === on ? 'on' : null, null, box);
     el('span', null, label, row);
+    if (k === mine) el('em', null, ' (your guess)', row);
     el('b', null, value, row);
     row.animate([{clipPath: 'inset(0 100% 0 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 420, delay: at + k * 90, easing: ease.out, fill: 'both'});
   });
@@ -76,7 +78,7 @@ export const front = {
     hide(el('div', 'n-rule', null, page)).animate([{transform: 'scaleX(0)'}, {transform: 'none'}], {duration: 480, delay: 950, easing: ease.out, fill: 'both'});
     if (card.fact) rise(el('p', 'n-dek', card.fact, page), 1050);
     const g = s.guess;
-    if (g?.type === 'pick') table(page, g.options.map(o => [o.label + (r && !r.skipped && o.key === r.guess ? ' (your guess)' : ''), num(o.count)]), g.options.findIndex(o => o.key === g.answer), 1300);
+    if (g?.type === 'pick') table(page, g.options.map(o => [o.label, num(o.count)]), g.options.findIndex(o => o.key === g.answer), 1300, r && !r.skipped ? g.options.findIndex(o => o.key === r.guess) : -1);
     else if (card.chart) columns(page, card.chart, 1300);
     else if (card.list) table(page, card.list.map(([label, n]) => [label, num(n)]), 0, 1300);
     if (!r || r.skipped) return;

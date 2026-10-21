@@ -25,9 +25,10 @@ export default `
 .n-cols div:first-child span { left: 0; translate: none; }
 .n-cols div:last-child span { left: auto; right: 0; translate: none; }
 .n-cols .on span { color: var(--accent); }
-.n-table { margin: auto 0 0; padding: 0; list-style: none; display: grid; border-top: 2px solid var(--fg); }
+.n-table { margin: auto 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); border-top: 2px solid var(--fg); }
 .n-table li { display: flex; align-items: baseline; gap: 2cqw; padding: 2cqw 0; border-bottom: 1px solid var(--border); font-size: 4.6cqw; font-weight: 600; }
 .n-table span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.n-table em { flex: none; font-style: normal; white-space: nowrap; }
 .n-table li::after { content: ""; order: 1; flex: 1; min-width: 4cqw; border-bottom: 1.5px dotted var(--muted); }
 .n-table b { order: 2; font-variant-numeric: tabular-nums; }
 .n-table .on { color: var(--accent); font-weight: 800; }
