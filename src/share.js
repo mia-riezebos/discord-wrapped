@@ -67,17 +67,90 @@ async function cardModel(ctx, red, charts = new Map()) {
   const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
   return {question: ctx.question, hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, lines: ctx.lines, chart, columns: ctx.columns, bars, guess: ctx.guess, host: SITE_HOST};
 }
-// Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post.
-const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || [])];
+// Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post. A story's
+// frame shows its names too.
+const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || []),
+  ...c.snapshot ? c.names.map(markName) : []];
 // The card takes the page's colours, so a themed year's cards come in its colours and display face (--display).
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   return {font: getComputedStyle(document.body).fontFamily, display: css('--display'), colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
 };
-// Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn; blob is the PNG to come.
+// Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn and the image size; blob is
+// the PNG to come. A story from the player is its own frame instead of a drawn card.
 async function renderCard(ctx, shape, red, charts) {
+  if (ctx.snapshot) return frameCard(ctx, red);
   const {canvas, words} = drawCard(await cardModel(ctx, red, charts), shape, pageTheme(), m => redactCard(m, red));
-  return {words, blob: new Promise(r => canvas.toBlob(r, 'image/png'))};
+  return {words, size: CARD_SHAPES[shape], blob: new Promise(r => canvas.toBlob(r, 'image/png'))};
+}
+
+/* story frame images */
+const FRAME_WIDTH = 1080;
+const dataUrl = blob => new Promise((ok, no) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = no; f.readAsDataURL(blob); });
+// The page's CSS as it applies right now, for an SVG image, which loads nothing: media rules resolved here, fonts
+// inlined. Fetched fonts are kept for the visit.
+const fontData = new Map();
+async function pageCss() {
+  const out = [];
+  const add = async rules => {
+    for (const r of rules) {
+      if (r instanceof CSSMediaRule) { if (matchMedia(r.conditionText).matches) await add(r.cssRules); continue; }
+      const url = r instanceof CSSFontFaceRule && r.style.getPropertyValue('src').match(/url\("?([^")]+)"?\)/)?.[1];
+      if (!url || url.startsWith('data:')) { out.push(r.cssText); continue; }
+      if (!fontData.has(url)) fontData.set(url, fetch(url).then(res => res.blob()).then(dataUrl).catch(() => null));
+      const data = await fontData.get(url);
+      if (data) out.push(r.cssText.replace(url, data));
+    }
+  };
+  for (const s of [...document.styleSheets, ...document.adoptedStyleSheets]) await add(s.cssRules);
+  return out.join('\n') + '\n* { animation: none !important; transition: none !important; }';
+}
+// The story's frame (ctx.snapshot()) as the share image: every text redacted in place, a box per word for taps,
+// the site at the foot, then the whole frame rasterised through an SVG foreignObject at FRAME_WIDTH.
+async function frameCard(ctx, red) {
+  const node = ctx.snapshot(), css = await pageCss();
+  try {
+    const host = Object.assign(document.createElement('p'), {className: 'reel-host', textContent: SITE_HOST});
+    node.append(host);
+    // A word that drops in letter by letter reads as one text, so it can be hidden whole.
+    node.querySelectorAll('[aria-label]').forEach(n => {
+      if (n.children.length && [...n.children].every(c => c.getAttribute('aria-hidden') && c.textContent.length < 3)) n.textContent = n.getAttribute('aria-label');
+    });
+    const box = node.getBoundingClientRect(), k = FRAME_WIDTH / box.width, words = [], texts = [];
+    const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    while (walk.nextNode()) texts.push(walk.currentNode);
+    for (const t of texts) {
+      // Rolled numbers are digit strips; the site can't be hidden.
+      if (!t.nodeValue.trim() || host.contains(t) || t.parentElement.closest('[role="img"]')) continue;
+      const lead = t.nodeValue.match(/^\s*/)[0], trail = t.nodeValue.match(/\s*$/)[0];
+      const us = units(tokenize(markNames(t.nodeValue.trim(), ctx.names)), red);
+      t.nodeValue = lead + us.map(u => u.text).join(' ') + trail;
+      let at = lead.length;
+      for (const u of us) {
+        const r = document.createRange();
+        r.setStart(t, at); r.setEnd(t, at + u.text.length);
+        const b = r.getBoundingClientRect();
+        if (!u.tokens[0].punct) words.push({ref: u, hidden: u.hidden, text: u.text, x: (b.left - box.left) * k, y: (b.top - box.top) * k, w: b.width * k, h: b.height * k});
+        at += u.text.length + 1;
+      }
+    }
+    // An SVG image has no page root, so the copy sits in a body that carries the root's custom properties.
+    const copy = node.cloneNode(true), s = getComputedStyle(node), body = document.createElement('body');
+    for (const v of new Set(css.match(/--[\w-]+(?=\s*:)/g))) body.style.setProperty(v, s.getPropertyValue(v));
+    body.style.margin = '0';
+    Object.assign(copy.style, {position: 'relative', left: '0'});
+    body.append(copy);
+    const [W, H] = [box.width, box.height], size = [FRAME_WIDTH, Math.round(H * k)];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size[0]}" height="${size[1]}" viewBox="0 0 ${W} ${H}"><style><![CDATA[${css}]]></style><foreignObject width="${W}" height="${H}">${new XMLSerializer().serializeToString(body)}</foreignObject></svg>`;
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    const blob = img.decode().then(() => {
+      const c = Object.assign(document.createElement('canvas'), {width: size[0], height: size[1]});
+      c.getContext('2d').drawImage(img, 0, 0, ...size);
+      return new Promise(r => c.toBlob(r, 'image/png'));
+    });
+    return {words, size, blob};
+  } finally { node.remove(); }
 }
 
 /* popover */
@@ -97,7 +170,7 @@ function openShare(ctx, rect) {
     <div class="sp-preview"><div class="sp-card"><img class="sp-img" alt=""><div class="sp-hits" role="group" aria-label="Words on the card" aria-describedby="sp-hint"></div></div></div>
     <div class="sp-tools">${toggle('name', 'Hide names')}${toggle('quote', 'Hide quotes')}<button type="button" class="sp-zoom" data-act="zoom" aria-pressed="false">Zoom in</button></div>
     <p class="sp-hint" id="sp-hint">Tap a word on the card or in the post to hide it. Tap it again to show it.</p>
-    <fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
+    ${ctx.snapshot ? '' : `<fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>`}
     <div class="sp-label"><span id="sp-post-label">Post text</span><button type="button" class="sp-edit" data-act="edit">Edit text</button></div>
     <p class="sp-post" role="group" aria-labelledby="sp-post-label" aria-describedby="sp-hint"></p>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
@@ -135,10 +208,12 @@ function rove(group) {
 function showCard(shape) {
   const cur = current, render = renderCard(cur.ctx, shape, cur.red, cur.charts), img = pop.querySelector('.sp-img');
   Object.assign(cur, {render, card: render.then(r => r.blob), shape});
-  pop.querySelector('.sp-card').classList.toggle('tall', shape === 'tall');
-  render.then(async ({words, blob}) => {
+  pop.querySelector('.sp-card').classList.toggle('tall', shape === 'tall' || !!cur.ctx.snapshot);
+  render.then(async ({words, size, blob}) => {
     const b = await blob;
     if (!b || current !== cur || cur.render !== render) return;
+    img.style.aspectRatio = size.join(' / ');
+    cur.size = size;
     if (img.src) URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(b);
     img.alt = `Share card showing ${cardSummary()}`;
@@ -153,7 +228,7 @@ const cardSummary = () => {
 // A button over every word the card drew, at least 24 px tall on screen. Brand and host can't be hidden.
 function hits() {
   if (!current.words) return;
-  const box = pop.querySelector('.sp-hits'), shape = current.shape, [W, H] = CARD_SHAPES[shape];
+  const box = pop.querySelector('.sp-hits'), [W, H] = current.size;
   const k = (pop.querySelector('.sp-img').clientWidth || 300) / W, minH = 24 / k;
   box.innerHTML = '';
   current.words.forEach((w, i) => {

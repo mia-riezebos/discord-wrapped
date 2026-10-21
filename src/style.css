@@ -399,6 +399,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
 .reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
 .reel-ctl { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
+.reel-host { position: absolute; left: 0; right: 0; bottom: 3cqh; z-index: 6; margin: 0; text-align: center; color: var(--reel-chrome, var(--fg)); font-size: 4cqw; font-weight: 750; }
 .reel-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* An open guess stops the bar, hatches what's left of it and says so beside the label. */
 .reel-bars span.reel-waiting { background: repeating-linear-gradient(-45deg, color-mix(in srgb, currentColor 55%, transparent) 0 2px, color-mix(in srgb, currentColor 15%, transparent) 2px 5px); }

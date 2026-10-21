@@ -56,7 +56,7 @@ export function onlyMentions(text) {
  *   {hero, fact, chart?: {buckets: [[label, count]], top}, list?: [[label, count]], names?: [name]}
  * hero is the big number or word and fact one line under it. A card has at most one of chart (bars in the report's
  * buckets, bucket `top` highlighted) and list (a short ranked list, at most 5). names lists every personal name the
- * card shows, so Redaction's names toggle can hide them; a hero that is a hidden name shows the story's value instead.
+ * card or the story's own frame shows (its share image), so Redaction's names toggle can hide them; a hero that is a hidden name shows the story's value instead.
  */
 export function buildStories(report, period) {
   const T = report.totals, all = period.kind === 'all';
@@ -217,16 +217,17 @@ export function buildStories(report, period) {
   // DM names are private: they show in the reel and on the card (where Redaction can hide them), never in the post.
   const dms = report.channels.filter(c => c.group === 'DMs').sort((a, b) => b.count - a.count);
   const inDms = dms.reduce((a, c) => a + c.count, 0), dm = dms[0] || {name: '', count: 0}, dmPct = Math.round(100 * dm.count / Math.max(1, inDms));
+  // Seeded by period, so a replay asks the same three names in the same order.
+  const dmPicks = pickSet(dms.map(c => ({key: c.id, label: c.name, count: c.count})), `top-dm:${period.label}`);
   stories.push({
     id: 'top-dm', section: 'people', enough: dms.length >= 3,
     question: `Who ${did('did you DM', 'have you DMed')} most ${period.in}?`,
     answer: `DMed ${dm.name} most, with ${plural(dm.count, 'message')}`,
     share: `${did('I sent', "I've sent")} one person ${plural(dm.count, 'Discord DM')} ${period.in}. That's ${dmPct}% of all my DMs.`,
-    // Seeded by period, so a replay asks the same three names in the same order.
-    guess: {type: 'pick', answer: dm.id, options: pickSet(dms.map(c => ({key: c.id, label: c.name, count: c.count})), `top-dm:${period.label}`)},
+    guess: {type: 'pick', answer: dm.id, options: dmPicks},
     value: dm.count,
     data: {name: dm.name, pct: dmPct},
-    card: {hero: clip(dm.name, 24), fact: `${plural(dm.count, 'message')}, ${dmPct}% of your DMs.`, names: [...new Set([dm.name, clip(dm.name, 24)])]},
+    card: {hero: clip(dm.name, 24), fact: `${plural(dm.count, 'message')}, ${dmPct}% of your DMs.`, names: [...new Set([dm.name, clip(dm.name, 24), ...dmPicks.map(o => o.label)])]},
   });
 
   const circle = dms.slice(0, 10), circlePct = Math.round(100 * circle.reduce((a, c) => a + c.count, 0) / Math.max(1, inDms));
@@ -238,7 +239,7 @@ export function buildStories(report, period) {
     share: `${did('I DMed', "I've DMed")} ${num(dms.length)} people on Discord ${period.in}, but ${circlePct}% of my DMs ${did('went', 'have gone')} to just ten of them.`,
     value: circlePct,
     data: {conversations: dms.length, names: circle.map(c => c.name)},
-    card: {hero: `${circlePct}%`, fact: `Of your DMs ${did('went', 'have gone')} to your top 10 of ${num(dms.length)} people.`},
+    card: {hero: `${circlePct}%`, fact: `Of your DMs ${did('went', 'have gone')} to your top 10 of ${num(dms.length)} people.`, names: circle.map(c => c.name)},
   });
 
   /* ---------- Words & links ---------- */

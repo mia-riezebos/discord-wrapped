@@ -444,6 +444,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
 .reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
 .reel-ctl { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
+.reel-host { position: absolute; left: 0; right: 0; bottom: 3cqh; z-index: 6; margin: 0; text-align: center; color: var(--reel-chrome, var(--fg)); font-size: 4cqw; font-weight: 750; }
 .reel-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* An open guess stops the bar, hatches what's left of it and says so beside the label. */
 .reel-bars span.reel-waiting { background: repeating-linear-gradient(-45deg, color-mix(in srgb, currentColor 55%, transparent) 0 2px, color-mix(in srgb, currentColor 15%, transparent) 2px 5px); }
@@ -2819,17 +2820,90 @@ async function cardModel(ctx, red, charts = new Map()) {
   const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
   return {question: ctx.question, hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, lines: ctx.lines, chart, columns: ctx.columns, bars, guess: ctx.guess, host: SITE_HOST};
 }
-// Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post.
-const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || [])];
+// Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post. A story's
+// frame shows its names too.
+const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || []),
+  ...c.snapshot ? c.names.map(markName) : []];
 // The card takes the page's colours, so a themed year's cards come in its colours and display face (--display).
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   return {font: getComputedStyle(document.body).fontFamily, display: css('--display'), colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
 };
-// Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn; blob is the PNG to come.
+// Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn and the image size; blob is
+// the PNG to come. A story from the player is its own frame instead of a drawn card.
 async function renderCard(ctx, shape, red, charts) {
+  if (ctx.snapshot) return frameCard(ctx, red);
   const {canvas, words} = drawCard(await cardModel(ctx, red, charts), shape, pageTheme(), m => redactCard(m, red));
-  return {words, blob: new Promise(r => canvas.toBlob(r, 'image/png'))};
+  return {words, size: CARD_SHAPES[shape], blob: new Promise(r => canvas.toBlob(r, 'image/png'))};
+}
+
+/* story frame images */
+const FRAME_WIDTH = 1080;
+const dataUrl = blob => new Promise((ok, no) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = no; f.readAsDataURL(blob); });
+// The page's CSS as it applies right now, for an SVG image, which loads nothing: media rules resolved here, fonts
+// inlined. Fetched fonts are kept for the visit.
+const fontData = new Map();
+async function pageCss() {
+  const out = [];
+  const add = async rules => {
+    for (const r of rules) {
+      if (r instanceof CSSMediaRule) { if (matchMedia(r.conditionText).matches) await add(r.cssRules); continue; }
+      const url = r instanceof CSSFontFaceRule && r.style.getPropertyValue('src').match(/url\("?([^")]+)"?\)/)?.[1];
+      if (!url || url.startsWith('data:')) { out.push(r.cssText); continue; }
+      if (!fontData.has(url)) fontData.set(url, fetch(url).then(res => res.blob()).then(dataUrl).catch(() => null));
+      const data = await fontData.get(url);
+      if (data) out.push(r.cssText.replace(url, data));
+    }
+  };
+  for (const s of [...document.styleSheets, ...document.adoptedStyleSheets]) await add(s.cssRules);
+  return out.join('\n') + '\n* { animation: none !important; transition: none !important; }';
+}
+// The story's frame (ctx.snapshot()) as the share image: every text redacted in place, a box per word for taps,
+// the site at the foot, then the whole frame rasterised through an SVG foreignObject at FRAME_WIDTH.
+async function frameCard(ctx, red) {
+  const node = ctx.snapshot(), css = await pageCss();
+  try {
+    const host = Object.assign(document.createElement('p'), {className: 'reel-host', textContent: SITE_HOST});
+    node.append(host);
+    // A word that drops in letter by letter reads as one text, so it can be hidden whole.
+    node.querySelectorAll('[aria-label]').forEach(n => {
+      if (n.children.length && [...n.children].every(c => c.getAttribute('aria-hidden') && c.textContent.length < 3)) n.textContent = n.getAttribute('aria-label');
+    });
+    const box = node.getBoundingClientRect(), k = FRAME_WIDTH / box.width, words = [], texts = [];
+    const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    while (walk.nextNode()) texts.push(walk.currentNode);
+    for (const t of texts) {
+      // Rolled numbers are digit strips; the site can't be hidden.
+      if (!t.nodeValue.trim() || host.contains(t) || t.parentElement.closest('[role="img"]')) continue;
+      const lead = t.nodeValue.match(/^\s*/)[0], trail = t.nodeValue.match(/\s*$/)[0];
+      const us = units(tokenize(markNames(t.nodeValue.trim(), ctx.names)), red);
+      t.nodeValue = lead + us.map(u => u.text).join(' ') + trail;
+      let at = lead.length;
+      for (const u of us) {
+        const r = document.createRange();
+        r.setStart(t, at); r.setEnd(t, at + u.text.length);
+        const b = r.getBoundingClientRect();
+        if (!u.tokens[0].punct) words.push({ref: u, hidden: u.hidden, text: u.text, x: (b.left - box.left) * k, y: (b.top - box.top) * k, w: b.width * k, h: b.height * k});
+        at += u.text.length + 1;
+      }
+    }
+    // An SVG image has no page root, so the copy sits in a body that carries the root's custom properties.
+    const copy = node.cloneNode(true), s = getComputedStyle(node), body = document.createElement('body');
+    for (const v of new Set(css.match(/--[\w-]+(?=\s*:)/g))) body.style.setProperty(v, s.getPropertyValue(v));
+    body.style.margin = '0';
+    Object.assign(copy.style, {position: 'relative', left: '0'});
+    body.append(copy);
+    const [W, H] = [box.width, box.height], size = [FRAME_WIDTH, Math.round(H * k)];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size[0]}" height="${size[1]}" viewBox="0 0 ${W} ${H}"><style><![CDATA[${css}]]></style><foreignObject width="${W}" height="${H}">${new XMLSerializer().serializeToString(body)}</foreignObject></svg>`;
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    const blob = img.decode().then(() => {
+      const c = Object.assign(document.createElement('canvas'), {width: size[0], height: size[1]});
+      c.getContext('2d').drawImage(img, 0, 0, ...size);
+      return new Promise(r => c.toBlob(r, 'image/png'));
+    });
+    return {words, size, blob};
+  } finally { node.remove(); }
 }
 
 /* popover */
@@ -2849,7 +2923,7 @@ function openShare(ctx, rect) {
     <div class="sp-preview"><div class="sp-card"><img class="sp-img" alt=""><div class="sp-hits" role="group" aria-label="Words on the card" aria-describedby="sp-hint"></div></div></div>
     <div class="sp-tools">${toggle('name', 'Hide names')}${toggle('quote', 'Hide quotes')}<button type="button" class="sp-zoom" data-act="zoom" aria-pressed="false">Zoom in</button></div>
     <p class="sp-hint" id="sp-hint">Tap a word on the card or in the post to hide it. Tap it again to show it.</p>
-    <fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
+    ${ctx.snapshot ? '' : `<fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>`}
     <div class="sp-label"><span id="sp-post-label">Post text</span><button type="button" class="sp-edit" data-act="edit">Edit text</button></div>
     <p class="sp-post" role="group" aria-labelledby="sp-post-label" aria-describedby="sp-hint"></p>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
@@ -2887,10 +2961,12 @@ function rove(group) {
 function showCard(shape) {
   const cur = current, render = renderCard(cur.ctx, shape, cur.red, cur.charts), img = pop.querySelector('.sp-img');
   Object.assign(cur, {render, card: render.then(r => r.blob), shape});
-  pop.querySelector('.sp-card').classList.toggle('tall', shape === 'tall');
-  render.then(async ({words, blob}) => {
+  pop.querySelector('.sp-card').classList.toggle('tall', shape === 'tall' || !!cur.ctx.snapshot);
+  render.then(async ({words, size, blob}) => {
     const b = await blob;
     if (!b || current !== cur || cur.render !== render) return;
+    img.style.aspectRatio = size.join(' / ');
+    cur.size = size;
     if (img.src) URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(b);
     img.alt = `Share card showing ${cardSummary()}`;
@@ -2905,7 +2981,7 @@ const cardSummary = () => {
 // A button over every word the card drew, at least 24 px tall on screen. Brand and host can't be hidden.
 function hits() {
   if (!current.words) return;
-  const box = pop.querySelector('.sp-hits'), shape = current.shape, [W, H] = CARD_SHAPES[shape];
+  const box = pop.querySelector('.sp-hits'), [W, H] = current.size;
   const k = (pop.querySelector('.sp-img').clientWidth || 300) / W, minH = 24 / k;
   box.innerHTML = '';
   current.words.forEach((w, i) => {
@@ -3150,7 +3226,7 @@ export function onlyMentions(text) {
  *   {hero, fact, chart?: {buckets: [[label, count]], top}, list?: [[label, count]], names?: [name]}
  * hero is the big number or word and fact one line under it. A card has at most one of chart (bars in the report's
  * buckets, bucket `top` highlighted) and list (a short ranked list, at most 5). names lists every personal name the
- * card shows, so Redaction's names toggle can hide them; a hero that is a hidden name shows the story's value instead.
+ * card or the story's own frame shows (its share image), so Redaction's names toggle can hide them; a hero that is a hidden name shows the story's value instead.
  */
 export function buildStories(report, period) {
   const T = report.totals, all = period.kind === 'all';
@@ -3311,16 +3387,17 @@ export function buildStories(report, period) {
   // DM names are private: they show in the reel and on the card (where Redaction can hide them), never in the post.
   const dms = report.channels.filter(c => c.group === 'DMs').sort((a, b) => b.count - a.count);
   const inDms = dms.reduce((a, c) => a + c.count, 0), dm = dms[0] || {name: '', count: 0}, dmPct = Math.round(100 * dm.count / Math.max(1, inDms));
+  // Seeded by period, so a replay asks the same three names in the same order.
+  const dmPicks = pickSet(dms.map(c => ({key: c.id, label: c.name, count: c.count})), `top-dm:${period.label}`);
   stories.push({
     id: 'top-dm', section: 'people', enough: dms.length >= 3,
     question: `Who ${did('did you DM', 'have you DMed')} most ${period.in}?`,
     answer: `DMed ${dm.name} most, with ${plural(dm.count, 'message')}`,
     share: `${did('I sent', "I've sent")} one person ${plural(dm.count, 'Discord DM')} ${period.in}. That's ${dmPct}% of all my DMs.`,
-    // Seeded by period, so a replay asks the same three names in the same order.
-    guess: {type: 'pick', answer: dm.id, options: pickSet(dms.map(c => ({key: c.id, label: c.name, count: c.count})), `top-dm:${period.label}`)},
+    guess: {type: 'pick', answer: dm.id, options: dmPicks},
     value: dm.count,
     data: {name: dm.name, pct: dmPct},
-    card: {hero: clip(dm.name, 24), fact: `${plural(dm.count, 'message')}, ${dmPct}% of your DMs.`, names: [...new Set([dm.name, clip(dm.name, 24)])]},
+    card: {hero: clip(dm.name, 24), fact: `${plural(dm.count, 'message')}, ${dmPct}% of your DMs.`, names: [...new Set([dm.name, clip(dm.name, 24), ...dmPicks.map(o => o.label)])]},
   });
 
   const circle = dms.slice(0, 10), circlePct = Math.round(100 * circle.reduce((a, c) => a + c.count, 0) / Math.max(1, inDms));
@@ -3332,7 +3409,7 @@ export function buildStories(report, period) {
     share: `${did('I DMed', "I've DMed")} ${num(dms.length)} people on Discord ${period.in}, but ${circlePct}% of my DMs ${did('went', 'have gone')} to just ten of them.`,
     value: circlePct,
     data: {conversations: dms.length, names: circle.map(c => c.name)},
-    card: {hero: `${circlePct}%`, fact: `Of your DMs ${did('went', 'have gone')} to your top 10 of ${num(dms.length)} people.`},
+    card: {hero: `${circlePct}%`, fact: `Of your DMs ${did('went', 'have gone')} to your top 10 of ${num(dms.length)} people.`, names: circle.map(c => c.name)},
   });
 
   /* ---------- Words & links ---------- */
@@ -3523,7 +3600,8 @@ const markNames = (text, names = []) => {
 const keepsOut = (story, text) => (story.card.names || []).some(n => text.includes(n) && !story.share.includes(n));
 
 /**
- * The share context for one story: {text, question, headline, alt, sub, guess, columns?, bars?}. `guessResult` is
+ * The share context for one story: {text, question, headline, alt, sub, guess, names, columns?, bars?}; `names` are
+ * the names to mark wherever the story itself shows them. `guessResult` is
  * scoreGuess()'s result for the story's guess; a locked-in guess adds one line to the card and the post (unless it
  * names someone the post leaves out), a skip adds nothing. When the hero is a name and names are hidden, the card
  * shows the story's count (`alt`) instead.
@@ -3538,6 +3616,7 @@ export function storyCard(story, guessResult) {
     alt: Number(story.value).toLocaleString(),
     sub: mark(c.fact),
     guess: mark(line),
+    names: c.names || [],
     ...c.chart && {columns: {items: c.chart.buckets, highlight: c.chart.top}},
     ...c.list && {bars: {items: c.list.map(([label, n]) => [mark(label), n]), highlight: 0}},
   };
@@ -3611,7 +3690,7 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
  * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
- * storyCard (with the story's guess) or summaryCard, and `host` is an element inside the dialog for any popover it
+ * storyCard (with the story's guess, and `snapshot()`, a frozen copy of the frame for the share image) or summaryCard, and `host` is an element inside the dialog for any popover it
  * opens; without onShare neither button shows. `note` is one line shown over the first story (why a year's theme
  * isn't playing). Returns {close}.
  */
@@ -3839,7 +3918,28 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
   q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
-  q('.reel-share').onclick = e => onShare?.(storyCard(list[state.i], state.guesses[list[state.i].id]), e.currentTarget, dialog);
+  // The story as it stands, for its share image: the frame with only its label and the current stage, every animated
+  // box held at its end state, mounted out of sight in the dialog so the share sheet can redact and measure it.
+  const snapshot = () => {
+    const live = stages.lastElementChild, stage = live.cloneNode(true), copy = frame.cloneNode(false), {width, height} = frame.getBoundingClientRect();
+    const to = [stage, ...stage.querySelectorAll('*')];
+    [live, ...live.querySelectorAll('*')].forEach((n, k) => {
+      if (!n.getAnimations().length) return;
+      const s = getComputedStyle(n);
+      for (const p of ['transform', 'opacity', 'clip-path', 'translate', 'rotate', 'scale']) to[k].style.setProperty(p, s.getPropertyValue(p));
+    });
+    const chrome = document.createElement('div');
+    chrome.className = 'reel-chrome';
+    chrome.innerHTML = '<div class="reel-ctl"></div>';
+    chrome.firstChild.append(label.cloneNode(true));
+    const stagesCopy = stages.cloneNode(false);
+    stagesCopy.append(stage);
+    copy.append(stagesCopy, chrome);
+    Object.assign(copy.style, {position: 'fixed', left: '-200vw', top: '0', width: width + 'px', height: height + 'px', aspectRatio: 'auto', borderRadius: '0'});
+    dialog.append(copy);
+    return copy;
+  };
+  q('.reel-share').onclick = e => onShare?.({...storyCard(list[state.i], state.guesses[list[state.i].id]), snapshot}, e.currentTarget, dialog);
   if (onShare) q('.reel-share-all').onclick = e => onShare(state.share, e.currentTarget, dialog);
   q('.reel-zone-prev').onclick = prev;
   // Tapping the frame never skips an open guess; Skip, Next and → do.
