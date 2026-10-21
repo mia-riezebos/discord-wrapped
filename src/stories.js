@@ -49,6 +49,8 @@ export function buildStories(report, period) {
   const did = (past, perfect) => all ? perfect : past;
   // Answers carry no "you" or "my": the summary lists them without their questions, and its post quotes them as mine.
   const none = `No messages ${period.in}`, silent = `${did('I sent', "I've sent")} no messages on Discord ${period.in}.`, perDay = Math.round(T.messages / Math.max(1, T.calendarDays));
+  // An empty card: "No messages" over "In 2025."
+  const blank = {hero: 'No messages', fact: `${period.in[0].toUpperCase()}${period.in.slice(1)}.`};
   const stories = [];
   // The period's bar chart buckets: months in a year, years across all time. A card chart labels them as the report does.
   const unit = report.unit, keys = Object.keys(report.periods).sort();
@@ -64,8 +66,8 @@ export function buildStories(report, period) {
     // Log scale up to about 1,000 a day, so the slider's middle never sits on the answer.
     guess: {type: 'slider', scale: 'log', max: 1000 * T.calendarDays, tolerance: 0.15, unit: 'messages'},
     value: T.messages,
-    data: {perDay: Math.round(T.messages / Math.max(1, T.calendarDays))},
-    card: {hero: num(T.messages), fact: `About ${num(Math.round(T.messages / Math.max(1, T.calendarDays)))} a day.`, chart: chartOf('total', busiest('total'))},
+    data: {perDay},
+    card: {hero: num(T.messages), fact: perDay > 1 ? `About ${num(perDay)} a day.` : `${T.messages === 1 ? 'Message' : 'Messages'} ${period.in}.`, chart: chartOf('total', busiest('total'))},
   });
 
   // An active day is a day with a message sent, so the copy says posted, not "showed up".
@@ -94,7 +96,7 @@ export function buildStories(report, period) {
       : `${topName} was my loudest ${unit} on Discord ${period.in}, with ${plural(topCount, 'message')}.`,
     value: topCount,
     data: {unit, label: topName, top: keys.indexOf(top), buckets: keys.map(k => [k, report.periods[k].total])},
-    card: {hero: top ? topName : 'No messages yet', fact: top ? `${plural(topCount, 'message')}.` : '', chart: chartOf('total', keys.indexOf(top))},
+    card: {...top ? {hero: topName, fact: `${plural(topCount, 'message')}.`} : blank, chart: chartOf('total', keys.indexOf(top))},
   });
 
   const [len = 0, from = '', to = ''] = report.streaks[0] || [];
@@ -107,7 +109,7 @@ export function buildStories(report, period) {
       : len > 1 ? `I sent a Discord message every day for ${num(len)} days straight ${period.in}.` : `My longest Discord streak ${period.in} was 1 day. No two days in a row.`,
     value: len,
     data: {from, to, fromText: from && day(from, all), toText: to && day(to, all)},
-    card: len > 1 ? {hero: `${num(len)} days`, fact: `In a row, ${day(from, all)} to ${day(to, all)}.`} : {hero: len ? '1 day' : 'No streak yet', fact: len ? 'No two days in a row.' : ''},
+    card: len > 1 ? {hero: `${num(len)} days`, fact: `In a row, ${day(from, all)} to ${day(to, all)}.`} : len ? {hero: '1 day', fact: 'No two days in a row.'} : blank,
   });
 
   /* ---------- Rhythm ---------- */
