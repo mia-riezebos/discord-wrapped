@@ -129,12 +129,14 @@ function layoutColumns({items, highlight}, x, top, w, h, maxRow, measure, width,
 function layoutBars({items, highlight}, x, top, w, h, maxRow, measure, width, run) {
   const n = items.length, gap = maxRow / 34 * 6, rh = Math.min(maxRow, (h - gap * (n - 1)) / n), size = Math.round(rh * .62);
   const labelW = Math.min(w * .36, maxRow / 34 * 360), max = Math.max(...items.map(r => r[1])), rows = [];
+  // The value column fits the widest value, set bold, plus the gap between rows.
+  const valueW = Math.max(...items.map(([, v, shown]) => measure(shown ?? String(v), size, 700))) + gap * 2;
   items.forEach(([name, v, shown], i) => {
     const y = top + i * (rh + gap), on = i === highlight, weight = on ? 700 : 400, color = on ? 'fg' : 'muted', base = y + rh / 2 + size * .36;
     const value = shown ?? String(v), label = clipTo(asWords(name), labelW - 16, width(size, weight));
     run('bar-label', label, x, base, size, weight, color);
     run('bar-value', value, x + w - measure(value, size, weight), base, size, weight, color);
-    rows.push({x: x + labelW, y: y + 3, w: Math.max(4, (w - labelW - 120) * v / max), h: rh - 6, on});
+    rows.push({x: x + labelW, y: y + 3, w: Math.max(4, (w - labelW - valueW) * v / max), h: rh - 6, on});
   });
   return {rows, height: n * rh + (n - 1) * gap};
 }

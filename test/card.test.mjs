@@ -28,6 +28,12 @@ for (const shape of SHAPES) {
     });
   });
 
+  test(`${shape}: every bar ends before its value starts`, () => {
+    const L = layoutCard({...ranked, bars: {items: [['Big Hall', 19333, '19,333'], ['Cozy Corner', 7696, '7,696']], highlight: 0}}, shape, measure);
+    const values = L.runs.filter(r => r.role === 'bar-value');
+    L.bars.forEach((b, i) => assert.ok(b.x + b.w < values[i].x, `bar ${i} stops short of ${values[i].text}`));
+  });
+
   test(`${shape}: a long headline shrinks to fit two lines instead of being cut`, () => {
     const hero = 'Wednesday, 17 September 2025 was my busiest day ever';
     for (const model of [{...plain, hero}, {...charted, hero}]) {
