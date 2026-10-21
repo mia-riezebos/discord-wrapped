@@ -69,9 +69,10 @@ async function cardModel(ctx, red, charts = new Map()) {
 }
 // Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post.
 const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || [])];
+// The card takes the page's colours, so a themed year's cards come in its colours and display face (--display).
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
+  return {font: getComputedStyle(document.body).fontFamily, display: css('--display'), colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
 };
 // Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn; blob is the PNG to come.
 async function renderCard(ctx, shape, red, charts) {
