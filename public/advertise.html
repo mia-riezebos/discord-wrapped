@@ -300,12 +300,15 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 /* footer sponsor grid: bigger sponsors get bigger logos and fewer columns */
 .sponsor-grid { padding-bottom: 28px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
 .sponsor-grid h2 { font-size: 16px; margin: 0 0 14px; }
-footer.site .sponsor-level { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 12px; }
-.sponsor-level a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px; border-radius: 10px; background: var(--soft); color: var(--fg); text-decoration: none; overflow-wrap: anywhere; text-align: center; font-size: 13px; }
+/* Each level keeps its column width but centres its row, so a level with one or two sponsors sits in the middle. */
+.sponsor-grid { text-align: center; }
+footer.site .sponsor-level { --gap: 12px; list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gap); }
+footer.site .sponsor-level li { flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols)); min-width: 0; }
+.sponsor-level a { display: flex; align-items: center; justify-content: center; height: 100%; min-height: 40px; padding: 8px; border-radius: 10px; background: var(--soft); color: var(--fg); text-decoration: none; overflow-wrap: anywhere; text-align: center; font-size: 13px; }
 .sponsor-level img { max-width: 100%; height: auto; aspect-ratio: 2; object-fit: contain; }
 .level-hero a { min-height: 120px; }
 .level-featured a { min-height: 72px; }
-@media (max-width: 760px) { footer.site .sponsor-level { grid-template-columns: repeat(min(var(--cols), 3), minmax(0, 1fr)); } footer.site .level-grid, footer.site .level-featured { grid-template-columns: repeat(2, minmax(0, 1fr)); } footer.site .level-hero { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { footer.site .sponsor-level { --cols: 3 !important; } footer.site .level-grid, footer.site .level-featured { --cols: 2 !important; } footer.site .level-hero { --cols: 1 !important; } }
 
 /* advertise page */
 .advertise { padding-top: 32px; }
