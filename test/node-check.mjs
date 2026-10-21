@@ -1,7 +1,8 @@
 // Runs the worker code under Node against a real package and compares with the Python reference.
 import fs from 'node:fs'; import {openAsBlob} from 'node:fs';
 const [,, zipPath, refPath] = process.argv;
-const src = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
+// Saving needs IndexedDB, which Node doesn't have; the counts don't depend on it.
+const src = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8').replaceAll('await save();', '');
 const self = {postMessage: m => { if (m.type !== 'progress') self.last = m; }};
 new Function('self', src)(self);
 const call = async (type, payload) => { await self.onmessage({data: {type, id: 1, payload}}); if (self.last.type === 'error') throw new Error(self.last.message); return self.last.result; };
