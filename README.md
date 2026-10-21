@@ -5,7 +5,7 @@ To use it offline, download `public/index.html` and open it in a browser.
 Everything is computed in the tab: a Web Worker unzips the package with the browser's own `DecompressionStream` and counts everything. Nothing is uploaded.
 The page's Content-Security-Policy only allows network requests to the hosts that serve the optional WebLLM library and model weights.
 
-- `src/`: `index.html`, `style.css`, `worker.js` (zip reader, parsing, aggregates, search, roast candidates), `app.js` (charts and UI), `share.js` (share popover and image cards), `ads.js` and `ads-schedule.js` (sponsor rails)
+- `src/`: `index.html`, `style.css`, `worker.js` (zip reader, parsing, aggregates, search, roast candidates), `app.js` (charts and UI), `share.js` (share popover and image cards), `stories.js` (story facts), `player.js` (the story player) and `kinetic.js` (the default reel theme), `ads.js` and `ads-schedule.js` (sponsor rails)
 - `worker/`: the Cloudflare Worker. It serves the static pages and forwards sponsor requests to the sponsor service
 - `python3 build.py` inlines `src/` into the single `public/index.html`
 - `pnpm check` rebuilds and fails if `public/index.html` is out of date; commit the rebuilt file with your change

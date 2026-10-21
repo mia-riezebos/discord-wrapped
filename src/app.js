@@ -192,6 +192,9 @@ function periodControls() {
       b.setAttribute('aria-label', `${dir < 0 ? 'Previous' : 'Next'} ${unit}: ${target.kind === 'week' ? 'week of ' + dateText(target.from) : target.label}`);
     }
   }
+  // Reels exist for a year or All time only.
+  $('p-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
+  $('p-play').textContent = `Play ${reelTitle()}`;
   $('p-from').min = $('p-to').min = D.bounds.first; $('p-from').max = $('p-to').max = D.bounds.last;
   // Leave a date alone while someone is typing in it.
   if (P.kind === 'custom') for (const [id, v] of [['p-from', P.from], ['p-to', P.to]]) if (document.activeElement !== $(id)) $(id).value = v;
@@ -215,6 +218,11 @@ $('period').addEventListener('change', e => {
     if (from && to && from <= to) setPeriod({kind: 'custom', from, to});
   }
 });
+const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
+// "Share this" opens the story's section share for now, in a popover moved into the player so it stays usable.
+$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget,
+  onShare: (story, button, host) => { const ctx = sectionShare(story.section); if (ctx) { host.append(pop); openShare(ctx, button.getBoundingClientRect()); } },
+  onClose: () => { closeShare(); document.body.append(pop); }});
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.

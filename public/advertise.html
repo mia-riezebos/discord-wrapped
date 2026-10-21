@@ -22,11 +22,14 @@
   --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
   --accent: #4f5bd5; --accent-fg: #ffffff;
   --c1: #4f5bd5; --c2: #d6409f; --c3: #1f9d63; --c4: #d48a00; --c5: #0e8fc7;
+  /* Text on each palette colour field, at least 4.5:1. */
+  --on-c1: #ffffff; --on-c2: #000000; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
   --radius: 10px; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #111216; --surface: #191a20; --fg: #ecedf1; --muted: #9a9daa; --border: #2c2e37; --soft: #22242c;
-    --accent: #8790ff; --accent-fg: #0d0e14; --c1: #8790ff; --c2: #f070b8; --c3: #4cc98c; --c4: #f2b33d; --c5: #4cbcf0; }
+    --accent: #8790ff; --accent-fg: #0d0e14; --c1: #8790ff; --c2: #f070b8; --c3: #4cc98c; --c4: #f2b33d; --c5: #4cbcf0;
+    --on-c1: #0d0e14; --on-c2: #0d0e14; --on-c3: #0d0e14; --on-c4: #0d0e14; --on-c5: #0d0e14; }
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -146,6 +149,7 @@ button.danger { color: #c43c3c; }
 .period .custom { display: flex; gap: 10px; }
 .period .custom label { flex-direction: row; align-items: center; gap: 6px; }
 .period .custom input { padding: 5px 8px; }
+.period .play { margin-left: auto; padding: 5px 14px; border-radius: 99px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 @media (max-width: 640px) {
   .period { gap: 8px; }
   .seg { width: 100%; }
@@ -348,6 +352,73 @@ footer.site .sponsor-level li { flex: 0 0 calc((100% - (var(--cols) - 1) * var(-
 .run .button { display: inline-block; margin-top: 8px; text-decoration: none; }
 a.button { display: inline-block; text-decoration: none; }
 @media (max-width: 760px) { .ad-where, .ad-preview { grid-template-columns: 1fr; } }
+
+/* story player: a 9:16 frame, full screen on phones and centred over the dimmed report elsewhere */
+html:has(dialog.reel[open]) { overflow: hidden; }
+dialog.reel { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; display: grid; place-items: center; }
+dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
+.reel-frame { position: relative; height: min(100dvh - 40px, 920px); aspect-ratio: 9 / 16; overflow: hidden; border-radius: 22px; container-type: size; isolation: isolate;
+  background: var(--bg); color: var(--fg); user-select: none; -webkit-user-select: none; }
+@media (max-width: 600px), (max-aspect-ratio: 10 / 16) { .reel-frame { width: 100vw; height: 100dvh; aspect-ratio: auto; border-radius: 0; } }
+.reel-stages, .reel-stage { position: absolute; inset: 0; }
+.reel-stage { overflow: hidden; }
+/* Tap zones: the left third goes back, the rest goes forward. Pointer only; the buttons cover keyboards. */
+.reel-zone { position: absolute; top: 80px; bottom: 0; z-index: 3; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.reel-zone-prev { left: 0; width: 30%; }
+.reel-zone-next { right: 0; width: 70%; }
+.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 4; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
+.reel-bars { display: flex; gap: 4px; padding-right: 4px; }
+.reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
+.reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
+.reel-ctl { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
+.reel-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reel-ctl button { pointer-events: auto; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 99px; background: transparent; color: inherit; }
+.reel-ctl button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.reel-ctl svg { width: 22px; height: 22px; }
+.reel-frame :focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.reel-docked { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--fg); color: var(--bg); }
+/* After a reveal the story holds on its answer and offers a share; Next moves on. */
+.reel-after { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 10px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); animation: reel-in 200ms ease-out both; }
+.reel-after button { min-height: 48px; border: 0; border-radius: 99px; font-size: 16px; font-weight: 700; }
+.reel-share { flex: 1; background: var(--fg); color: var(--bg); }
+.reel-share:hover { background: var(--fg); filter: brightness(1.15); }
+.reel-go { padding: 0 22px; background: var(--bg); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
+.reel-go:hover { background: var(--bg); }
+@keyframes reel-in { from { opacity: 0; } }
+.reel-summary { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 90px 8cqw 40px; background: var(--c4); color: var(--on-c4); }
+.reel-summary h2 { margin: 0; font-size: 11cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
+.reel-summary ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: max(16px, 5cqw); font-weight: 700; line-height: 1.2; }
+.reel-summary div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.reel-summary button { min-height: 48px; padding: 0 22px; border: 0; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 16px; font-weight: 700; }
+.reel-summary .reel-done { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
+@media (prefers-reduced-motion: reduce) { .reel-after { animation: none; } }
+
+/* Kinetic, the default reel theme (scenes in kinetic.js) */
+.k-field { position: absolute; inset: 0; }
+.k-q { position: absolute; left: 6cqw; right: 6cqw; top: 17cqh; margin: 0; display: grid; justify-items: start; gap: 1.2cqw; }
+.k-line { display: block; font-size: 11.5cqw; font-weight: 850; line-height: 1; letter-spacing: -.035em; padding: .04em .18em .1em; margin-left: -.18em; background: var(--fg); color: var(--bg); border-radius: .22em; }
+.k-line:nth-child(even) { background: transparent; color: inherit; }
+.k-stack { position: absolute; left: 7cqw; right: 7cqw; top: 18cqh; display: flex; flex-direction: column; align-items: flex-start; gap: 3cqw; }
+.k-stack > * { margin: 0; }
+.k-center { align-items: center; text-align: center; }
+.k-kicker { font-size: 6.5cqw; font-weight: 800; }
+.k-odo { display: flex; margin-left: -.04em; font-weight: 900; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.k-col { display: inline-block; height: 1em; overflow: hidden; }
+.k-strip { display: block; white-space: pre; line-height: 1em; }
+.k-sep { display: inline-block; }
+.k-unit { font-size: 12cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
+.k-sub { font-size: 6cqw; font-weight: 750; line-height: 1.2; }
+.k-ticker { position: absolute; left: 0; right: 0; top: 0; text-align: center; white-space: pre; font-size: 9cqw; font-weight: 800; line-height: 1.1; opacity: .22; }
+.k-word { max-width: 100%; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; white-space: nowrap; }
+.k-word span { display: inline-block; white-space: pre; }
+.k-bars { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; height: 26cqh; display: flex; align-items: flex-end; gap: 1.5cqw; }
+.k-bars i { flex: 1; border-radius: 1.5cqw 1.5cqw 0 0; background: currentColor; opacity: .35; transform-origin: bottom; }
+.k-bars i.on { opacity: 1; }
+.k-days { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; display: grid; grid-template-columns: repeat(27, 1fr); gap: .7cqw; }
+.k-days i { aspect-ratio: 1; border-radius: 25%; background: currentColor; opacity: .25; }
+.k-days i.on { opacity: 1; }
+.k-sticker { position: absolute; right: 7cqw; margin: 0; padding: 2cqw 4.5cqw; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 6cqw; font-weight: 850; rotate: -4deg; }
+.k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
 </style>
 </head>
 <body id="top" class="page-advertise">
