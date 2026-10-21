@@ -8,5 +8,9 @@
   // The shared sponsor service (mia-cx/sponsors) stores campaigns and footer sponsors for every site.
   "services": [{ "binding": "SPONSORS", "service": "sponsors" }],
   "vars": { "SPONSOR_SITE": "discordwrapped.app" },
-  "routes": [{ "pattern": "wrapped.mia.cx", "custom_domain": true }]
+  "routes": [
+    { "pattern": "discordwrapped.app", "custom_domain": true },
+    { "pattern": "www.discordwrapped.app", "custom_domain": true },
+    { "pattern": "wrapped.mia.cx", "custom_domain": true }
+  ]
 }

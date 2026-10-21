@@ -1,6 +1,6 @@
 # Discord Wrapped
 
-Live at https://wrapped.mia.cx: drop in the `package.zip` from Discord (or the unzipped folder).
+Live at https://discordwrapped.app (also https://wrapped.mia.cx): drop in the `package.zip` from Discord (or the unzipped folder).
 To use it offline, download `public/index.html` and open it in a browser.
 Everything is computed in the tab: a Web Worker unzips the package with the browser's own `DecompressionStream` and counts everything. Nothing is uploaded.
 The page's Content-Security-Policy only allows network requests to the hosts that serve the optional WebLLM library and model weights.
