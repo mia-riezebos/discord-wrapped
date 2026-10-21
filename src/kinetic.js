@@ -70,6 +70,30 @@ export const KINETIC = (() => {
     return w;
   }
 
+  // Your guess against the answer: what you said and how close it was, in the clearest band of the field.
+  function verdict(F, s, r, c, at, prefer) {
+    if (!r || r.skipped) return;
+    const tag = el('p', 'k-sticker k-guess', null, F);
+    el('span', null, `You guessed ${guessText(s.guess, r.guess)}`, tag);
+    tag.append(' ');
+    el('b', null, r.line, tag);
+    c.sticker(F, tag, prefer);
+    pop(tag, at);
+  }
+  // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
+  function choices(F, s, r, at) {
+    const {options, answer} = s.guess, max = Math.max(1, ...options.map(o => o.count));
+    const box = el('ol', 'k-picks', null, F);
+    options.forEach((o, k) => {
+      const row = el('li', o.key === answer ? 'on' : null, null, box);
+      el('span', null, o.label + (r && o.key === r.guess ? ' (your guess)' : ''), row);
+      el('b', null, num(o.count), row);
+      const bar = hide(el('i', null, null, row));
+      bar.style.width = `${Math.max(2, 100 * o.count / max)}%`;
+      bar.animate([{transform: 'scaleX(0)'}, {transform: 'none'}], {duration: 520, delay: at + k * 120, easing: ease.out, fill: 'both'});
+    });
+  }
+
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
   const scenes = {
     messages: {
@@ -80,6 +104,7 @@ export const KINETIC = (() => {
         odometer(box, num(s.value), {at: 450}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
         slideIn(el('p', 'k-unit', s.value === 1 ? 'message' : 'messages', box), 1500);
         slideIn(el('p', 'k-sub', `That's about ${num(s.data.perDay)} a day.`, box), 1900);
+        verdict(F, s, r, c, 2500, 0.75);
       },
     },
     'active-days': {
@@ -98,6 +123,7 @@ export const KINETIC = (() => {
           for (let k = 0; k < of; k++) el('i', on.has(k) ? 'on' : null, null, grid);
           grid.animate([{clipPath: 'inset(0 0 100% 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 1100, delay: 2200, easing: ease.out, fill: 'both'});
         }
+        verdict(F, s, r, c, 2900, 0.5);
         if (s.data.pct >= 90) {
           const tag = el('p', 'k-sticker', s.data.pct === 100 ? 'Every single day' : 'Nearly every day', F);
           c.sticker(F, tag, 0.72);
@@ -150,9 +176,11 @@ export const KINETIC = (() => {
       const F = wipe(stage, revCol(c.i), 'circle', 150);
       const a = el('p', 'k-answer', s.answer, F);
       slideIn(a, 400);
+      if (s.guess?.type === 'pick') choices(F, s, r, 900);
+      verdict(F, s, r, c, 1500, 0.55);
     },
   };
   // The controls take the text colour of the field on screen.
-  const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' ? askCol(i) : revCol(i)})`;
+  const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' || phase === 'guess' ? askCol(i) : revCol(i)})`;
   return {id: 'kinetic', scenes, fallback, chrome};
 })();

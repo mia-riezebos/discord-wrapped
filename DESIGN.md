@@ -76,3 +76,9 @@ Only opacity and colour transitions under 150 ms. Smooth scrolling and transitio
 the dimmed report elsewhere. Reels are the one place with bold motion. The default theme, Kinetic, sets each story
 on a full-frame palette colour with heavy type; text on a colour uses its `--on-c1` to `--on-c5` token. Under
 `prefers-reduced-motion` the player turns every scene animation into a short crossfade to its end state.
+
+Some stories ask for a guess first. The input opens with the question: a slider with − and + (messages on a log
+scale, days linear), or pick-one cards. Nothing counts until "Lock it in" or Enter, and Skip sits beside it; tapping
+the frame never skips a guess. While a guess is open the story's bar stops, the rest of it is hatched, and "Waiting
+for you" shows beside the label. The reveal adds a sticker with the guess and a verdict line, placed where it covers
+no data; pick-one reveals show every choice as a bar. The summary gives the score, leaving skipped guesses out.

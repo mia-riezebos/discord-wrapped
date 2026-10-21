@@ -431,12 +431,16 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-zone { position: absolute; top: 80px; bottom: 0; z-index: 3; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .reel-zone-prev { left: 0; width: 30%; }
 .reel-zone-next { right: 0; width: 70%; }
-.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 4; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
+.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 6; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
 .reel-bars { display: flex; gap: 4px; padding-right: 4px; }
 .reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
 .reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
 .reel-ctl { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
 .reel-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* An open guess stops the bar, hatches what's left of it and says so beside the label. */
+.reel-bars span.reel-waiting { background: repeating-linear-gradient(-45deg, color-mix(in srgb, currentColor 55%, transparent) 0 2px, color-mix(in srgb, currentColor 15%, transparent) 2px 5px); }
+.reel-wait { display: none; flex: none; margin-right: 4px; font-size: 13px; font-weight: 650; opacity: .85; }
+.reel-frame[data-phase="guess"] .reel-wait { display: inline; }
 .reel-ctl button { pointer-events: auto; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 99px; background: transparent; color: inherit; }
 .reel-ctl button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 .reel-ctl svg { width: 22px; height: 22px; }
@@ -450,14 +454,47 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-go { padding: 0 22px; background: var(--bg); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
 .reel-go:hover { background: var(--bg); }
 .reel-share[hidden] + .reel-go { flex: 1; }
+/* Guess inputs, drawn by the player in the colours of the question's field. */
+.reel-guess { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; gap: 14px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); color: var(--reel-chrome, var(--fg)); animation: reel-in 200ms ease-out both; }
+.reel-guess button { min-height: 48px; border: 0; border-radius: 99px; font-size: 16px; font-weight: 700; }
+.reel-guess-acts { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.reel-skip, .reel-skip:hover { background: var(--bg); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
+.reel-lock, .reel-lock:hover { background: var(--fg); color: var(--bg); }
+.reel-lock:hover:enabled { filter: brightness(1.15); }
+.reel-lock:disabled { opacity: .5; }
+.reel-dial { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 4px 8px; }
+.reel-dial button { width: 48px; padding: 0; font-size: 24px; background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
+.reel-dial button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.reel-dial output { text-align: center; line-height: 1; }
+.reel-dial b { display: block; font-size: min(15cqw, 64px); font-weight: 900; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.reel-dial output span { font-size: 16px; font-weight: 700; }
+.reel-dial input { grid-column: 1 / -1; width: 100%; height: 44px; margin: 0; background: transparent; color: inherit; -webkit-appearance: none; appearance: none; touch-action: none; cursor: pointer; }
+.reel-dial input::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); }
+.reel-dial input::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -11px; border-radius: 99px; background: currentColor; }
+.reel-dial input::-moz-range-track { height: 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); }
+.reel-dial input::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 99px; background: currentColor; }
+.reel-picks fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+/* Text, borders and the check circle use the field's on-colour (4.5:1 or more on every palette colour). The chosen
+   card is filled with --fg, ringed in the on-colour so its edge still shows, and gets a check. */
+.reel-picks label { display: flex; flex-direction: row; align-items: center; gap: 14px; min-height: 56px; padding: 8px 18px; border-radius: 16px; color: var(--reel-chrome, var(--fg)); box-shadow: inset 0 0 0 2px var(--reel-chrome, var(--fg)); font-size: min(5.5cqw, 22px); font-weight: 800; line-height: 1.15; cursor: pointer; }
+.reel-picks span { display: flex; flex-direction: column; gap: 2px; }
+.reel-picks small { font-size: 14px; font-weight: 650; }
+.reel-picks input { position: absolute; opacity: 0; pointer-events: none; }
+.reel-picks i { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 99px; box-shadow: inset 0 0 0 2px currentColor; font: 900 15px/1 var(--font); font-style: normal; }
+.reel-picks label:has(:checked) { background: var(--fg); color: var(--bg); box-shadow: 0 0 0 2px var(--reel-chrome, var(--fg)); }
+.reel-picks label:has(:checked) i { background: currentColor; }
+.reel-picks label:has(:checked) i::after { content: "✓"; color: var(--fg); }
+.reel-picks label:has(:focus-visible) { outline: 3px solid var(--reel-chrome, var(--fg)); outline-offset: 4px; }
 @keyframes reel-in { from { opacity: 0; } }
 .reel-summary { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 90px 8cqw 40px; background: var(--c4); color: var(--on-c4); }
 .reel-summary h2 { margin: 0; font-size: 11cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
+.reel-score { margin: 0; font-size: max(18px, 6.5cqw); font-weight: 850; line-height: 1.15; }
+.reel-score:empty { display: none; }
 .reel-summary ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: max(16px, 5cqw); font-weight: 700; line-height: 1.2; }
 .reel-summary div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 .reel-summary button { min-height: 48px; padding: 0 22px; border: 0; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 16px; font-weight: 700; }
 .reel-summary .reel-done { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
-@media (prefers-reduced-motion: reduce) { .reel-after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .reel-after, .reel-guess { animation: none; } }
 
 /* Kinetic, the default reel theme (scenes in kinetic.js) */
 .k-field { position: absolute; inset: 0; }
@@ -486,6 +523,12 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-days i { aspect-ratio: 1; border-radius: 25%; background: currentColor; opacity: .25; }
 .k-days i.on { opacity: 1; }
 .k-sticker { position: absolute; right: 7cqw; margin: 0; padding: 2cqw 4.5cqw; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 6cqw; font-weight: 850; rotate: -4deg; }
+.k-guess { left: 7cqw; right: auto; max-width: 86cqw; display: grid; gap: .15em; rotate: -2deg; line-height: 1.15; border-radius: 1em; }
+.k-guess span { font-size: .75em; font-weight: 750; }
+.k-picks { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; margin: 0; padding: 0; list-style: none; display: grid; gap: 3cqw; }
+.k-picks li { display: grid; grid-template-columns: 1fr auto; gap: 1cqw 3cqw; font-size: 5.5cqw; font-weight: 800; }
+.k-picks i { grid-column: 1 / -1; height: 4cqw; border-radius: 1cqw; background: currentColor; opacity: .35; transform-origin: left; }
+.k-picks li.on i { opacity: 1; }
 .k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
 </style>
 </head>
@@ -2960,6 +3003,79 @@ export function buildStories(report, period) {
   return stories.filter(s => s.enough || s.section === 'overview').sort((a, b) => order.indexOf(a.section) - order.indexOf(b.section));
 }
 
+/* Guess maths: slider scales, pick-one choice sets and scoring. Pure, so the tests can import it; the player draws
+   the inputs and the scenes draw the reveal. A guess spec is one of
+     {type: 'slider', scale: 'log' | 'linear', max, tolerance, unit}   the answer is the story's value
+     {type: 'pick', options: [{key, label, sub?, count}], answer}       the answer is an option key */
+
+/** Positions on a log slider; enough that every nice value below the top is in reach. */
+const LOG_STEPS = 1000;
+
+/**
+ * The slider for `spec`: integer positions 0..steps, the value at a position and back, and where the thumb starts.
+ * Messages use a log scale (rounded to two significant figures, which is well inside the tolerance); days are linear.
+ * The thumb starts mid-range, unless that would already count as right, so leaving it alone never gives the answer.
+ */
+export function sliderScale(spec, answer) {
+  const log = spec.scale === 'log', steps = log ? LOG_STEPS : spec.max, k = Math.log1p(spec.max) / LOG_STEPS;
+  const nice = v => v < 100 ? Math.round(v) : (m => Math.round(v / m) * m)(10 ** (Math.floor(Math.log10(v)) - 1));
+  const toValue = p => !log ? p : p >= steps ? spec.max : Math.min(spec.max, nice(Math.expm1(p * k)));
+  const toPos = v => Math.max(0, Math.min(steps, Math.round(log ? Math.log1p(v) / k : v)));
+  const mid = Math.round(steps / 2), at = toPos(answer);
+  const start = !scoreGuess(spec, answer, toValue(mid)).right && mid !== at ? mid : at < mid ? Math.round(steps * 0.8) : Math.round(steps * 0.2);
+  return {steps, start, toValue, toPos};
+}
+
+/**
+ * The choices for a pick-one guess: `ranked[0]` (the real #1) plus two distinct random picks from #2 to #10, shuffled.
+ * `seed` is any string; the same seed always gives the same set and order, so a replay asks the same question.
+ */
+export function pickSet(ranked, seed) {
+  let h = 2166136261;
+  for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  // mulberry32
+  const rand = () => { h = h + 0x6D2B79F5 | 0; let t = Math.imul(h ^ h >>> 15, 1 | h); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  return shuffle([ranked[0], ...shuffle(ranked.slice(1, 10)).slice(0, 2)].filter(Boolean));
+}
+
+/**
+ * Scores `guess` (a number or option key; null when skipped) against `answer`. Returns {guess, skipped, right, ratio,
+ * line}: a slider guess is right within the spec's tolerance of the answer, boundary included; `ratio` is guess over
+ * answer; `line` is the verdict shown on the reveal, empty for a skip.
+ */
+export function scoreGuess(spec, answer, guess) {
+  if (guess == null) return {guess: null, skipped: true, right: false, ratio: null, line: ''};
+  if (spec.type === 'pick') { const right = guess === answer; return {guess, skipped: false, right, ratio: null, line: right ? 'You knew it.' : 'Not this time.'}; }
+  // Whole percent, so 15% is exactly 15% and float error can't move a guess across the boundary.
+  const tol = Math.round(spec.tolerance * 100), diff = Math.abs(guess - answer);
+  const right = diff * 100 <= tol * answer, ratio = answer ? guess / answer : guess ? Infinity : 1;
+  // Rounded for the line, but never shown as inside the tolerance when it isn't, or outside when it is.
+  const pct = right ? Math.min(tol, Math.round(100 * diff / answer) || 0) : Math.max(tol + 1, Math.round(100 * diff / answer));
+  const dir = guess < answer ? 'under' : 'over';
+  let line;
+  if (diff === 0) line = 'Exactly right.';
+  else if (right) line = pct ? `Spot on. Only ${pct}% ${dir}.` : `Spot on. Less than 1% ${dir}.`;
+  else if (pct <= 2 * tol) line = `Close. ${pct}% ${dir}.`;
+  else if (ratio >= 0.5 && ratio <= 2) line = `Not quite. ${pct}% ${dir}.`;
+  else if (!guess || !answer) line = 'Way off.';
+  else line = guess < answer ? `Way off. It was ${(1 / ratio).toFixed(1)}× your guess.` : `Way off. That's ${ratio.toFixed(1)}× too high.`;
+  return {guess, skipped: false, right, ratio, line};
+}
+
+/** A guess as words: "20,000 messages", or the picked option's label. */
+export function guessText(spec, guess) {
+  if (spec.type === 'pick') return spec.options.find(o => o.key === guess)?.label ?? String(guess);
+  return `${Number(guess).toLocaleString()} ${guess === 1 ? spec.unit.replace(/s$/, '') : spec.unit}`;
+}
+
+/** The plain line for a share card and post ("I guessed 20,000. It was 55,474."); empty when the guess was skipped. */
+export function guessLine(spec, answer, result) {
+  if (!result || result.skipped) return '';
+  const say = v => spec.type === 'pick' ? guessText(spec, v) : Number(v).toLocaleString();
+  return `I guessed ${say(result.guess)}. It was ${say(answer)}.`;
+}
+
 /* The story player: a 9:16 frame over the report that plays a reel of stories in a theme.
    The player owns timing, controls, progress bars, announcements and reduced motion. A theme's scenes only build
    elements and start Web Animations; the player times, skips and crossfades them through getAnimations() on the
@@ -2967,14 +3083,17 @@ export function buildStories(report, period) {
 
    A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase) => CSS colour for the controls}.
    A scene is {ask(stage, story, ctx), reveal(stage, story, guessResult, ctx)}; ctx is {i, total, title, reduced,
-   sticker(container, node, prefer)}. */
+   sticker(container, node, prefer)}. guessResult is scoreGuess()'s result for a story with a guess, null without one.
+   Guess inputs belong to the player too, so every theme gets the same keyboard, touch and screen-reader behaviour;
+   themes restyle them through CSS only. */
 
 /**
  * Pure part of sticker placement: the top of the empty horizontal band of height `need` nearest `prefer` (a fraction
  * of `height`), given the [top, bottom] boxes already taken. Null when no band is tall enough.
  */
 export function clearBand(taken, height, need, prefer = 0.6) {
-  const top = height * 0.11, bottom = height * 0.97, gaps = [];
+  // The header sits in the top 11%, and Next (or a guess's controls) in the bottom 10%.
+  const top = height * 0.11, bottom = height * 0.9, gaps = [];
   let cur = top;
   for (const [a, b] of [...taken].sort((x, y) => x[0] - y[0])) { if (a > cur) gaps.push([cur, Math.min(a, bottom)]); cur = Math.max(cur, b); }
   if (cur < bottom) gaps.push([cur, bottom]);
@@ -3006,12 +3125,13 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * Opens the player over the page and plays `stories` (from buildStories) in `theme`, from story `start`, or only
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
- * `onShare(story, button, host)` handles "Share this", where `host` is an element inside the dialog for any
- * popover it opens; without it there is no "Share this". Returns {close}.
+ * `onShare(story, button, host, guessResult)` handles "Share this", where `host` is an element inside the dialog for any
+ * popover it opens and `guessResult` is the story's scored guess (skipped or not), if it has one; without onShare
+ * there is no "Share this". Returns {close}.
  */
 export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
-  const ASK_MIN = 1500;
+  const ASK_HOLD = 1500;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sectionName = id => STORY_SECTIONS.find(s => s.id === id)?.name || '';
   const icon = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -3025,28 +3145,33 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       <div class="reel-zone reel-zone-prev" aria-hidden="true"></div><div class="reel-zone reel-zone-next" aria-hidden="true"></div>
       <div class="reel-chrome">
         <div class="reel-bars" aria-hidden="true">${list.map(() => '<span><i></i></span>').join('')}</div>
-        <div class="reel-ctl"><span class="reel-label"></span>
+        <div class="reel-ctl"><span class="reel-label"></span><span class="reel-wait" aria-hidden="true">Waiting for you</span>
           <button type="button" class="reel-prev" aria-label="Previous story">${icon('M15 5l-7 7 7 7')}</button>
           <button type="button" class="reel-next" aria-label="Next story">${icon('M9 5l7 7-7 7')}</button>
           <button type="button" class="reel-close" aria-label="Close reel">${icon('M6 6l12 12M18 6 6 18')}</button></div>
       </div>
+      <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
-      <div class="reel-summary" hidden><h2></h2><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
+      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
       <p class="sr-only" aria-live="polite"></p>
     </div>`;
   const q = s => dialog.querySelector(s);
   const frame = q('.reel-frame'), stages = q('.reel-stages'), label = q('.reel-label'), after = q('.reel-after'), summary = q('.reel-summary'), live = q('[aria-live]');
+  const form = q('.reel-guess'), lock = q('.reel-lock');
   const bars = [...q('.reel-bars').children].map(s => s.firstChild);
-  const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false};
+  // guesses: story id => scoreGuess() result, skips included, kept for the summary and for sharing.
+  const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false, guesses: {}};
 
   const say = text => { live.textContent = ''; setTimeout(() => { live.textContent = text; }, 50); };
   const settle = anims => Promise.allSettled(anims.map(a => a.finished));
   const finish = anims => anims.forEach(a => { try { a.finish(); } catch { a.cancel(); } });
-  const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime; return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
+  // Milliseconds until the last of `anims` ends.
+  const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime - (a.currentTime ?? 0); return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
   const setPhase = phase => {
     state.phase = phase; frame.dataset.phase = phase;
     frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase) || '');
-    q('.reel-next').setAttribute('aria-label', phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
+    q('.reel-next').setAttribute('aria-label', phase === 'guess' ? 'Skip guess' : phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
+    bars.forEach((b, k) => b.parentNode.classList.toggle('reel-waiting', phase === 'guess' && k === state.i));
   };
   // Reduced motion: every scene animation becomes a short crossfade into its own end state, at its own start time.
   function crossfade(anims) {
@@ -3075,11 +3200,60 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     catch (e) { console.error(e); if (scene === theme.fallback) throw e; if (step === 'ask') stage.replaceChildren(); await theme.fallback[step](stage, ...args); }
   }
 
+  // The open guess: a slider with − and + or pick-one cards, then Lock it in (or Enter) or Skip. Nothing counts
+  // until one of those. Resolves with the scored guess.
+  function ask(story) {
+    const spec = story.guess, answer = spec.type === 'pick' ? spec.answer : story.value, box = form.firstChild;
+    let value = null;
+    if (spec.type === 'slider') {
+      const scale = sliderScale(spec, answer);
+      box.className = 'reel-dial';
+      box.innerHTML = `<button type="button" aria-label="Lower">−</button><output aria-hidden="true"><b></b><span></span></output><button type="button" aria-label="Higher">+</button>
+        <input type="range" min="0" max="${scale.steps}" step="1" value="${scale.start}" aria-label="Your guess">`;
+      const [less, read, more, range] = box.children, set = () => {
+        value = scale.toValue(+range.value);
+        const text = guessText(spec, value);
+        read.firstChild.textContent = text.slice(0, text.lastIndexOf(' '));
+        read.lastChild.textContent = text.slice(text.lastIndexOf(' ') + 1);
+        range.setAttribute('aria-valuetext', text);
+      };
+      // − and + move one nice value, so a log slider never sticks on a step that rounds to the same number.
+      const step = d => { const was = value; let p = +range.value; do p += d; while (p > 0 && p < scale.steps && scale.toValue(p) === was); range.value = Math.max(0, Math.min(scale.steps, p)); set(); };
+      range.oninput = set;
+      less.onclick = () => step(-1);
+      more.onclick = () => step(1);
+      set();
+      lock.disabled = false;
+    } else {
+      box.className = 'reel-picks';
+      box.innerHTML = `<fieldset><legend class="sr-only">Your guess</legend>${spec.options.map(() => '<label><input type="radio" name="reel-pick"><i aria-hidden="true"></i><span></span></label>').join('')}</fieldset>`;
+      box.querySelectorAll('label').forEach((l, k) => {
+        const o = spec.options[k], input = l.firstChild, text = l.lastChild;
+        text.textContent = o.label;
+        if (o.sub) text.append(Object.assign(document.createElement('small'), {textContent: o.sub}));
+        input.value = o.key;
+        input.onchange = () => { value = o.key; lock.disabled = false; };
+      });
+      lock.disabled = true;
+    }
+    form.hidden = false;
+    if ([null, document.body, dialog, frame, q('.reel-next')].includes(document.activeElement)) box.querySelector('input').focus({preventScroll: true});
+    return new Promise(resolve => {
+      const done = guess => { hideGuess(); resolve(scoreGuess(spec, answer, guess)); };
+      form.onsubmit = e => { e.preventDefault(); if (value != null) done(value); };
+      q('.reel-skip').onclick = state.skip = () => done(null);
+    });
+  }
+  function hideGuess() {
+    if (form.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
+    form.hidden = true; form.onsubmit = e => e.preventDefault(); form.firstChild.replaceChildren();
+  }
+
   async function play(i) {
     const my = ++state.token, story = list[i];
     state.i = i; state.skip = null;
     if (summary.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
-    summary.hidden = true; hideAfter();
+    summary.hidden = true; hideAfter(); hideGuess();
     bars.forEach((b, k) => { b.getAnimations().forEach(a => a.cancel()); b.style.transform = `scaleX(${k < i ? 1 : 0})`; });
     label.textContent = `${title} · ${sectionName(story.section)}`;
     frame.dataset.story = story.id;
@@ -3091,26 +3265,38 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     stage.className = 'reel-stage';
     stages.append(stage);
     const ctx = {i, total: list.length, title, reduced, sticker: (box, node, prefer) => placeClear(box, node, prefer, label)};
-    say(story.question);
+    // A guess already answered in this reel isn't asked again; its story replays with the same result.
+    const guessing = story.guess && !(story.id in state.guesses);
+    say(guessing ? `${story.question} The story waits for your answer.` : story.question);
     await run(stage, 'ask', [story, ctx]);
     if (my !== state.token) return;
     const askAnims = stage.getAnimations({subtree: true});
     if (reduced) crossfade(askAnims);
-    // No guesses yet, so every story holds its question for 1.5 s, or until its entrance ends if that's longer.
-    const beat = fill(0.3, Math.max(ASK_MIN, endOf(askAnims)));
-    state.skip = () => { finish(askAnims); beat.finish(); };
-    await settle([beat]);
-    if (my !== state.token) return;
+    if (guessing) {
+      // A guess opens at once, and the bar stops until it is locked in or skipped.
+      setPhase('guess');
+      fill(0.3, 300);
+      const result = await ask(story);
+      if (my !== state.token) return;
+      state.guesses[story.id] = result;
+    } else {
+      // Otherwise the question stays readable for 1.5 s after its entrance lands.
+      const beat = fill(0.3, endOf(askAnims) + ASK_HOLD);
+      state.skip = () => { finish(askAnims); beat.finish(); };
+      await settle([beat]);
+      if (my !== state.token) return;
+    }
     old.forEach(o => o.remove());
     finish(askAnims);
 
     setPhase('reveal');
     const before = new Set(stage.getAnimations({subtree: true}));
-    await run(stage, 'reveal', [story, {skipped: true}, ctx]);
+    const result = story.guess ? state.guesses[story.id] : null;
+    await run(stage, 'reveal', [story, result, ctx]);
     if (my !== state.token) return;
     const revealAnims = stage.getAnimations({subtree: true}).filter(a => !before.has(a));
     if (reduced) crossfade(revealAnims);
-    say(story.answer);
+    say(result && !result.skipped ? `You guessed ${guessText(story.guess, result.guess)}. ${story.answer}. ${result.line}` : story.answer);
     const bar = fill(1, endOf(revealAnims));
     // The first Next during a reveal jumps to its end state; the next one moves on.
     state.skip = () => { finish(revealAnims); bar.finish(); };
@@ -3133,13 +3319,17 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     frame.dataset.story = 'summary'; setPhase('summary');
     label.textContent = title;
     summary.querySelector('h2').textContent = ending;
+    // Skipped guesses come off the total, the way a skip leaves no trace anywhere else.
+    const played = list.filter(s => state.guesses[s.id] && !state.guesses[s.id].skipped), right = played.filter(s => state.guesses[s.id].right).length;
+    const score = played.length ? `You got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    summary.querySelector('.reel-score').textContent = score;
     summary.querySelector('ol').replaceChildren(...list.map(s => Object.assign(document.createElement('li'), {textContent: s.answer})));
     summary.hidden = false;
     q('.reel-again').focus({preventScroll: true});
-    say(`${ending}. ${list.map(s => s.answer).join('. ')}.`);
+    say(`${ending}. ${score ? score + ' ' : ''}${list.map(s => s.answer).join('. ')}.`);
   }
   function next() {
-    if (state.phase === 'ask' || state.phase === 'reveal') return state.skip?.();
+    if (state.phase === 'ask' || state.phase === 'guess' || state.phase === 'reveal') return state.skip?.();
     if (state.phase === 'hold') return state.i + 1 < list.length ? play(state.i + 1) : end();
   }
   function prev() { play(state.phase === 'summary' ? list.length - 1 : Math.max(0, state.i - 1)); }
@@ -3156,10 +3346,11 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-next').onclick = next;
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
-  q('.reel-again').onclick = () => play(0);
-  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog);
+  q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
+  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog, state.guesses[list[state.i].id]);
   q('.reel-zone-prev').onclick = prev;
-  q('.reel-zone-next').onclick = next;
+  // Tapping the frame never skips an open guess; Skip, Next and → do.
+  q('.reel-zone-next').onclick = () => state.phase !== 'guess' && next();
   // Escape closes the reel, unless it is closing a popover opened from it (focus is then outside the frame).
   dialog.addEventListener('cancel', e => {
     e.preventDefault();
@@ -3179,6 +3370,11 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     }
     // Keys typed into anything the player doesn't own (a share popover) are left to it.
     if (e.target !== dialog && !frame.contains(e.target)) return;
+    // The slider and the pick-one cards own their arrow keys; Enter in them locks the guess in.
+    if (e.target.matches('.reel-guess input')) {
+      if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+      return;
+    }
     if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
   });
@@ -3262,6 +3458,30 @@ export const KINETIC = (() => {
     return w;
   }
 
+  // Your guess against the answer: what you said and how close it was, in the clearest band of the field.
+  function verdict(F, s, r, c, at, prefer) {
+    if (!r || r.skipped) return;
+    const tag = el('p', 'k-sticker k-guess', null, F);
+    el('span', null, `You guessed ${guessText(s.guess, r.guess)}`, tag);
+    tag.append(' ');
+    el('b', null, r.line, tag);
+    c.sticker(F, tag, prefer);
+    pop(tag, at);
+  }
+  // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
+  function choices(F, s, r, at) {
+    const {options, answer} = s.guess, max = Math.max(1, ...options.map(o => o.count));
+    const box = el('ol', 'k-picks', null, F);
+    options.forEach((o, k) => {
+      const row = el('li', o.key === answer ? 'on' : null, null, box);
+      el('span', null, o.label + (r && o.key === r.guess ? ' (your guess)' : ''), row);
+      el('b', null, num(o.count), row);
+      const bar = hide(el('i', null, null, row));
+      bar.style.width = `${Math.max(2, 100 * o.count / max)}%`;
+      bar.animate([{transform: 'scaleX(0)'}, {transform: 'none'}], {duration: 520, delay: at + k * 120, easing: ease.out, fill: 'both'});
+    });
+  }
+
   const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
   const scenes = {
     messages: {
@@ -3272,6 +3492,7 @@ export const KINETIC = (() => {
         odometer(box, num(s.value), {at: 450}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
         slideIn(el('p', 'k-unit', s.value === 1 ? 'message' : 'messages', box), 1500);
         slideIn(el('p', 'k-sub', `That's about ${num(s.data.perDay)} a day.`, box), 1900);
+        verdict(F, s, r, c, 2500, 0.75);
       },
     },
     'active-days': {
@@ -3290,6 +3511,7 @@ export const KINETIC = (() => {
           for (let k = 0; k < of; k++) el('i', on.has(k) ? 'on' : null, null, grid);
           grid.animate([{clipPath: 'inset(0 0 100% 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 1100, delay: 2200, easing: ease.out, fill: 'both'});
         }
+        verdict(F, s, r, c, 2900, 0.5);
         if (s.data.pct >= 90) {
           const tag = el('p', 'k-sticker', s.data.pct === 100 ? 'Every single day' : 'Nearly every day', F);
           c.sticker(F, tag, 0.72);
@@ -3342,10 +3564,12 @@ export const KINETIC = (() => {
       const F = wipe(stage, revCol(c.i), 'circle', 150);
       const a = el('p', 'k-answer', s.answer, F);
       slideIn(a, 400);
+      if (s.guess?.type === 'pick') choices(F, s, r, 900);
+      verdict(F, s, r, c, 1500, 0.55);
     },
   };
   // The controls take the text colour of the field on screen.
-  const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' ? askCol(i) : revCol(i)})`;
+  const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' || phase === 'guess' ? askCol(i) : revCol(i)})`;
   return {id: 'kinetic', scenes, fallback, chrome};
 })();
 
