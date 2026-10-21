@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {clearBand} from '../src/player.js';
 
-// A 1000 px story with the header band (top 11%) and bottom edge (last 3%) always reserved.
+// A 1000 px story with the header band (top 11%) and the Next bar (last 10%) always reserved.
 test('a sticker goes in the empty band nearest where it prefers to sit', () => {
   const taken = [[150, 400], [500, 560]];
-  assert.equal(clearBand(taken, 1000, 60, 0.9), 735, "centred in the band below the second box");
+  assert.equal(clearBand(taken, 1000, 60, 0.9), 700, "centred in the band below the second box");
   assert.equal(clearBand(taken, 1000, 60, 0.45), 420);
 });
 
