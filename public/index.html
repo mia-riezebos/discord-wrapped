@@ -3704,7 +3704,7 @@ export const KINETIC = (() => {
       reveal(stage, s, r, c) {
         sweep(stage);
         const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
-        // The weekday and the date fly in from opposite sides and land askew.
+        // The weekday and the date spin in from opposite sides.
         const date = el('p', 'k-date', null, box), {parts} = s.data;
         date.setAttribute('aria-label', parts.join(' '));
         date.style.fontSize = fit(parts.reduce((a, p) => p.length > a.length ? p : a), 86, 0.6, 18);
