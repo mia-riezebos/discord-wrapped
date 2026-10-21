@@ -195,6 +195,9 @@ function periodControls() {
   // Reels exist for a year or All time only.
   $('p-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
   $('p-play').textContent = `Play ${reelTitle()}`;
+  // A section's reel button shows when the reel plays and the section has stories to play.
+  const sections = new Set($('p-play').hidden ? [] : buildStories(D, P).map(s => s.section));
+  document.querySelectorAll('[data-reel]').forEach(b => b.hidden = !sections.has(b.dataset.reel));
   $('p-from').min = $('p-to').min = D.bounds.first; $('p-from').max = $('p-to').max = D.bounds.last;
   // Leave a date alone while someone is typing in it.
   if (P.kind === 'custom') for (const [id, v] of [['p-from', P.from], ['p-to', P.to]]) if (document.activeElement !== $(id)) $(id).value = v;
@@ -221,6 +224,8 @@ $('period').addEventListener('change', e => {
 const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
 // No "Share this" until a story can share its own card (#29).
 $('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
+document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => openReel({stories: buildStories(D, P), theme: KINETIC, section: b.dataset.reel, title: reelTitle(),
+  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b}));
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
