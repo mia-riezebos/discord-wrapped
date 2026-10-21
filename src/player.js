@@ -47,9 +47,9 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * Opens the player over the page and plays `stories` (from buildStories) in `theme`, from story `start`, or only
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
- * `onShare(story, button, host, guessResult)` handles "Share this", where `host` is an element inside the dialog for any
- * popover it opens and `guessResult` is the story's scored guess (skipped or not), if it has one; without onShare
- * there is no "Share this". Returns {close}.
+ * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
+ * storyCard (with the story's guess) or summaryCard, and `host` is an element inside the dialog for any popover it
+ * opens; without onShare neither button shows. Returns {close}.
  */
 export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
@@ -74,7 +74,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       </div>
       <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
-      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
+      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div>${onShare ? '<button type="button" class="reel-share-all">Share</button>' : ''}<button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
       <p class="sr-only" aria-live="polite"></p>
     </div>`;
   const q = s => dialog.querySelector(s);
@@ -243,7 +243,9 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     summary.querySelector('h2').textContent = ending;
     // Skipped guesses come off the total, the way a skip leaves no trace anywhere else.
     const played = list.filter(s => state.guesses[s.id] && !state.guesses[s.id].skipped), right = played.filter(s => state.guesses[s.id].right).length;
-    const score = played.length ? `You got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    const got = who => played.length ? `${who} got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    const score = got('You');
+    state.share = summaryCard(list, {title, ending, score: got('I')});
     summary.querySelector('.reel-score').textContent = score;
     summary.querySelector('ol').replaceChildren(...list.map(s => Object.assign(document.createElement('li'), {textContent: s.answer})));
     summary.hidden = false;
@@ -269,7 +271,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
   q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
-  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog, state.guesses[list[state.i].id]);
+  q('.reel-share').onclick = e => onShare?.(storyCard(list[state.i], state.guesses[list[state.i].id]), e.currentTarget, dialog);
+  if (onShare) q('.reel-share-all').onclick = e => onShare(state.share, e.currentTarget, dialog);
   q('.reel-zone-prev').onclick = prev;
   // Tapping the frame never skips an open guess; Skip, Next and → do.
   q('.reel-zone-next').onclick = () => state.phase !== 'guess' && next();

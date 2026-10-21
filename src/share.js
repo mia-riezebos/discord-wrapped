@@ -65,8 +65,10 @@ async function cardModel(ctx, red, charts = new Map()) {
     chart = await charts.get(key);
   }
   const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
-  return {hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, chart, bars, host: SITE_HOST};
+  return {question: ctx.question, hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, lines: ctx.lines, chart, columns: ctx.columns, bars, guess: ctx.guess, host: SITE_HOST};
 }
+// Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post.
+const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || [])];
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
@@ -84,7 +86,7 @@ let current = null, anchor = null;
 let cardShape = null;
 const SHAPES = [['tall', '9:16'], ['wide', '16:9']];
 function openShare(ctx, rect) {
-  const red = newRedaction(), kinds = kindsIn(ctx.text, ctx.headline, ctx.sub, ...(ctx.bars?.items || []).map(([n]) => n));
+  const red = newRedaction(), kinds = kindsIn(...ctxTexts(ctx));
   // A shared bump-chart word is a ranked word, drawn on the chart image.
   if (ctx.chart === 'bump-chart') kinds.add('quote');
   current = {ctx, red, charts: new Map(), zoomed: false, edited: false};
@@ -169,7 +171,7 @@ function redact(red, focus) {
   current.red = red;
   current.focus = focus;
   if (current.edited) {
-    const c = current.ctx, terms = [c.text, c.headline, c.sub, ...(c.bars?.items || []).map(([n]) => n)]
+    const terms = ctxTexts(current.ctx)
       .flatMap(t => units(tokenize(t), red).filter(u => u.hidden).map(unitWords));
     const area = pop.querySelector('.sp-text');
     area.value = blackOut(area.value, [...terms, ...red.words]);

@@ -22,9 +22,14 @@ export function linkHost(text) {
 
 /**
  * The core stories for one period report, in reel order. `period` is the app's resolved period
- * ({kind, label, in, from, to}). Each story is {id, section, enough, question, answer, share, guess?, value, data}:
+ * ({kind, label, in, from, to}). Each story is {id, section, enough, question, answer, share, guess?, value, data, card}:
  * `enough` says whether the data carries the story; stories without enough data are dropped, except Overview's,
  * which always play. `data` holds whatever the scenes draw, so a theme can restyle a story without new facts.
+ * `card` is what the story's share card shows (story-card.js), every string final copy:
+ *   {hero, fact, chart?: {buckets: [[label, count]], top}, list?: [[label, count]], names?: [name]}
+ * hero is the big number or word and fact one line under it. A card has at most one of chart (bars in the report's
+ * buckets, bucket `top` highlighted) and list (a short ranked list, at most 5). names lists every personal name the
+ * card shows, so Redaction's names toggle can hide them; a hero that is a hidden name shows the story's value instead.
  */
 export function buildStories(report, period) {
   const T = report.totals, all = period.kind === 'all';
@@ -34,6 +39,11 @@ export function buildStories(report, period) {
   // Running totals over all time take the present perfect: "have you sent", "I've sent".
   const did = (past, perfect) => all ? perfect : past;
   const stories = [];
+  // The period's bar chart buckets: months in a year, years across all time. A card chart labels them as the report does.
+  const unit = report.unit, keys = Object.keys(report.periods).sort();
+  const short = k => unit === 'year' ? k : unit === 'month' ? new Date(k + '-01T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', month: 'short', ...(all ? {year: '2-digit'} : {})}) : day(k);
+  const chartOf = (field, top) => ({buckets: keys.map(k => [short(k), report.periods[k][field] || 0]), top});
+  const busiest = field => keys.reduce((a, k, i) => (report.periods[k][field] || 0) > (report.periods[keys[a]][field] || 0) ? i : a, 0);
 
   stories.push({
     id: 'messages', section: 'overview', enough: T.messages > 0,
@@ -44,6 +54,7 @@ export function buildStories(report, period) {
     guess: {type: 'slider', scale: 'log', max: 1000 * T.calendarDays, tolerance: 0.15, unit: 'messages'},
     value: T.messages,
     data: {perDay: Math.round(T.messages / Math.max(1, T.calendarDays))},
+    card: {hero: num(T.messages), fact: `About ${num(Math.round(T.messages / Math.max(1, T.calendarDays)))} a day.`, chart: chartOf('total', busiest('total'))},
   });
 
   stories.push({
@@ -54,10 +65,10 @@ export function buildStories(report, period) {
     guess: {type: 'slider', scale: 'linear', max: T.calendarDays, tolerance: 0.1, unit: 'days'},
     value: T.activeDays,
     data: {of: T.calendarDays, pct: Math.round(100 * T.activeDays / Math.max(1, T.calendarDays)), days: report.days, from: report.range.from, to: report.range.to},
+    card: {hero: plural(T.activeDays, 'day'), fact: `Out of ${num(T.calendarDays)}. That's ${Math.round(100 * T.activeDays / Math.max(1, T.calendarDays))}%.`, chart: chartOf('activeDays', busiest('activeDays'))},
   });
 
   // The busiest bucket of the period's bar chart: a month in a year, a year across all time.
-  const unit = report.unit, keys = Object.keys(report.periods).sort();
   const bucket = k => unit === 'year' ? k : unit === 'month' ? new Date(k + '-01T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', month: 'long', ...(all ? {year: 'numeric'} : {})})
     : unit === 'week' ? `the week of ${day(k, all)}` : day(k, all);
   const top = keys.reduce((a, k) => report.periods[k].total > report.periods[a].total ? k : a, keys[0]);
@@ -69,6 +80,7 @@ export function buildStories(report, period) {
     share: top ? `My loudest ${unit} on Discord ${period.in} was ${topName}, with ${plural(topCount, 'message')}.` : '',
     value: topCount,
     data: {unit, label: topName, top: keys.indexOf(top), buckets: keys.map(k => [k, report.periods[k].total])},
+    card: {hero: top ? topName : 'No messages yet', fact: top ? `${plural(topCount, 'message')}.` : '', chart: chartOf('total', keys.indexOf(top))},
   });
 
   const [len = 0, from = '', to = ''] = report.streaks[0] || [];
@@ -79,6 +91,7 @@ export function buildStories(report, period) {
     share: len > 1 ? `My longest Discord streak ${period.in}: ${num(len)} days in a row.` : '',
     value: len,
     data: {from, to, fromText: from && day(from, all), toText: to && day(to, all)},
+    card: len > 1 ? {hero: `${num(len)} days`, fact: `In a row, ${day(from, all)} to ${day(to, all)}.`} : {hero: len ? '1 day' : 'No streak yet', fact: len ? 'No two days in a row.' : ''},
   });
 
   /* ---------- Rhythm ---------- */
