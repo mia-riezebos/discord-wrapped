@@ -382,12 +382,16 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-zone { position: absolute; top: 80px; bottom: 0; z-index: 3; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .reel-zone-prev { left: 0; width: 30%; }
 .reel-zone-next { right: 0; width: 70%; }
-.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 4; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
+.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 6; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
 .reel-bars { display: flex; gap: 4px; padding-right: 4px; }
 .reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
 .reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
 .reel-ctl { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
 .reel-label { flex: 1; min-width: 0; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* An open guess stops the bar, hatches what's left of it and says so beside the label. */
+.reel-bars span.reel-waiting { background: repeating-linear-gradient(-45deg, color-mix(in srgb, currentColor 55%, transparent) 0 2px, color-mix(in srgb, currentColor 15%, transparent) 2px 5px); }
+.reel-wait { display: none; flex: none; margin-right: 4px; font-size: 13px; font-weight: 650; opacity: .85; }
+.reel-frame[data-phase="guess"] .reel-wait { display: inline; }
 .reel-ctl button { pointer-events: auto; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 99px; background: transparent; color: inherit; }
 .reel-ctl button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 .reel-ctl svg { width: 22px; height: 22px; }
@@ -401,14 +405,42 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-go { padding: 0 22px; background: var(--bg); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
 .reel-go:hover { background: var(--bg); }
 .reel-share[hidden] + .reel-go { flex: 1; }
+/* Guess inputs, drawn by the player in the colours of the question's field. */
+.reel-guess { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; gap: 14px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); color: var(--reel-chrome, var(--fg)); animation: reel-in 200ms ease-out both; }
+.reel-guess button { min-height: 48px; border: 0; border-radius: 99px; font-size: 16px; font-weight: 700; }
+.reel-guess-acts { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.reel-skip, .reel-skip:hover { background: var(--bg); color: var(--fg); box-shadow: inset 0 0 0 2px var(--fg); }
+.reel-lock, .reel-lock:hover { background: var(--fg); color: var(--bg); }
+.reel-lock:hover:enabled { filter: brightness(1.15); }
+.reel-lock:disabled { opacity: .5; }
+.reel-dial { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 4px 8px; }
+.reel-dial button { width: 48px; padding: 0; font-size: 24px; background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
+.reel-dial button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.reel-dial output { text-align: center; line-height: 1; }
+.reel-dial b { display: block; font-size: min(15cqw, 64px); font-weight: 900; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.reel-dial output span { font-size: 16px; font-weight: 700; }
+.reel-dial input { grid-column: 1 / -1; width: 100%; height: 44px; margin: 0; background: transparent; color: inherit; -webkit-appearance: none; appearance: none; touch-action: none; cursor: pointer; }
+.reel-dial input::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); }
+.reel-dial input::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -11px; border-radius: 99px; background: currentColor; }
+.reel-dial input::-moz-range-track { height: 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); }
+.reel-dial input::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 99px; background: currentColor; }
+.reel-picks fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.reel-picks label { display: flex; flex-direction: column; justify-content: center; gap: 2px; color: inherit; min-height: 56px; padding: 8px 18px; border-radius: 16px; box-shadow: inset 0 0 0 2px currentColor; font-size: min(5.5cqw, 22px); font-weight: 800; line-height: 1.15; cursor: pointer; }
+.reel-picks small { font-size: 14px; font-weight: 650; opacity: .8; }
+.reel-picks input { position: absolute; opacity: 0; pointer-events: none; }
+.reel-picks label:has(:checked) { background: var(--fg); color: var(--bg); box-shadow: none; }
+.reel-picks label:has(:focus-visible) { outline: 3px solid currentColor; outline-offset: 2px; }
+.reel-picks label:has(:checked:focus-visible) { outline-color: var(--reel-chrome, var(--fg)); }
 @keyframes reel-in { from { opacity: 0; } }
 .reel-summary { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 90px 8cqw 40px; background: var(--c4); color: var(--on-c4); }
 .reel-summary h2 { margin: 0; font-size: 11cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
+.reel-score { margin: 0; font-size: max(18px, 6.5cqw); font-weight: 850; line-height: 1.15; }
+.reel-score:empty { display: none; }
 .reel-summary ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: max(16px, 5cqw); font-weight: 700; line-height: 1.2; }
 .reel-summary div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 .reel-summary button { min-height: 48px; padding: 0 22px; border: 0; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 16px; font-weight: 700; }
 .reel-summary .reel-done { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
-@media (prefers-reduced-motion: reduce) { .reel-after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .reel-after, .reel-guess { animation: none; } }
 
 /* Kinetic, the default reel theme (scenes in kinetic.js) */
 .k-field { position: absolute; inset: 0; }
@@ -437,6 +469,12 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-days i { aspect-ratio: 1; border-radius: 25%; background: currentColor; opacity: .25; }
 .k-days i.on { opacity: 1; }
 .k-sticker { position: absolute; right: 7cqw; margin: 0; padding: 2cqw 4.5cqw; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 6cqw; font-weight: 850; rotate: -4deg; }
+.k-guess { left: 7cqw; right: auto; max-width: 86cqw; display: grid; gap: .15em; rotate: -2deg; line-height: 1.15; border-radius: 1em; }
+.k-guess span { font-size: .75em; font-weight: 750; }
+.k-picks { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; margin: 0; padding: 0; list-style: none; display: grid; gap: 3cqw; }
+.k-picks li { display: grid; grid-template-columns: 1fr auto; gap: 1cqw 3cqw; font-size: 5.5cqw; font-weight: 800; }
+.k-picks i { grid-column: 1 / -1; height: 4cqw; border-radius: 1cqw; background: currentColor; opacity: .35; transform-origin: left; }
+.k-picks li.on i { opacity: 1; }
 .k-answer { position: absolute; left: 7cqw; right: 7cqw; top: 22cqh; margin: 0; font-size: 12cqw; font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
 </style>
 </head>

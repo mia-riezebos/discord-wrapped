@@ -5,14 +5,17 @@
 
    A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase) => CSS colour for the controls}.
    A scene is {ask(stage, story, ctx), reveal(stage, story, guessResult, ctx)}; ctx is {i, total, title, reduced,
-   sticker(container, node, prefer)}. */
+   sticker(container, node, prefer)}. guessResult is scoreGuess()'s result for a story with a guess, null without one.
+   Guess inputs belong to the player too, so every theme gets the same keyboard, touch and screen-reader behaviour;
+   themes restyle them through CSS only. */
 
 /**
  * Pure part of sticker placement: the top of the empty horizontal band of height `need` nearest `prefer` (a fraction
  * of `height`), given the [top, bottom] boxes already taken. Null when no band is tall enough.
  */
 export function clearBand(taken, height, need, prefer = 0.6) {
-  const top = height * 0.11, bottom = height * 0.97, gaps = [];
+  // The header sits in the top 11%, and Next (or a guess's controls) in the bottom 10%.
+  const top = height * 0.11, bottom = height * 0.9, gaps = [];
   let cur = top;
   for (const [a, b] of [...taken].sort((x, y) => x[0] - y[0])) { if (a > cur) gaps.push([cur, Math.min(a, bottom)]); cur = Math.max(cur, b); }
   if (cur < bottom) gaps.push([cur, bottom]);
@@ -44,8 +47,9 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * Opens the player over the page and plays `stories` (from buildStories) in `theme`, from story `start`, or only
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
- * `onShare(story, button, host)` handles "Share this", where `host` is an element inside the dialog for any
- * popover it opens; without it there is no "Share this". Returns {close}.
+ * `onShare(story, button, host, guessResult)` handles "Share this", where `host` is an element inside the dialog for any
+ * popover it opens and `guessResult` is the story's scored guess (skipped or not), if it has one; without onShare
+ * there is no "Share this". Returns {close}.
  */
 export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
@@ -63,19 +67,22 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       <div class="reel-zone reel-zone-prev" aria-hidden="true"></div><div class="reel-zone reel-zone-next" aria-hidden="true"></div>
       <div class="reel-chrome">
         <div class="reel-bars" aria-hidden="true">${list.map(() => '<span><i></i></span>').join('')}</div>
-        <div class="reel-ctl"><span class="reel-label"></span>
+        <div class="reel-ctl"><span class="reel-label"></span><span class="reel-wait" aria-hidden="true">Waiting for you</span>
           <button type="button" class="reel-prev" aria-label="Previous story">${icon('M15 5l-7 7 7 7')}</button>
           <button type="button" class="reel-next" aria-label="Next story">${icon('M9 5l7 7-7 7')}</button>
           <button type="button" class="reel-close" aria-label="Close reel">${icon('M6 6l12 12M18 6 6 18')}</button></div>
       </div>
+      <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
-      <div class="reel-summary" hidden><h2></h2><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
+      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
       <p class="sr-only" aria-live="polite"></p>
     </div>`;
   const q = s => dialog.querySelector(s);
   const frame = q('.reel-frame'), stages = q('.reel-stages'), label = q('.reel-label'), after = q('.reel-after'), summary = q('.reel-summary'), live = q('[aria-live]');
+  const form = q('.reel-guess'), lock = q('.reel-lock');
   const bars = [...q('.reel-bars').children].map(s => s.firstChild);
-  const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false};
+  // guesses: story id => scoreGuess() result, skips included, kept for the summary and for sharing.
+  const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false, guesses: {}};
 
   const say = text => { live.textContent = ''; setTimeout(() => { live.textContent = text; }, 50); };
   const settle = anims => Promise.allSettled(anims.map(a => a.finished));
@@ -84,7 +91,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const setPhase = phase => {
     state.phase = phase; frame.dataset.phase = phase;
     frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase) || '');
-    q('.reel-next').setAttribute('aria-label', phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
+    q('.reel-next').setAttribute('aria-label', phase === 'guess' ? 'Skip guess' : phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
+    bars.forEach((b, k) => b.parentNode.classList.toggle('reel-waiting', phase === 'guess' && k === state.i));
   };
   // Reduced motion: every scene animation becomes a short crossfade into its own end state, at its own start time.
   function crossfade(anims) {
@@ -113,11 +121,60 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     catch (e) { console.error(e); if (scene === theme.fallback) throw e; if (step === 'ask') stage.replaceChildren(); await theme.fallback[step](stage, ...args); }
   }
 
+  // The open guess: a slider with − and + or pick-one cards, then Lock it in (or Enter) or Skip. Nothing counts
+  // until one of those. Resolves with the scored guess.
+  function ask(story) {
+    const spec = story.guess, answer = spec.type === 'pick' ? spec.answer : story.value, box = form.firstChild;
+    let value = null;
+    if (spec.type === 'slider') {
+      const scale = sliderScale(spec, answer);
+      box.className = 'reel-dial';
+      box.innerHTML = `<button type="button" aria-label="Lower">−</button><output aria-hidden="true"><b></b><span></span></output><button type="button" aria-label="Higher">+</button>
+        <input type="range" min="0" max="${scale.steps}" step="1" value="${scale.start}" aria-label="Your guess">`;
+      const [less, read, more, range] = box.children, set = () => {
+        value = scale.toValue(+range.value);
+        const text = guessText(spec, value);
+        read.firstChild.textContent = text.slice(0, text.lastIndexOf(' '));
+        read.lastChild.textContent = text.slice(text.lastIndexOf(' ') + 1);
+        range.setAttribute('aria-valuetext', text);
+      };
+      // − and + move one nice value, so a log slider never sticks on a step that rounds to the same number.
+      const step = d => { const was = value; let p = +range.value; do p += d; while (p > 0 && p < scale.steps && scale.toValue(p) === was); range.value = Math.max(0, Math.min(scale.steps, p)); set(); };
+      range.oninput = set;
+      less.onclick = () => step(-1);
+      more.onclick = () => step(1);
+      set();
+      lock.disabled = false;
+    } else {
+      box.className = 'reel-picks';
+      box.innerHTML = `<fieldset><legend class="sr-only">Your guess</legend>${spec.options.map(() => '<label><input type="radio" name="reel-pick"><span></span></label>').join('')}</fieldset>`;
+      box.querySelectorAll('label').forEach((l, k) => {
+        const o = spec.options[k], input = l.firstChild, text = l.lastChild;
+        text.textContent = o.label;
+        if (o.sub) text.append(Object.assign(document.createElement('small'), {textContent: o.sub}));
+        input.value = o.key;
+        input.onchange = () => { value = o.key; lock.disabled = false; };
+      });
+      lock.disabled = true;
+    }
+    form.hidden = false;
+    if ([null, document.body, dialog, frame, q('.reel-next')].includes(document.activeElement)) box.querySelector('input').focus({preventScroll: true});
+    return new Promise(resolve => {
+      const done = guess => { hideGuess(); resolve(scoreGuess(spec, answer, guess)); };
+      form.onsubmit = e => { e.preventDefault(); if (value != null) done(value); };
+      q('.reel-skip').onclick = state.skip = () => done(null);
+    });
+  }
+  function hideGuess() {
+    if (form.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
+    form.hidden = true; form.onsubmit = e => e.preventDefault(); form.firstChild.replaceChildren();
+  }
+
   async function play(i) {
     const my = ++state.token, story = list[i];
     state.i = i; state.skip = null;
     if (summary.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
-    summary.hidden = true; hideAfter();
+    summary.hidden = true; hideAfter(); hideGuess();
     bars.forEach((b, k) => { b.getAnimations().forEach(a => a.cancel()); b.style.transform = `scaleX(${k < i ? 1 : 0})`; });
     label.textContent = `${title} · ${sectionName(story.section)}`;
     frame.dataset.story = story.id;
@@ -129,26 +186,38 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     stage.className = 'reel-stage';
     stages.append(stage);
     const ctx = {i, total: list.length, title, reduced, sticker: (box, node, prefer) => placeClear(box, node, prefer, label)};
-    say(story.question);
+    // A guess already answered in this reel isn't asked again; its story replays with the same result.
+    const guessing = story.guess && !(story.id in state.guesses);
+    say(guessing ? `${story.question} The story waits for your answer.` : story.question);
     await run(stage, 'ask', [story, ctx]);
     if (my !== state.token) return;
     const askAnims = stage.getAnimations({subtree: true});
     if (reduced) crossfade(askAnims);
-    // No guesses yet, so every story holds its question for 1.5 s, or until its entrance ends if that's longer.
-    const beat = fill(0.3, Math.max(ASK_MIN, endOf(askAnims)));
-    state.skip = () => { finish(askAnims); beat.finish(); };
-    await settle([beat]);
-    if (my !== state.token) return;
+    if (guessing) {
+      // A guess opens at once, and the bar stops until it is locked in or skipped.
+      setPhase('guess');
+      fill(0.3, 300);
+      const result = await ask(story);
+      if (my !== state.token) return;
+      state.guesses[story.id] = result;
+    } else {
+      // Otherwise the question holds for 1.5 s, or until its entrance ends if that's longer.
+      const beat = fill(0.3, Math.max(ASK_MIN, endOf(askAnims)));
+      state.skip = () => { finish(askAnims); beat.finish(); };
+      await settle([beat]);
+      if (my !== state.token) return;
+    }
     old.forEach(o => o.remove());
     finish(askAnims);
 
     setPhase('reveal');
     const before = new Set(stage.getAnimations({subtree: true}));
-    await run(stage, 'reveal', [story, {skipped: true}, ctx]);
+    const result = story.guess ? state.guesses[story.id] : null;
+    await run(stage, 'reveal', [story, result, ctx]);
     if (my !== state.token) return;
     const revealAnims = stage.getAnimations({subtree: true}).filter(a => !before.has(a));
     if (reduced) crossfade(revealAnims);
-    say(story.answer);
+    say(result && !result.skipped ? `You guessed ${guessText(story.guess, result.guess)}. ${story.answer}. ${result.line}` : story.answer);
     const bar = fill(1, endOf(revealAnims));
     // The first Next during a reveal jumps to its end state; the next one moves on.
     state.skip = () => { finish(revealAnims); bar.finish(); };
@@ -171,13 +240,17 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     frame.dataset.story = 'summary'; setPhase('summary');
     label.textContent = title;
     summary.querySelector('h2').textContent = ending;
+    // Skipped guesses come off the total, the way a skip leaves no trace anywhere else.
+    const played = list.filter(s => state.guesses[s.id] && !state.guesses[s.id].skipped), right = played.filter(s => state.guesses[s.id].right).length;
+    const score = played.length ? `You got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    summary.querySelector('.reel-score').textContent = score;
     summary.querySelector('ol').replaceChildren(...list.map(s => Object.assign(document.createElement('li'), {textContent: s.answer})));
     summary.hidden = false;
     q('.reel-again').focus({preventScroll: true});
-    say(`${ending}. ${list.map(s => s.answer).join('. ')}.`);
+    say(`${ending}. ${score ? score + ' ' : ''}${list.map(s => s.answer).join('. ')}.`);
   }
   function next() {
-    if (state.phase === 'ask' || state.phase === 'reveal') return state.skip?.();
+    if (state.phase === 'ask' || state.phase === 'guess' || state.phase === 'reveal') return state.skip?.();
     if (state.phase === 'hold') return state.i + 1 < list.length ? play(state.i + 1) : end();
   }
   function prev() { play(state.phase === 'summary' ? list.length - 1 : Math.max(0, state.i - 1)); }
@@ -194,10 +267,11 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-next').onclick = next;
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
-  q('.reel-again').onclick = () => play(0);
-  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog);
+  q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
+  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog, state.guesses[list[state.i].id]);
   q('.reel-zone-prev').onclick = prev;
-  q('.reel-zone-next').onclick = next;
+  // Tapping the frame never skips an open guess; Skip, Next and → do.
+  q('.reel-zone-next').onclick = () => state.phase !== 'guess' && next();
   // Escape closes the reel, unless it is closing a popover opened from it (focus is then outside the frame).
   dialog.addEventListener('cancel', e => {
     e.preventDefault();
@@ -217,6 +291,11 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     }
     // Keys typed into anything the player doesn't own (a share popover) are left to it.
     if (e.target !== dialog && !frame.contains(e.target)) return;
+    // The slider and the pick-one cards own their arrow keys; Enter in them locks the guess in.
+    if (e.target.matches('.reel-guess input')) {
+      if (e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+      return;
+    }
     if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
   });
