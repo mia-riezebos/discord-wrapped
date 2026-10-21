@@ -43,7 +43,7 @@ function showProgress({phase, done, total}) {
 }
 let saved = null;
 async function show(info) {
-  saved = info;
+  saved = info; reports.clear();
   await analyse();
   $('landing').classList.add('hidden'); $('report').classList.remove('hidden'); document.body.classList.add('has-report');
   window.scrollTo(0, 0); renderAll(); savedNotice();
@@ -80,9 +80,15 @@ const parseTopics = text => text.split('\n').map(l => l.split(':')).filter(p => 
 async function analyse() {
   const tz = $('tz').value;
   localStorage.setItem('du-tz', tz); localStorage.setItem('du-topics', topicsText);
-  const r = resolvePeriod(period, await call('bounds', {tz}));
-  D = await call('aggregate', {tz, topics: parseTopics(topicsText), range: {from: r.from, to: r.to}});
+  const r = resolvePeriod(period, await call('bounds', {tz})), key = [tz, topicsText, r.from, r.to].join('|');
+  // Reports are cached per period, so stepping back to one you've seen is instant. The worker only switches its view.
+  if (reports.has(key)) { D = reports.get(key); reports.delete(key); await call('view', {tz, range: {from: r.from, to: r.to}}); }
+  else D = await call('aggregate', {tz, topics: parseTopics(topicsText), range: {from: r.from, to: r.to}});
+  reports.set(key, D);
+  if (reports.size > 24) reports.delete(reports.keys().next().value);
 }
+// Cached reports, oldest first. A new or updated package clears them.
+const reports = new Map();
 
 // The "Your data" menu closes on outside clicks and after picking an action.
 document.addEventListener('click', e => {
@@ -672,8 +678,16 @@ function renderAll() {
     $('hero-sub').textContent = `Your messages run from ${longDate(D.bounds.first)} to ${longDate(D.bounds.last)}.`;
     return;
   }
-  overview(); rhythm(); people(); words(); channels(); fame(); roast(); dataQuality();
+  overview(); rhythm(); people(); words(); channels(); fame(); dataQuality();
+  // The roast picks candidates in the worker, so it waits until you scroll near it.
+  roastShown = false; $('roast').innerHTML = '';
+  roastWatch.observe($('s-roast'));
 }
+let roastShown = false;
+const roastWatch = new IntersectionObserver(entries => {
+  if (!entries.some(e => e.isIntersecting) || roastShown) return;
+  roastShown = true; roastWatch.disconnect(); roast();
+}, {rootMargin: '600px 0px'});
 let resizeTimer, lastWidth = innerWidth;
 addEventListener('resize', () => { if (innerWidth === lastWidth) return; lastWidth = innerWidth; clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (D) { draws.forEach(f => f()); searchDraw(); } }, 120); });
 const links = [...document.querySelectorAll('#nav a')];

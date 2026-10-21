@@ -307,19 +307,30 @@ function prepare(tz) {
       const L = local[i] = clock(S.ts[i]), d = dayOf[i] = Math.floor(L / DAY);
       if (d < first) first = d; if (d > last) last = d;
     }
-    Object.assign(C, {tz, clock, local, dayOf, first, last});
+    // Views hold day-filtered messages, so they belong to one time zone.
+    Object.assign(C, {tz, clock, local, dayOf, first, last, views: new Map()});
   }
   return C;
+}
+
+// The period's messages, oldest first. Search and the roast read the current view; recent views are kept for stepping back.
+function setView({tz, range}) {
+  const S = STORE, C = prepare(tz), dayOf = C.dayOf;
+  const from = Math.max(C.first, range?.from ? Date.parse(range.from) / DAY : -Infinity), to = Math.min(C.last, range?.to ? Date.parse(range.to) / DAY : Infinity);
+  const views = C.views ||= new Map(), key = from + ':' + to;
+  let v = views.get(key);
+  if (v) views.delete(key);
+  else v = {from, to, unit: unitFor(to - from + 1), sel: S.order.filter(i => dayOf[i] >= from && dayOf[i] <= to)};
+  views.set(key, v);
+  if (views.size > 12) views.delete(views.keys().next().value);
+  return C.view = v;
 }
 
 function aggregate({tz, topics, range}) {
   const S = STORE, C = prepare(tz), clock = C.clock, {local, dayOf, tokensOf, lens} = C;
   const matchers = topicMatchers(topics);
   const bounds = {first: iso(C.first), last: iso(C.last)};
-  const from = Math.max(C.first, range?.from ? Date.parse(range.from) / DAY : -Infinity), to = Math.min(C.last, range?.to ? Date.parse(range.to) / DAY : Infinity);
-  // Messages in the period, oldest first.
-  const sel = S.order.filter(i => dayOf[i] >= from && dayOf[i] <= to), n = sel.length;
-  C.view = {from, to, unit: unitFor(to - from + 1), sel};
+  const {from, to, sel} = setView({tz, range}), n = sel.length;
   if (!n) return {tz, user: S.user, bounds, range: {from: iso(from), to: iso(to)}, empty: true, validation: S.validation};
   const unit = C.view.unit, fineUnit = FINER[unit];
   const chStats = S.channels.map(() => ({count: 0, words: 0, attachments: 0, links: 0, first: Infinity, last: -Infinity, periods: {}}));
@@ -427,7 +438,7 @@ function aggregate({tz, topics, range}) {
   }).filter(c => c.count).sort((a, b) => b.count - a.count);
 
   // Keep word frequencies for the roast candidate scorer.
-  Object.assign(C, {allFreq, totalTokens: totalWords});
+  Object.assign(C.view, {allFreq, totalTokens: totalWords});
   const msgRef = i => i < 0 ? null : messageRef(i);
   const mostRepeated = top(repeated, 1)[0];
   const sortObj = o => Object.fromEntries(Object.entries(o).sort());
@@ -481,7 +492,10 @@ const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
 /* ---------- roast candidates (no inference) ---------- */
 function candidates({seed = 1, count = 30}) {
-  const S = STORE, C = S.cache, N = C.totalTokens;
+  const S = STORE, C = S.cache, V = C.view;
+  // A view reused from the page's cache may not have word frequencies yet.
+  if (!V.allFreq) { V.allFreq = new Map(); V.totalTokens = 0; for (const i of V.sel) for (const w of C.tokensOf[i]) { inc(V.allFreq, w); V.totalTokens++; } }
+  const N = V.totalTokens;
   const scored = [];
   for (const i of C.view.sel) {
     const len = C.lens[i];
@@ -492,7 +506,7 @@ function candidates({seed = 1, count = 30}) {
     const toks = C.tokensOf[i];
     if (toks.length < 6) continue;
     const distinct = new Set(toks); let rare = 0, info = 0;
-    for (const w of distinct) { const f = C.allFreq.get(w) || 1; info += Math.min(14, Math.log2(N / f)); if (f <= 3 && w.length > 3) rare++; }
+    for (const w of distinct) { const f = V.allFreq.get(w) || 1; info += Math.min(14, Math.log2(N / f)); if (f <= 3 && w.length > 3) rare++; }
     const score = info / Math.sqrt(toks.length + 4) + rare * 1.5 + (/[!?]{2,}/.test(t) ? 1 : 0);
     scored.push([score, i, rare]);
   }
@@ -537,6 +551,7 @@ self.onmessage = async e => {
     else if (type === 'forget') { STORE = null; result = await idb('readwrite', kv => kv.delete(DB_KEY)); }
     else if (type === 'bounds') { const C = prepare(payload.tz); result = {first: iso(C.first), last: iso(C.last)}; }
     else if (type === 'aggregate') result = aggregate(payload);
+    else if (type === 'view') { setView(payload); result = true; }
     else if (type === 'search') result = search(payload);
     else if (type === 'candidates') result = candidates(payload);
     send({type: 'result', id, result});
