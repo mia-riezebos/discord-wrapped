@@ -17,8 +17,8 @@ for (const k of ['messages', 'words', 'characters', 'channels', 'activeDays', 'u
 cmp('lateNight', D.totals.lateNight, R.totals.lateNightMessages);
 cmp('hourly', JSON.stringify(D.hourly), JSON.stringify(R.hourly));
 cmp('heat', JSON.stringify(D.heat), JSON.stringify(R.heat));
-cmp('years', JSON.stringify(Object.fromEntries(Object.entries(D.years).map(([y, v]) => [y, v.total]))), JSON.stringify(Object.fromEntries(Object.entries(R.years).map(([y, v]) => [y, v.total]))));
-cmp('months', Object.keys(D.months).length, Object.keys(R.months).length);
+cmp('years', JSON.stringify(Object.fromEntries(Object.entries(D.periods).map(([y, v]) => [y, v.total]))), JSON.stringify(Object.fromEntries(Object.entries(R.years).map(([y, v]) => [y, v.total]))));
+cmp('months', Object.keys(D.fine).length, Object.keys(R.months).length);
 cmp('streak', JSON.stringify(D.streaks[0]), JSON.stringify(R.streaks[0]));
 cmp('music', D.topics['Music & audio'], R.topics['Music & audio']);
 cmp('topword', JSON.stringify(D.words.slice(0, 5)), JSON.stringify(R.words.slice(0, 5)));
@@ -29,5 +29,12 @@ cmp('within60', D.bursts.within60, R.bursts.consecutiveWithin60Seconds);
 cmp('sessions', D.bursts.sessions, R.bursts.sessions30minGap);
 cmp('validation', JSON.stringify([D.validation.duplicateIds, D.validation.parseErrorCount, D.validation.snowflakeMismatches]), JSON.stringify([R.validation.duplicateIds, R.validation.parseErrors.length, R.validation.snowflakeMismatches]));
 console.log('servers', D.totals.servers, R.totals.serverLabels, 'peak text', D.peakDays[0].topText, 'fame', D.fame.mostRepeated, D.bursts.bestMinute);
+// A one-year period matches that year's bucket in the full report, and buckets by month.
+t = Date.now(); const Y = await call('aggregate', {tz: 'Europe/Amsterdam', topics, range: {from: '2021-01-01', to: '2021-12-31'}}); console.log('year aggregate ms', Date.now() - t);
+cmp('year total', Y.totals.messages, D.periods['2021'].total);
+cmp('year unit', Y.unit + '/' + Object.keys(Y.periods).length, 'month/12');
+const W = await call('aggregate', {tz: 'Europe/Amsterdam', topics, range: {from: '2021-03-01', to: '2021-03-07'}});
+cmp('week unit', W.unit + '/' + Object.keys(W.periods).length + '/' + W.fineUnit + '/' + Object.keys(W.fine).length, 'day/7/hour/168');
+await call('aggregate', {tz: 'Europe/Amsterdam', topics});
 t = Date.now(); const s = await call('search', {query: 'boop', wholeWord: true}); console.log('search ms', Date.now() - t, s.total, s.results.length, s.first.at);
 t = Date.now(); const c = await call('candidates', {seed: 1, count: 30}); console.log('candidates ms', Date.now() - t, c.slice(0, 5).map(x => x.text.slice(0, 100)));

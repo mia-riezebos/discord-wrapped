@@ -78,8 +78,10 @@ function savedNotice() {
 let D = null, topicsText = localStorage.getItem('du-topics') || DEFAULT_TOPICS;
 const parseTopics = text => text.split('\n').map(l => l.split(':')).filter(p => p.length > 1 && p[0].trim()).slice(0, 5).map(([name, ...rest]) => ({name: name.trim(), terms: rest.join(':').split(',').map(t => t.trim().toLowerCase()).filter(Boolean)}));
 async function analyse() {
-  localStorage.setItem('du-tz', $('tz').value); localStorage.setItem('du-topics', topicsText);
-  D = await call('aggregate', {tz: $('tz').value, topics: parseTopics(topicsText)});
+  const tz = $('tz').value;
+  localStorage.setItem('du-tz', tz); localStorage.setItem('du-topics', topicsText);
+  const r = resolvePeriod(period, await call('bounds', {tz}));
+  D = await call('aggregate', {tz, topics: parseTopics(topicsText), range: {from: r.from, to: r.to}});
 }
 
 // The "Your data" menu closes on outside clicks and after picking an action.
@@ -128,8 +130,111 @@ $('export').addEventListener('click', () => {
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 
+/* ---------- report period ---------- */
+// The report covers one period: a week, month or year stepped with Previous and Next, everything, or a custom range.
+// Dates are local calendar days written as YYYY-MM-DD and handled as UTC midnights.
+const dayNum = s => Date.parse(s + 'T00:00:00Z') / DAY;
+const isoDay = d => new Date(d * DAY).toISOString().slice(0, 10);
+const dateText = (s, opts = {day: 'numeric', month: 'long', year: 'numeric'}) => new Date(s + 'T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', ...opts});
+let period = JSON.parse(localStorage.getItem('du-period') || 'null') || {kind: 'year'};
+function resolvePeriod(p, bounds) {
+  const anchor = Math.min(dayNum(bounds.last), Math.max(dayNum(bounds.first), p.anchor ? dayNum(p.anchor) : Infinity)), a = new Date(anchor * DAY);
+  const y = a.getUTCFullYear(), m = a.getUTCMonth();
+  if (p.kind === 'year') return {kind: 'year', from: `${y}-01-01`, to: `${y}-12-31`, label: String(y), in: `in ${y}`};
+  if (p.kind === 'month') {
+    const from = isoDay(Date.UTC(y, m, 1) / DAY), to = isoDay(Date.UTC(y, m + 1, 0) / DAY), label = dateText(from, {month: 'long', year: 'numeric'});
+    return {kind: 'month', from, to, label, in: `in ${label}`};
+  }
+  if (p.kind === 'week') {
+    const mon = anchor - (a.getUTCDay() + 6) % 7, from = isoDay(mon), label = `the week of ${dateText(from)}`;
+    return {kind: 'week', from, to: isoDay(mon + 6), label, in: `in ${label}`};
+  }
+  if (p.kind === 'custom' && p.from && p.to && p.from <= p.to) {
+    const label = `${dateText(p.from, {day: 'numeric', month: 'short', year: 'numeric'})} – ${dateText(p.to, {day: 'numeric', month: 'short', year: 'numeric'})}`;
+    return {kind: 'custom', from: p.from, to: p.to, label, in: `between ${dateText(p.from, {day: 'numeric', month: 'short', year: 'numeric'})} and ${dateText(p.to, {day: 'numeric', month: 'short', year: 'numeric'})}`};
+  }
+  const since = bounds.first.slice(0, 4);
+  return {kind: 'all', from: bounds.first, to: bounds.last, label: `since ${since}`, in: `since ${since}`};
+}
+// The same period length, one step earlier or later, anchored on its first day.
+function stepPeriod(dir) {
+  const r = resolvePeriod(period, D.bounds), d = new Date(r.from + 'T00:00:00Z');
+  if (r.kind === 'year') d.setUTCFullYear(d.getUTCFullYear() + dir);
+  else if (r.kind === 'month') d.setUTCMonth(d.getUTCMonth() + dir);
+  else d.setUTCDate(d.getUTCDate() + 7 * dir);
+  return {kind: r.kind, anchor: d.toISOString().slice(0, 10)};
+}
+// A step is possible while the next period still overlaps the messages.
+const ANY = {first: '0000-01-01', last: '9999-12-31'};
+function canStep(dir) {
+  const r = resolvePeriod(stepPeriod(dir), ANY);
+  return r.to >= D.bounds.first && r.from <= D.bounds.last;
+}
+const shortLabel = r => r.kind === 'year' ? r.label : r.kind === 'month' ? dateText(r.from, {month: 'short', year: 'numeric'}) : dateText(r.from, {day: 'numeric', month: 'short'});
+let P = null;
+function periodControls() {
+  P = resolvePeriod(period, D.bounds);
+  const stepping = ['year', 'month', 'week'].includes(P.kind), unit = {year: 'year', month: 'month', week: 'week'}[P.kind];
+  document.querySelectorAll('#period input[name=pkind]').forEach(r => r.checked = r.value === P.kind);
+  $('p-prev').hidden = $('p-next').hidden = !stepping; $('p-custom').hidden = P.kind !== 'custom';
+  $('p-label').textContent = P.kind === 'week' ? `Week of ${dateText(P.from)}` : P.kind === 'all' ? `${dateText(D.bounds.first)} – ${dateText(D.bounds.last)}` : P.label;
+  if (stepping) {
+    for (const [id, dir] of [['p-prev', -1], ['p-next', 1]]) {
+      const b = $(id), ok = canStep(dir), target = resolvePeriod(stepPeriod(dir), ANY);
+      b.disabled = !ok;
+      b.querySelector('.t').textContent = shortLabel(target);
+      b.setAttribute('aria-label', `${dir < 0 ? 'Previous' : 'Next'} ${unit}: ${target.kind === 'week' ? 'week of ' + dateText(target.from) : target.label}`);
+    }
+  }
+  $('p-from').min = $('p-to').min = D.bounds.first; $('p-from').max = $('p-to').max = D.bounds.last;
+  // Leave a date alone while someone is typing in it.
+  if (P.kind === 'custom') for (const [id, v] of [['p-from', P.from], ['p-to', P.to]]) if (document.activeElement !== $(id)) $(id).value = v;
+}
+async function setPeriod(p) {
+  period = p; localStorage.setItem('du-period', JSON.stringify(p));
+  document.body.style.cursor = 'progress'; $('period').setAttribute('aria-busy', 'true');
+  await analyse();
+  document.body.style.cursor = ''; $('period').removeAttribute('aria-busy');
+  renderAll();
+}
+$('period').addEventListener('change', e => {
+  if (e.target.name === 'pkind') {
+    const k = e.target.value, cur = resolvePeriod(period, D.bounds);
+    // Switching length keeps the newest part of the current period in view.
+    const anchor = cur.to < D.bounds.last ? cur.to : D.bounds.last;
+    if (k === 'custom') setPeriod({kind: 'custom', from: cur.from < D.bounds.first ? D.bounds.first : cur.from, to: anchor});
+    else setPeriod({kind: k, anchor});
+  } else if (e.target.id === 'p-from' || e.target.id === 'p-to') {
+    const from = $('p-from').value, to = $('p-to').value;
+    if (from && to && from <= to) setPeriod({kind: 'custom', from, to});
+  }
+});
+$('p-prev').onclick = () => setPeriod(stepPeriod(-1));
+$('p-next').onclick = () => setPeriod(stepPeriod(1));
+// Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
+function bucketName(key, unit, long = false) {
+  if (unit === 'year') return key;
+  if (unit === 'month') return dateText(key + '-01', long ? {month: 'long', year: 'numeric'} : P.kind === 'year' ? {month: 'short'} : {month: 'short', year: '2-digit'});
+  if (unit === 'week') return (long ? 'the week of ' : '') + dateText(key, {day: 'numeric', month: 'short', ...(long ? {year: 'numeric'} : {})});
+  if (unit === 'day') return dateText(key, long ? {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'} : P.kind === 'week' ? {weekday: 'short', day: 'numeric'} : {day: 'numeric', month: 'short'});
+  return dateText(key.slice(0, 10), {weekday: 'short'}) + ' ' + key.slice(11) + ':00';
+}
+const UNIT_NAME = {year: 'year', month: 'month', week: 'week', day: 'day', hour: 'hour'};
+// Zooming into a bar opens that bucket as the period, when it's a period length.
+const zoomTo = (key, unit) => ['year', 'month', 'week'].includes(unit) && setPeriod({kind: unit, anchor: unit === 'year' ? key + '-01-01' : unit === 'month' ? key + '-01' : key});
+
 /* ---------- chart primitives ---------- */
 const tip = $('tip');
+// Keyboard focus shows the same tooltip as hovering.
+document.addEventListener('focusin', e => {
+  const t = e.target.closest?.('[data-tip]');
+  if (!t) { tip.classList.remove('show'); return; }
+  const r = t.getBoundingClientRect();
+  tip.textContent = t.dataset.tip; tip.style.left = r.left + r.width / 2 + 'px'; tip.style.top = r.top + 'px'; tip.classList.add('show');
+});
+document.addEventListener('focusout', () => tip.classList.remove('show'));
+// The period bar sticks under the header, whose height changes as it wraps.
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--header-h', e.target.offsetHeight + 'px')).observe(document.querySelector('header.top'));
 document.addEventListener('pointermove', e => {
   const t = e.target.closest?.('[data-tip]');
   if (!t) { tip.classList.remove('show'); return; }
@@ -138,9 +243,14 @@ document.addEventListener('pointermove', e => {
 function frameFixed(target, w, h, title, draw) {
   $(target).innerHTML = `<svg class="chart" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}" style="width:${w}px">${draw(w, h)}</svg>`;
 }
-function frame(target, height, title, draw) {
+// Every chart carries its numbers in a collapsed table, for screen readers, keyboards and exact values.
+const dataTable = (head, rows) => `<details class="data"><summary>Show the numbers</summary><div class="scroll"><table><thead><tr>${head.map((h, i) => `<th${i ? ' class="num"' : ''} scope="col">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => i ? `<td class="num">${esc(c)}</td>` : `<th scope="row">${esc(c)}</th>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+function frame(target, height, title, draw, data) {
   const host = $(target), w = Math.max(280, host.clientWidth), h = height;
-  host.innerHTML = `<svg class="chart" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}">${draw(w, h)}</svg>`;
+  // Keep an open table open when the chart redraws.
+  const open = host.querySelector('details.data')?.open;
+  host.innerHTML = `<svg class="chart" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}">${draw(w, h)}</svg>${data ? dataTable(...data) : ''}`;
+  if (open) host.querySelector('details.data').open = true;
 }
 const short = v => v >= 1e6 ? (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'm' : v >= 1000 ? (v / 1000).toFixed(v >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(Math.round(v * 10) / 10);
 // Round the axis top so each of the four gridlines lands on a round number.
@@ -163,10 +273,10 @@ function bars(target, items, {height = 220, color = COLORS[0], label = v => fmt(
       if (i % every === 0) s += `<text class="tick" x="${x + step / 2}" y="${h - 8}" text-anchor="middle">${esc(name)}</text>`;
     });
     return s;
-  });
+  }, [['', 'Messages'], items.map(([name, v]) => [name, label(v)])]);
   if (onPick) $(target).onclick = e => { const i = e.target.dataset?.i; if (i !== undefined) onPick(+i); };
 }
-function stacked(target, labels, series, {height = 240, title, onPick, selected} = {}) {
+function stacked(target, labels, series, {height = 240, title, onPick, selected, tipNames = labels} = {}) {
   frame(target, height, title, (w, h) => {
     const totals = labels.map((_, i) => series.reduce((a, s) => a + s.values[i], 0));
     const max = niceMax(Math.max(...totals)), {L, T, pw, ph, s: base} = axes(w, h, max);
@@ -175,11 +285,11 @@ function stacked(target, labels, series, {height = 240, title, onPick, selected}
     labels.forEach((name, i) => {
       let acc = 0; const x = L + i * step;
       series.forEach((ser, j) => { const v = ser.values[i], bh = ph * v / max; s += `<rect x="${x + step * .14}" y="${T + ph - ph * (acc + v) / max}" width="${step * .72}" height="${bh}" fill="${COLORS[j]}" opacity="${selected === undefined || selected === i ? 1 : .45}"/>`; acc += v; });
-      s += `<rect class="hit" x="${x}" y="${T}" width="${step}" height="${ph}" data-i="${i}" data-tip="${esc(name)} · ${fmt(totals[i])} total · ${series.map(se => `${se.name} ${fmt(se.values[i])}`).join(' · ')}"/>`;
+      s += `<rect class="hit" x="${x}" y="${T}" width="${step}" height="${ph}" data-i="${i}" data-tip="${esc(tipNames[i])} · ${fmt(totals[i])} total · ${series.map(se => `${se.name} ${fmt(se.values[i])}`).join(' · ')}"/>`;
       if (i % every === 0) s += `<text class="tick" x="${x + step / 2}" y="${h - 8}" text-anchor="middle">${esc(name)}</text>`;
     });
     return s;
-  });
+  }, [['', ...series.map(se => se.name), 'Total'], labels.map((_, i) => [tipNames[i], ...series.map(se => fmt(se.values[i])), fmt(series.reduce((a, se) => a + se.values[i], 0))])]);
   if (onPick) $(target).onclick = e => { const i = e.target.dataset?.i; if (i !== undefined) onPick(+i); };
 }
 function lines(target, labels, series, {height = 240, title, format = fmt, tickLabel = x => x, onHover} = {}) {
@@ -196,7 +306,7 @@ function lines(target, labels, series, {height = 240, title, format = fmt, tickL
     const half = n > 1 ? pw / (n - 1) / 2 : pw / 2;
     labels.forEach((lab, i) => s += `<rect class="hit" x="${x(i) - half}" y="${T}" width="${half * 2}" height="${ph}" data-i="${i}" data-tip="${esc(lab)} · ${series.map(se => (series.length > 1 ? se.name + ' ' : '') + format(se.values[i])).join(' · ')}"/>`);
     return s;
-  });
+  }, [['', ...series.map(se => se.name)], labels.map((lab, i) => [lab, ...series.map(se => format(se.values[i]))])]);
   if (onHover) $(target).onpointerover = e => { const i = e.target.dataset?.i; if (i !== undefined) onHover(+i); };
 }
 function ranks(target, items, max = 10, label = fmt, share = () => null) {
@@ -206,107 +316,140 @@ function ranks(target, items, max = 10, label = fmt, share = () => null) {
 const legend = (target, names) => $(target).innerHTML = names.map((n, i) => `<span><i class="swatch" style="background:${COLORS[i]}"></i>${esc(n)}</span>`).join('');
 const metric = (v, label, share) => `<div class="metric" ${shareAttr(share)}><strong>${v}</strong><span>${label}</span></div>`;
 const table = (target, head, rows) => $(target).innerHTML = `<thead><tr>${head.map((h, i) => `<th${i === head.length - 1 ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td${i === r.length - 1 ? ' class="num"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
-const yearOptions = (all = 'All years') => `<option value="all">${all}</option>` + Object.keys(D.years).sort().map(y => `<option>${y}</option>`).join('');
+
+/* ---------- share copy ---------- */
+// Numbers go to the copy both formatted ("1,234") and raw (nRaw) so it can pick singular or plural.
+function share(key, v, extra = {}) {
+  const vars = {};
+  for (const [k, x] of Object.entries(v)) { if (typeof x === 'number') { vars[k] = fmt(x); vars[k + 'Raw'] = x; } else vars[k] = x; }
+  return {...SHARE_COPY[key](vars, P), ...extra};
+}
+// A ranked list on a share card: the top rows as bars, with the shared row highlighted.
+const rankBars = (items, i, label = x => x) => ({items: items.slice(0, Math.max(6, Math.min(i + 1, 10))).map(([n, v]) => [label(n), v]), highlight: i});
+const pctOf = (n, d) => d ? Math.round(100 * n / d) + '%' : '0%';
 
 /* ---------- findings ---------- */
+const keysOf = o => Object.keys(o).sort();
 function findings() {
-  const T = D.totals, ys = Object.keys(D.years).sort(), Y = D.years, out = [];
-  const full = ys.slice(1, -1).filter(y => Y[y].calendarDays >= 365);
-  const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
-  out.push(['years', `<strong>${busiest} was your busiest year</strong> with ${fmt(Y[busiest].total)} messages. That's ${pct(Y[busiest].total, T.messages)} of the messages in this report.`,
-    {text: `${busiest} was my loudest year on Discord: ${fmt(Y[busiest].total)} messages!`, headline: busiest, sub: `My busiest year · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
-  // Biggest fall between two consecutive full years; partial first and last years would exaggerate it.
-  const drops = full.slice(1).filter(y => full.includes(String(+y - 1))).map(y => [y, 1 - Y[y].total / Y[+y - 1].total]).sort((a, b) => b[1] - a[1]);
-  if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>You sent ${(100 * d).toFixed(0)}% fewer messages in ${y} than in ${+y - 1}.</strong> That's ${fmt(Y[y].total)} messages across ${fmt(Y[y].activeDays)} days.`,
-    {text: `I went quiet on Discord in ${y}: ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}.`, headline: y, sub: `${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
-  const months = Object.entries(D.months), topMonth = months.reduce((a, m) => m[1].total > a[1].total ? m : a);
-  const monthName = new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'}), perDay = fmt(Math.round(topMonth[1].total / 30));
-  out.push(['month', `<strong>Your busiest month was ${monthName},</strong> with ${fmt(topMonth[1].total)} messages.`,
-    {text: `My busiest month on Discord ever was ${monthName}: ${fmt(topMonth[1].total)} messages!`, headline: monthName, sub: `My busiest month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
-  const peakHour = D.hourly.indexOf(Math.max(...D.hourly));
-  out.push(['rhythm', `<strong>You sent ${pct(T.lateNight, T.messages)} of your messages between midnight and 6 am.</strong> Your busiest hour was ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`,
-    {text: `${pct(T.lateNight, T.messages)} of my Discord messages were sent between midnight and 6 am. Night owl confirmed.`, headline: pct(T.lateNight, T.messages), sub: 'Sent between midnight and 6 am', chart: 'heat-chart'}]);
+  const T = D.totals, ks = keysOf(D.periods), Y = D.periods, U = D.unit, out = [];
+  const name = k => bucketName(k, U, true), inName = k => (U === 'day' ? 'on ' : 'in ') + name(k);
+  // A week's busiest day already has its own highlight.
+  if (ks.length > 1 && U !== 'day') {
+    const busiest = ks.reduce((a, k) => Y[k].total > Y[a].total ? k : a, ks[0]);
+    out.push(['years', `<strong>${esc(cap(name(busiest)))} was your busiest ${UNIT_NAME[U]}</strong> with ${fmt(Y[busiest].total)} messages. That's ${pct(Y[busiest].total, T.messages)} of the messages ${esc(P.in)}.`,
+      share('highlight.loudest', {label: cap(name(busiest)), n: Y[busiest].total, sharePct: pctOf(Y[busiest].total, T.messages)}, {chart: 'year-chart'})]);
+  }
+  // Biggest fall between two whole consecutive buckets; cut-off buckets would exaggerate it.
+  if (U === 'year' || U === 'month') {
+    const drops = ks.slice(1).map((k, j) => [k, ks[j]]).filter(([k, prev]) => !Y[k].partial && !Y[prev].partial && Y[prev].total >= 100).map(([k, prev]) => [k, prev, 1 - Y[k].total / Y[prev].total]).sort((a, b) => b[2] - a[2]);
+    if (drops[0]?.[2] > .3) {
+      const [k, prev, d] = drops[0];
+      out.push(['years', `<strong>You sent ${(100 * d).toFixed(0)}% fewer messages ${esc(inName(k))} than ${esc(inName(prev))}.</strong> That's ${fmt(Y[k].total)} messages across ${fmt(Y[k].activeDays)} days.`,
+        share('highlight.quiet', {label: cap(name(k)), prevLabel: name(prev), dropPct: (100 * d).toFixed(0) + '%', n: Y[k].total}, {chart: 'year-chart'})]);
+    }
+  }
+  if (D.fineUnit === 'month') {
+    const topMonth = Object.entries(D.fine).reduce((a, m) => m[1].total > a[1].total ? m : a), monthName = bucketName(topMonth[0], 'month', true);
+    const perDay = Math.round(topMonth[1].total / new Date(Date.UTC(+topMonth[0].slice(0, 4), +topMonth[0].slice(5), 0)).getUTCDate());
+    out.push(['month', `<strong>Your busiest month was ${esc(monthName)},</strong> with ${fmt(topMonth[1].total)} messages, about ${fmt(perDay)} a day.`,
+      share('highlight.busiestMonth', {month: monthName, n: topMonth[1].total, perDay}, {chart: 'month-chart'})]);
+  }
+  const peakHour = D.hourly.indexOf(Math.max(...D.hourly)), hh = h => String(h).padStart(2, '0') + ':00';
+  out.push(['rhythm', `<strong>You sent ${pct(T.lateNight, T.messages)} of your messages between midnight and 6 am.</strong> Your busiest hour was ${hh(peakHour)}–${hh((peakHour + 1) % 24)}.`,
+    share('highlight.lateNight', {pct: pctOf(T.lateNight, T.messages), peakHour: hh(peakHour)}, {chart: 'heat-chart'})]);
   const st = D.streaks[0];
-  if (st) out.push(['calendar', `<strong>Your longest streak was ${fmt(st[0])} days,</strong> from ${longDate(st[1])} to ${longDate(st[2])}. You sent messages on ${pct(T.activeDays, T.calendarDays)} of days in this report's date range.`,
-    {text: `I sent a Discord message every single day for ${fmt(st[0])} days straight!`, headline: `${fmt(st[0])} days in a row`, sub: `My longest streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
+  if (st && st[0] > 1) out.push(['calendar', `<strong>Your longest streak was ${fmt(st[0])} days,</strong> from ${longDate(st[1])} to ${longDate(st[2])}. You sent messages on ${pct(T.activeDays, T.calendarDays)} of the days ${esc(P.in)}.`,
+    share('highlight.streak', {days: st[0], from: longDate(st[1]), to: longDate(st[2])}, {chart: 'calendar'})]);
   const pk = D.peakDays[0];
   if (pk) {
-    const [txt, n] = pk.topText;
-    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day in this report${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` You sent "${esc(txt.slice(0, 60))}" ${fmt(n)} times.` : ''}`,
-      {text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}!${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${quoteOf(txt, 60)}”.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`}]);
+    const [txt, n] = pk.topText, notable = n > pk.count * .2 && txt;
+    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day ${esc(P.in)}${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${notable ? ` You sent “${esc(txt.slice(0, 60))}” ${fmt(n)} times.` : ''}`,
+      share('highlight.recordDay', {date: longDate(pk.date), n: pk.count, topText: notable ? txt : '', topCount: notable ? n : 0})]);
   }
-  out.push(['length', `<strong>${pct(D.bursts.within60, T.messages - 1)} of consecutive message pairs were at most a minute apart.</strong> ${pct(T.shortMessages, T.messages)} of your messages have 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
-    {text: `My Discord record: ${fmt(D.bursts.bestMinute.count)} messages in one minute!`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `${pct(T.shortMessages, T.messages)} of my messages have 20 characters or fewer`, chart: 'length-chart'}]);
-  const dms = D.channels.filter(c => c.group === 'DMs' && c.count), dmTotal = dms.reduce((a, c) => a + c.count, 0);
-  if (dms.length > 10) out.push(['people', `<strong>Your top 10 DM conversations contain</strong> ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of your ${fmt(dmTotal)} DM messages. Your report includes ${fmt(dms.length)} DM conversations.`,
-    {text: `${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of my Discord DMs go to just 10 people.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'Of my DM messages are in 10 conversations'}]);
-  if (ys.length > 2) {
-    const a = full[0] || ys[0], b = ys.at(-1), wa = Y[a].words / Y[a].total, wb = Y[b].words / Y[b].total;
-    if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages averaged ${wa.toFixed(1)} words in ${a}</strong> and ${wb.toFixed(1)} in ${b}.`,
-      {text: `My Discord messages went from ${wa.toFixed(1)} words on average in ${a} to ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `Per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
+  out.push(['length', `<strong>${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before.</strong> ${pct(T.shortMessages, T.messages)} have 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
+    share('highlight.bursts', {bestMinute: D.bursts.bestMinute.count, shortPct: pctOf(T.shortMessages, T.messages)}, {chart: 'length-chart'})]);
+  const dms = D.channels.filter(c => c.group === 'DMs'), dmTotal = dms.reduce((a, c) => a + c.count, 0), top10 = dms.slice(0, 10).reduce((a, c) => a + c.count, 0);
+  if (dms.length > 10) out.push(['people', `<strong>Your top 10 DM conversations hold</strong> ${pct(top10, dmTotal)} of your ${fmt(dmTotal)} DM messages ${esc(P.in)}, out of ${fmt(dms.length)} conversations.`,
+    share('highlight.innerCircle', {pct: pctOf(top10, dmTotal), dmCount: dms.length})]);
+  const rk = rateKeys();
+  if (rk.length > 2 && (U === 'year' || U === 'month')) {
+    const a = rk.find(k => !Y[k].partial) || rk[0], b = rk.at(-1), wa = Y[a].words / Y[a].total, wb = Y[b].words / Y[b].total;
+    if (a !== b && Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages averaged ${wa.toFixed(1)} words ${esc(inName(a))}</strong> and ${wb.toFixed(1)} ${esc(inName(b))}.`,
+      share('highlight.longer', {fromLabel: name(a), toLabel: name(b), fromWords: wa.toFixed(1), toWords: wb.toFixed(1), longer: wb > wa}, {chart: 'wpm-chart'})]);
   }
-  if (D.domains[0]) out.push(['links', `<strong>You linked to ${esc(D.domains[0][0])} most often,</strong> with ${fmt(D.domains[0][1])} links. Your report contains ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`,
-    {text: `I've shared ${fmt(D.domains[0][1])} links to ${D.domains[0][0]} on Discord.`, headline: D.domains[0][0], sub: `${fmt(D.domains[0][1])} links I've shared on Discord`}]);
+  if (D.domains[0]) out.push(['links', `<strong>You linked to ${esc(D.domains[0][0])} most often,</strong> with ${fmt(D.domains[0][1])} links. You shared ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites ${esc(P.in)}.`,
+    share('highlight.topLink', {domain: D.domains[0][0], n: D.domains[0][1]}, {bars: rankBars(D.domains, 0)})]);
   // Each highlight sits next to the chart that shows it.
   document.querySelectorAll('[data-slot]').forEach(el => {
-    el.innerHTML = out.filter(([slot]) => slot === el.dataset.slot).map(([, html, share]) => `<p ${shareAttr(share)}>${html}</p>`).join('');
+    el.innerHTML = out.filter(([slot]) => slot === el.dataset.slot).map(([, html, ctx]) => `<p ${shareAttr(ctx)}>${html}</p>`).join('');
   });
 }
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
 /* ---------- sections ---------- */
-// Years with very few messages make per-message rates swing wildly, so rate charts skip them.
-const rateYears = () => Object.keys(D.years).sort().filter(y => D.years[y].total >= 500);
+// Buckets with very few messages make per-message rates swing wildly, so rate charts skip them.
+function rateKeys() {
+  const ks = keysOf(D.periods), mean = D.totals.messages / ks.length, min = Math.min(500, Math.max(10, mean * .1));
+  return ks.filter(k => D.periods[k].total >= min);
+}
+const per = unit => `per ${UNIT_NAME[unit]}`;
 const draws = [];
 function overview() {
-  const T = D.totals;
-  $('hero-title').textContent = `${fmt(T.messages)} messages${D.user?.username ? ' from ' + D.user.username : ''}`;
-  $('hero-sub').textContent = `${longDate(T.first)} – ${longDate(T.last)} · ${fmt(T.channels)} channels · times in ${D.tz}`;
-  const since = T.first.slice(0, 4), stat = (n, what) => ({text: `I've ${what} on Discord since ${since}.`, headline: fmt(n), sub: `${what.replace(/^\S+ [\d,.]+ /, '')} on Discord since ${since}`});
-  $('counts').innerHTML = metric(fmt(T.messages), 'messages', stat(T.messages, `sent ${fmt(T.messages)} messages`)) + metric(fmt(T.words), 'words', stat(T.words, `typed ${fmt(T.words)} words`)) + metric(fmt(T.characters), 'characters', stat(T.characters, `typed ${fmt(T.characters)} characters`))
-    + metric(fmt(T.activeDays), `days with messages out of ${fmt(T.calendarDays)}`, {text: `I've sent Discord messages on ${fmt(T.activeDays)} of the last ${fmt(T.calendarDays)} days.`, headline: pct(T.activeDays, T.calendarDays), sub: `Of days in my report with at least one message`, chart: 'calendar'})
-    + metric(fmt(T.urls), 'links', stat(T.urls, `shared ${fmt(T.urls)} links`)) + metric(fmt(T.attachmentLinks), 'attachments', stat(T.attachmentLinks, `sent ${fmt(T.attachmentLinks)} attachments`));
+  const T = D.totals, U = D.unit, F = D.fineUnit;
+  $('hero-title').textContent = `${fmt(T.messages)} ${T.messages === 1 ? 'message' : 'messages'} ${P.in}`;
+  $('hero-sub').textContent = `${D.user?.username ? D.user.username + ' · ' : ''}${T.first === T.last ? longDate(T.first) : `${longDate(T.first)} – ${longDate(T.last)}`} · ${fmt(T.channels)} ${T.channels === 1 ? 'channel' : 'channels'} · times in ${D.tz}`;
+  const days = T.calendarDays;
+  $('counts').innerHTML = metric(fmt(T.messages), T.messages === 1 ? 'message' : 'messages', share('stat.messages', {n: T.messages}, {chart: 'year-chart'})) + metric(fmt(T.words), 'words', share('stat.words', {n: T.words})) + metric(fmt(T.characters), 'characters', share('stat.characters', {n: T.characters}))
+    + metric(fmt(T.activeDays), `days with messages, out of ${fmt(days)}`, share('stat.activeDays', {active: T.activeDays, days, pct: pctOf(T.activeDays, days)}, days >= 60 ? {chart: 'calendar'} : {}))
+    + metric(fmt(T.urls), 'links', share('stat.links', {n: T.urls})) + metric(fmt(T.attachmentLinks), 'attachments', share('stat.attachments', {n: T.attachmentLinks}));
   findings();
   legend('group-legend', GROUPS);
-  const ys = Object.keys(D.years).sort();
-  $('year').innerHTML = yearOptions();
-  const update = () => {
-    const year = $('year').value, sel = ys.indexOf(year);
-    stacked('year-chart', ys, GROUPS.map(g => ({name: g, values: ys.map(y => D.years[y][g])})), {title: 'Messages per year by conversation type', selected: sel < 0 ? undefined : sel, onPick: i => { $('year').value = $('year').value === ys[i] ? 'all' : ys[i]; update(); }});
-    const ms = Object.keys(D.months).filter(m => year === 'all' || m.startsWith(year));
-    lines('month-chart', ms, GROUPS.map(g => ({name: g, values: ms.map(m => D.months[m][g])})), {title: 'Messages per month', tickLabel: m => year === 'all' ? m.slice(0, 4) : new Date(m + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'short', timeZone: 'UTC'}),
-      onHover: i => { const m = D.months[ms[i]]; $('month-readout').textContent = `${ms[i]} · ${fmt(m.total)} messages · ${GROUPS.map(g => `${g} ${fmt(m[g])}`).join(' · ')}`; }});
-    $('month-readout').textContent = 'Hover a month for details. Click a year bar to zoom in.';
-    calendar(year === 'all' ? ys.at(-1) : year);
+  const ks = keysOf(D.periods), fs = keysOf(D.fine);
+  $('period-chart-title').textContent = `Messages ${per(U)}`;
+  $('fine-chart-title').textContent = `Messages ${per(F)}`;
+  const zoomable = ['year', 'month', 'week'].includes(U);
+  const draw = () => {
+    stacked('year-chart', ks.map(k => bucketName(k, U)), GROUPS.map(g => ({name: g, values: ks.map(k => D.periods[k][g])})), {title: `Messages ${per(U)} by conversation type`, onPick: zoomable ? i => zoomTo(ks[i], U) : undefined, tipNames: ks.map(k => bucketName(k, U, true))});
+    lines('month-chart', fs.map(k => bucketName(k, F)), GROUPS.map(g => ({name: g, values: fs.map(k => D.fine[k][g])})), {title: `Messages ${per(F)}`,
+      onHover: i => { const m = D.fine[fs[i]]; $('month-readout').textContent = `${cap(bucketName(fs[i], F, true))} · ${fmt(m.total)} messages · ${GROUPS.map(g => `${g} ${fmt(m[g])}`).join(' · ')}`; }});
+    $('month-readout').textContent = zoomable ? `Hover the chart for details. Choose a bar above to open that ${UNIT_NAME[U]}.` : 'Hover the chart for details.';
+    calendar();
   };
-  $('year').onchange = update;
-  update();
-  draws.push(update);
+  draw(); draws.push(draw);
 }
-function calendar(year) {
-  const counts = new Map(D.days.map(([d, n]) => [d, n]));
-  const start = Date.UTC(+year, 0, 1) / DAY, end = Date.UTC(+year, 11, 31) / DAY, lead = (new Date(start * DAY).getUTCDay() + 6) % 7;
+// The calendar covers the period, or its last year when the period is longer. Short periods skip it.
+function calendar() {
+  const to = dayNum(D.range.to), from = Math.max(dayNum(D.range.from), to - 370);
+  $('calendar-block').hidden = to - dayNum(D.range.from) < 59;
+  if ($('calendar-block').hidden) return;
+  const y0 = new Date(from * DAY).getUTCFullYear(), y1 = new Date(to * DAY).getUTCFullYear();
+  const start = y0 === y1 || to - dayNum(D.range.from) > 370 ? Math.max(from, Date.UTC(y1, 0, 1) / DAY) : from, end = to;
+  const counts = new Map(D.days), lead = (new Date(start * DAY).getUTCDay() + 6) % 7;
   const weeks = Math.ceil((end - start + 1 + lead) / 7), max = Math.max(1, ...[...counts].filter(([d]) => d >= start && d <= end).map(x => x[1]));
-  $('calendar-title').textContent = `Every day of ${year}`;
+  const label = start === Date.UTC(y1, 0, 1) / DAY && end === Date.UTC(y1, 11, 31) / DAY ? String(y1) : `${longDate(isoDay(start))} – ${longDate(isoDay(end))}`;
+  $('calendar-title').textContent = `Every day, ${label}`;
   // Cells keep a readable minimum size; narrow screens scroll the calendar sideways.
-  const L = 30, cell = Math.max(11, Math.min(16, ($('calendar').clientWidth - L) / weeks)), h = cell * 7 + 24;
-  frameFixed('calendar', L + weeks * cell, h, `Messages per day in ${year}`, () => {
-    let s = '';
+  const L = 30, cell = Math.max(11, Math.min(18, ($('calendar').clientWidth - L) / weeks)), h = cell * 7 + 24;
+  frameFixed('calendar', L + weeks * cell, h, `Messages per day, ${label}`, () => {
+    let s = '', lastMonth = -1;
     for (let d = start; d <= end; d++) {
-      const k = d - start + lead, wk = Math.floor(k / 7), wd = k % 7, n = counts.get(d) || 0;
-      s += `<rect x="${L + wk * cell}" y="${18 + wd * cell}" width="${cell - 2}" height="${cell - 2}" rx="2" fill="${n ? 'var(--c1)' : 'var(--soft)'}" opacity="${n ? .2 + .8 * Math.log1p(n) / Math.log1p(max) : 1}" data-tip="${new Date(d * DAY).toLocaleDateString(undefined, {timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short'})} · ${fmt(n)} messages"/>`;
+      const k = d - start + lead, wk = Math.floor(k / 7), wd = k % 7, n = counts.get(d) || 0, date = new Date(d * DAY);
+      s += `<rect x="${L + wk * cell}" y="${18 + wd * cell}" width="${cell - 2}" height="${cell - 2}" rx="2" fill="${n ? 'var(--c1)' : 'var(--soft)'}" opacity="${n ? .2 + .8 * Math.log1p(n) / Math.log1p(max) : 1}" data-tip="${date.toLocaleDateString(undefined, {timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'})} · ${fmt(n)} messages"/>`;
+      if (date.getUTCMonth() !== lastMonth && (wd === 0 || d === start)) { lastMonth = date.getUTCMonth(); if (wk < weeks - 1 || d === start) s += `<text class="tick" x="${L + wk * cell}" y="11">${date.toLocaleDateString(undefined, {month: 'short', timeZone: 'UTC'})}</text>`; }
     }
-    for (let m = 0; m < 12; m++) { const d = Date.UTC(+year, m, 1) / DAY, wk = Math.floor((d - start + lead) / 7); s += `<text class="tick" x="${L + wk * cell}" y="11">${new Date(d * DAY).toLocaleDateString(undefined, {month: 'short', timeZone: 'UTC'})}</text>`; }
     [0, 2, 4].forEach(i => s += `<text class="tick" x="0" y="${18 + i * cell + cell * .75}">${WEEK[i]}</text>`);
     return s;
   });
-  const total = [...counts].filter(([d]) => d >= start && d <= end), active = total.length, sum = total.reduce((a, x) => a + x[1], 0);
-  $('calendar-readout').textContent = `${fmt(sum)} messages on ${fmt(active)} days. Darker squares mean more messages.`;
+  const inside = [...counts].filter(([d]) => d >= start && d <= end), sum = inside.reduce((a, x) => a + x[1], 0);
+  $('calendar-readout').textContent = `${fmt(sum)} messages on ${fmt(inside.length)} days. Darker squares mean more messages.`;
 }
 function rhythm() {
   const heat = () => frame('heat-chart', 230, 'Messages by weekday and hour', (w, h) => {
-    const L = 40, T = 20, cw = (w - L) / 24, rh = (h - T - 4) / 7, max = Math.max(...D.heat.flat());
+    const L = 40, T = 20, cw = (w - L) / 24, rh = (h - T - 4) / 7, flat = D.heat.flat(), max = Math.max(1, ...flat), min = Math.min(...flat);
+    // Stretch the shading over the actual range so quiet and busy hours stay distinguishable.
+    const shade = n => n ? .12 + .88 * Math.sqrt((n - min) / Math.max(1, max - min)) : .04;
     let s = '';
-    D.heat.forEach((row, d) => { s += `<text class="tick" x="0" y="${T + d * rh + rh * .65}">${WEEK[d]}</text>`; row.forEach((n, hr) => s += `<rect x="${L + hr * cw}" y="${T + d * rh}" width="${cw - 2}" height="${rh - 2}" rx="3" fill="var(--c1)" opacity="${.06 + .94 * n / max}" data-tip="${WEEK[d]} ${String(hr).padStart(2, '0')}:00 · ${fmt(n)} messages"/>`); });
+    D.heat.forEach((row, d) => { s += `<text class="tick" x="0" y="${T + d * rh + rh * .65}">${WEEK[d]}</text>`; row.forEach((n, hr) => s += `<rect x="${L + hr * cw}" y="${T + d * rh}" width="${cw - 2}" height="${rh - 2}" rx="3" fill="var(--c1)" opacity="${shade(n)}" data-tip="${WEEK[d]} ${String(hr).padStart(2, '0')}:00 · ${fmt(n)} messages"/>`); });
     for (let hr = 0; hr < 24; hr += w < 500 ? 6 : 3) s += `<text class="tick" x="${L + hr * cw + cw / 2}" y="12" text-anchor="middle">${String(hr).padStart(2, '0')}</text>`;
     return s;
   });
@@ -319,75 +462,66 @@ function rhythm() {
   $('day').onchange = hours;
   table('streaks', ['From', 'To', 'Days'], D.streaks.slice(0, 6).map(s => [longDate(s[1]), longDate(s[2]), fmt(s[0])]));
   table('gaps', ['After', 'Until', 'Days without messages'], D.gaps.slice(0, 6).map(g => [longDate(g[1]), longDate(g[2]), fmt(g[0])]));
-  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× "${esc(p.topText[0].slice(0, 40))}"</small>` : ''), fmt(p.count)]));
-  const ys = rateYears();
+  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× “${esc(p.topText[0].slice(0, 40))}”</small>` : ''), fmt(p.count)]));
+  const ks = rateKeys();
+  $('wpm-title').textContent = `Words per message, ${per(D.unit)}`;
   const draw = () => {
     heat(); hours();
     bars('length-chart', D.lengths, {title: 'Messages by length in characters', color: COLORS[1], label: n => `${fmt(n)} messages (${pct(n, D.totals.messages)})`});
-    lines('wpm-chart', ys, [{name: 'Words per message', values: ys.map(y => D.years[y].words / D.years[y].total)}], {height: 200, title: 'Average words per message by year', format: v => v.toFixed(1) + ' words'});
+    lines('wpm-chart', ks.map(k => bucketName(k, D.unit)), [{name: 'Words per message', values: ks.map(k => D.periods[k].words / D.periods[k].total)}], {height: 200, title: `Average words per message ${per(D.unit)}`, format: v => v.toFixed(1) + ' words'});
   };
   draw(); draws.push(draw);
 }
 function people() {
-  $('people-year').innerHTML = yearOptions('All time');
-  const ys = rateYears();
-  const update = () => {
-    const y = $('people-year').value, val = c => y === 'all' ? c.count : c.years[y] || 0;
-    const dms = D.channels.filter(c => c.group === 'DMs').map(c => [c.name, val(c)]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
-    ranks('dm-ranks', dms, 10, n => fmt(n));
-    const dmTotal = dms.reduce((a, x) => a + x[1], 0);
-    $('dm-share').textContent = dms.length ? `${fmt(dms.length)} DM conversations · top 10 = ${pct(dms.slice(0, 10).reduce((a, x) => a + x[1], 0), dmTotal)} of DM messages` : '';
-    const servers = D.guilds.map(g => [g.name, y === 'all' ? g.count : g.years[y] || 0]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
-    ranks('server-ranks', servers, 10, fmt, (name, n, i) => ({text: `I've sent ${fmt(n)} messages in ${name} on Discord${y === 'all' ? '' : ` in ${y}`}.`, headline: name, sub: `${i ? `#${i + 1}` : 'my top'} Discord server${y === 'all' ? '' : ` in ${y}`} · ${fmt(n)} messages`}));
-    $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. A renamed server can appear twice when the export only identifies it by name.` : '';
-  };
-  $('people-year').onchange = update; update();
+  const ks = rateKeys();
+  const dms = D.channels.filter(c => c.group === 'DMs').map(c => [c.name, c.count]);
+  ranks('dm-ranks', dms, 10, n => fmt(n));
+  const dmTotal = dms.reduce((a, x) => a + x[1], 0);
+  $('dm-share').textContent = dms.length ? `${fmt(dms.length)} DM conversations · top 10 = ${pct(dms.slice(0, 10).reduce((a, x) => a + x[1], 0), dmTotal)} of DM messages` : '';
+  const servers = D.guilds.map(g => [g.name, g.count]);
+  ranks('server-ranks', servers, 10, fmt, (name, n, i) => share('rank.server', {name, rank: i + 1, n}, {bars: rankBars(servers, i)}));
+  $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. A renamed server can appear twice when the export only identifies it by name.` : '';
   legend('share-legend', GROUPS);
-  const draw = () => lines('share-chart', ys, GROUPS.map(g => ({name: g, values: ys.map(y => 100 * D.years[y][g] / D.years[y].total)})), {height: 220, title: 'Share of messages by conversation type per year', format: v => v.toFixed(0) + '%'});
+  const draw = () => lines('share-chart', ks.map(k => bucketName(k, D.unit)), GROUPS.map(g => ({name: g, values: ks.map(k => 100 * D.periods[k][g] / D.periods[k].total)})), {height: 220, title: `Share of messages by conversation type ${per(D.unit)}`, format: v => v.toFixed(0) + '%'});
   draw(); draws.push(draw);
 }
 function words() {
-  const ys = rateYears(), names = Object.keys(D.topics);
+  const ks = rateKeys(), names = Object.keys(D.topics), U = D.unit;
   legend('topic-legend', names);
-  const draw = () => lines('topic-chart', ys, names.map(n => ({name: n, values: ys.map(y => 1000 * (D.topicYears[y]?.[n] || 0) / D.years[y].total)})), {title: 'Messages containing topic keywords per 1,000 messages', format: v => v.toFixed(1)});
+  const draw = () => lines('topic-chart', ks.map(k => bucketName(k, U)), names.map(n => ({name: n, values: ks.map(k => 1000 * (D.topicPeriods[k]?.[n] || 0) / D.periods[k].total)})), {title: 'Messages containing topic keywords per 1,000 messages', format: v => v.toFixed(1)});
   draw(); draws.push(draw);
-  const drawBump = () => bump('bump-chart', ys.filter(y => D.wordYears[y]?.length));
+  const cols = ks.filter(k => D.wordPeriods[k]?.length);
+  $('bump-title').textContent = `Your top 10 words, ${UNIT_NAME[U]} by ${UNIT_NAME[U]}`;
+  const drawBump = () => bump('bump-chart', cols);
   drawBump(); draws.push(drawBump);
   $('topics-input').value = topicsText;
-  $('words-year').innerHTML = yearOptions();
-  const wy = () => {
-    const y = $('words-year').value;
-    ranks('word-ranks', y === 'all' ? D.words : D.wordYears[y] || [], 12, fmt, (w, n, i) => wordShare(w, n, i, y === 'all' ? null : y));
-  };
-  $('words-year').onchange = wy; wy();
-  ranks('expr-ranks', D.expressions, 12, fmt, (t, n, i) => ({text: i ? `“${quoteOf(t, 60)}” is my #${i + 1} most-sent message on Discord: ${fmt(n)} times.` : `The thing I say most on Discord is just “${quoteOf(t, 60)}”: ${fmt(n)} times.`, headline: `"${quoteOf(t, 40)}"`, sub: `Short message rank #${i + 1} · Sent ${fmt(n)} times`}));
-  ranks('link-ranks', D.domains, 10, fmt, (d, n) => ({text: `I've shared ${fmt(n)} links to ${d} on Discord.`, headline: d, sub: `${fmt(n)} links I've shared on Discord`}));
-  ranks('emoji-ranks', D.emoji.map(([n, v]) => [':' + n + ':', v]), 10, fmt, (e, n, i) => ({text: `${i ? `My #${i + 1}` : 'My most-used'} custom emoji on Discord is ${e} (${fmt(n)} times).`, headline: e, sub: `${i ? `#${i + 1} ` : 'most-used '}custom emoji · ${fmt(n)} times`}));
+  ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i)}));
+  ranks('expr-ranks', D.expressions, 12, fmt, (text, n, i) => share('rank.expression', {text, rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${quoteOf(t, 24)}”`)}));
+  ranks('link-ranks', D.domains, 10, fmt, (domain, n, i) => share('rank.link', {domain, rank: i + 1, n}, {bars: rankBars(D.domains, i)}));
+  const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
+  ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
 }
-const wordShare = (w, n, i, y) => ({
-  text: y ? (i ? `“${w}” was my #${i + 1} word on Discord in ${y} (${fmt(n)} times).` : `My top word on Discord in ${y} was “${w}” (${fmt(n)} times).`)
-    : (i ? `“${w}” is my #${i + 1} word on Discord, used ${fmt(n)} times.` : `My most-used word on Discord is “${w}”: ${fmt(n)} times.`),
-  headline: `“${w}”`, sub: `My #${i + 1} word on Discord${y ? ` in ${y}` : ''} · ${fmt(n)} times`});
-// Bump chart: one column per year, words placed by rank, lines joining a word across consecutive years.
-function bump(target, years) {
-  const tops = years.map(y => D.wordYears[y].slice(0, 10));
+// Bump chart: one column per bucket, words placed by rank, lines joining a word across neighbouring columns.
+function bump(target, keys) {
+  const U = D.unit, tops = keys.map(k => D.wordPeriods[k].slice(0, 10)), labels = keys.map(k => bucketName(k, U));
   const paths = new Map();
   tops.forEach((list, i) => list.forEach(([word, count], r) => { if (!paths.has(word)) paths.set(word, []); paths.get(word).push({i, r, count}); }));
-  // Words that recur get a palette colour, most-recurring first; one-year words stay muted.
+  // Words that recur get a palette colour, most-recurring first; one-off words stay muted.
   const recurring = [...paths].filter(([, p]) => p.length > 1).sort((a, b) => b[1].length - a[1].length).map(([w]) => w);
   const color = w => recurring.includes(w) ? COLORS[recurring.indexOf(w) % COLORS.length] : 'var(--muted)';
-  const host = $(target), w = Math.max(host.clientWidth, years.length * 92), T = 26, rh = 30, h = T + rh * 10 + 4, cw = w / years.length;
+  const host = $(target), w = Math.max(host.clientWidth, keys.length * 92), T = 26, rh = 30, h = T + rh * 10 + 4, cw = w / Math.max(1, keys.length);
   const x = i => cw * (i + .5), y = r => T + rh * (r + .5), half = word => Math.min(cw / 2 - 6, fit(word).length * 3.4 + 2);
   const fit = word => word.length * 6.8 > cw - 12 ? word.slice(0, Math.max(3, Math.floor((cw - 12) / 6.8) - 1)) + '…' : word;
-  frameFixed(target, w, h, 'Top 10 words for each year', () => {
-    let s = years.map((yr, i) => `<text class="tick" x="${x(i)}" y="14" text-anchor="middle">${yr}</text>`).join('');
+  frameFixed(target, w, h, `Top 10 words ${per(U)}`, () => {
+    let s = labels.map((lab, i) => `<text class="tick" x="${x(i)}" y="14" text-anchor="middle">${esc(lab)}</text>`).join('');
     for (const [word, pts] of paths) {
       const c = color(word);
-      s += `<g class="bw">`;
+      s += `<g class="bw" data-word="${esc(word)}">`;
       pts.forEach((p, k) => {
         const next = pts[k + 1];
         if (next && next.i === p.i + 1) s += `<path d="M${x(p.i) + half(word) + 4},${y(p.r)} C${x(p.i) + cw / 2},${y(p.r)} ${x(next.i) - cw / 2},${y(next.r)} ${x(next.i) - half(word) - 4},${y(next.r)}" fill="none" stroke="${c}" stroke-width="2" opacity=".75"/>`;
-        s += `<text x="${x(p.i)}" y="${y(p.r) + 4}" text-anchor="middle" fill="${c}" style="fill:${c}" data-tip="${esc(word)} · #${p.r + 1} in ${years[p.i]} · ${fmt(p.count)} times" data-share-click ${shareAttr(wordShare(word, p.count, p.r, years[p.i]))}>${esc(fit(word))}</text>`;
+        const where = bucketName(keys[p.i], U, true);
+        s += `<text x="${x(p.i)}" y="${y(p.r) + 4}" text-anchor="middle" fill="${c}" style="fill:${c}" tabindex="0" role="button" aria-label="${esc(word)}, number ${p.r + 1} in ${esc(where)}, ${fmt(p.count)} times. Share" data-tip="${esc(word)} · #${p.r + 1} in ${esc(where)} · ${fmt(p.count)} times" data-share-click ${shareAttr(share('bump.word', {word, rank: p.r + 1, label: where, n: p.count}, {chart: 'bump-chart', focus: word}))}>${esc(fit(word))}</text>`;
       });
       s += '</g>';
     }
@@ -412,11 +546,12 @@ $('search-form').addEventListener('submit', async e => {
   $('search-out').innerHTML = '<p class="readout">Searching…</p>';
   const r = await call('search', {query: q, wholeWord: $('search-whole').checked});
   if (!r.total) { $('search-out').innerHTML = `<p>No messages match "${esc(r.query)}" in this report. Try another phrase.</p>`; return; }
-  const ms = Object.keys(D.months);
-  const peakYear = Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0];
-  lastSearchShare = {text: `I've said “${r.query}” ${fmt(r.total)} times on Discord, most of all in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} matching messages · Most in ${peakYear}`, chart: 'search-chart'};
-  $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first match')}${metric(peakYear, 'busiest year', lastSearchShare)}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
-  const draw = () => $('search-chart') && lines('search-chart', ms, [{name: r.query, values: ms.map(m => r.months[m] || 0)}], {height: 200, title: `Messages containing ${r.query} per month`, tickLabel: m => m.slice(0, 4)});
+  const ms = keysOf(D.fine), F = D.fineUnit, U = D.unit;
+  const peak = Object.entries(r.periods).sort((a, b) => b[1] - a[1])[0][0], peakName = bucketName(peak, U, true);
+  const multi = keysOf(D.periods).length > 1;
+  lastSearchShare = share('search', {query: r.query, n: r.total, peakLabel: multi ? peakName : ''}, {chart: 'search-chart'});
+  $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), r.total === 1 ? 'message' : 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first match')}${multi ? metric(esc(cap(peakName)), `busiest ${UNIT_NAME[U]}`, lastSearchShare) : ''}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
+  const draw = () => $('search-chart') && lines('search-chart', ms.map(k => bucketName(k, F)), [{name: r.query, values: ms.map(k => r.fine[k] || 0)}], {height: 200, title: `Messages containing ${r.query} ${per(F)}`});
   draw(); ranks('search-ranks', r.channels, 8);
   searchDraw = draw;
 });
@@ -424,11 +559,9 @@ let searchDraw = () => {};
 
 function channels() {
   let page = 0; const size = 10;
-  $('ch-year').innerHTML = yearOptions();
   const results = () => {
-    const q = $('ch-q').value.toLowerCase().trim(), t = $('ch-type').value, y = $('ch-year').value;
-    return D.channels.filter(c => (!q || (c.name + ' ' + c.guild).toLowerCase().includes(q)) && (t === 'all' || c.group === t) && (y === 'all' || c.years[y]))
-      .map(c => ({c, n: y === 'all' ? c.count : c.years[y]})).sort((a, b) => b.n - a.n);
+    const q = $('ch-q').value.toLowerCase().trim(), t = $('ch-type').value;
+    return D.channels.filter(c => (!q || (c.name + ' ' + c.guild).toLowerCase().includes(q)) && (t === 'all' || c.group === t)).map(c => ({c, n: c.count}));
   };
   const update = () => {
     const r = results(), last = Math.max(0, Math.ceil(r.length / size) - 1); page = Math.min(page, last);
@@ -436,27 +569,30 @@ function channels() {
     $('ch-rows').innerHTML = r.slice(page * size, page * size + size).map(({c, n}) => `<tr><td><button class="rowbutton" data-ch="${c.i}">${esc(c.name)}</button><br><small>${esc(c.guild || c.group)}</small></td><td><small>${c.first} → ${c.last}</small></td><td class="num">${fmt(n)}</td></tr>`).join('') || '<tr><td colspan="3">No channels match. Change the search or filters.</td></tr>';
     $('ch-page').textContent = `Page ${page + 1} of ${last + 1}`; $('ch-prev').disabled = page === 0; $('ch-next').disabled = page >= last;
   };
-  ['ch-q', 'ch-type', 'ch-year'].forEach(id => $(id).oninput = () => { page = 0; update(); });
+  ['ch-q', 'ch-type'].forEach(id => $(id).oninput = () => { page = 0; update(); });
   $('ch-prev').onclick = () => { page--; update(); }; $('ch-next').onclick = () => { page++; update(); };
   $('ch-rows').onclick = e => {
     const b = e.target.closest('[data-ch]'); if (!b) return;
-    const c = D.channels.find(x => x.i === +b.dataset.ch), ys = Object.keys(D.years).sort();
+    const c = D.channels.find(x => x.i === +b.dataset.ch), ks = keysOf(D.periods);
     $('ch-detail').classList.remove('hidden');
     $('ch-detail').innerHTML = `<strong>${esc(c.name)}</strong> <small>${esc(c.guild || c.group)} · ${esc(c.type)}</small><p>${fmt(c.count)} messages · ${fmt(c.words)} words · ${fmt(c.links)} messages with links · ${fmt(c.attachments)} messages with attachments</p><div id="ch-chart"></div>`;
-    bars('ch-chart', ys.map(y => [y, c.years[y] || 0]), {height: 160, title: `Messages per year in ${c.name}`});
+    bars('ch-chart', ks.map(k => [bucketName(k, D.unit), c.periods[k] || 0]), {height: 160, title: `Messages ${per(D.unit)} in ${c.name}`});
   };
   update();
 }
 function fame() {
-  const F = D.fame, card = (title, m, extra = '', share) => m ? `<article ${shareAttr(share || {text: `${title.replace('Your', 'My')} on Discord (${m.at.slice(0, 10)}): “${quoteOf(m.text || '', 200)}”`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${title.replace('Your', 'my')} on Discord · ${longDate(m.at.slice(0, 10))}`})}><h3>${title}</h3><blockquote>${esc((m.text || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
+  const F = D.fame, day = m => longDate(m.at.slice(0, 10));
+  const card = (title, m, extra = '', ctx) => m ? `<article ${shareAttr(ctx)}><h3>${title}</h3><blockquote>${esc((m.text || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
+  const big = (title, n, what, ctx, note = '') => `<article ${shareAttr(ctx)}><h3>${title}</h3><p><strong class="big">${fmt(n)}</strong> ${what}</p>${note}</article>`;
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
-  const said = (lead, m) => m && {text: `${lead} “${quoteOf(m.text || '…', 200)}”!`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${lead.replace(/ was$/, '')} · ${longDate(m.at.slice(0, 10))}`};
-  $('fame').innerHTML = card('First message in this report', F.first, '', said('My first ever message on Discord was', F.first)) + card('Latest message in this report', F.last, '', said('My latest message on Discord was', F.last)) +
-    (F.mostRepeated ? `<article ${shareAttr(sectionShare('fame'))}><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
-    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest Discord message ever was ${fmt([...F.longest.text].length)} characters long.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `Longest message · "${quoteOf(F.longest.text, 50)}"`}) +
-    `<article ${shareAttr({text: `My Discord record: ${fmt(bm.count)} messages in 60 seconds!`, headline: `${fmt(bm.count)} messages`, sub: 'Messages in 60 seconds'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
-    (ls ? `<article ${shareAttr({text: `My longest Discord session: ${fmt(ls[0])} messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'Messages without a 30-minute break'})}><h3>Most messages in a session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · about ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
-    (pk ? `<article ${shareAttr({text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}!`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`})}><h3>Busiest day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
+  const chars = F.longest ? [...F.longest.text].length : 0, all = P.kind === 'all';
+  $('fame').innerHTML = card(all ? 'Your first message' : 'First message', F.first, '', F.first && share('fame.first', {text: F.first.text || 'an attachment', date: day(F.first)}))
+    + card('Latest message', F.last, '', F.last && share('fame.latest', {text: F.last.text || 'an attachment', date: day(F.last)}))
+    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${quoteOf(t, 24)}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
+    + card('Longest message', F.longest, F.longest ? ` · ${fmt(chars)} characters` : '', F.longest && share('fame.longest', {chars, text: F.longest.text}, {chart: 'length-chart'}))
+    + big('Fastest minute', bm.count, 'messages in 60 seconds', share('fame.fastestMinute', {n: bm.count}), `<small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small>`)
+    + (ls ? big('Longest session', ls[0], 'messages without a 30-minute break', share('fame.longestSession', {n: ls[0], hours: Math.max(1, Math.round(ls[1] / 60))}), `<small>Started ${esc(ls[2])} · about ${fmt(Math.max(1, Math.round(ls[1] / 60)))} hours</small>`) : '')
+    + (pk ? big('Busiest day', pk.count, `messages on ${longDate(pk.date)}`, share('fame.recordDay', {date: longDate(pk.date), n: pk.count}, D.totals.calendarDays >= 60 ? {chart: 'calendar'} : {chart: 'month-chart'}), `<small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small>`) : '');
 }
 
 /* ---------- roast ---------- */
@@ -527,6 +663,15 @@ function dataQuality() {
 
 function renderAll() {
   draws.length = 0; shareCtx.clear();
+  periodControls();
+  const empty = !!D.empty;
+  document.querySelectorAll('#report section.card').forEach(s => s.classList.toggle('hidden', empty ? s.id !== 's-empty' : s.id === 's-empty'));
+  $('nav').hidden = empty;
+  if (empty) {
+    $('hero-title').textContent = `No messages ${P.in}`;
+    $('hero-sub').textContent = `Your messages run from ${longDate(D.bounds.first)} to ${longDate(D.bounds.last)}.`;
+    return;
+  }
   overview(); rhythm(); people(); words(); channels(); fame(); roast(); dataQuality();
 }
 let resizeTimer, lastWidth = innerWidth;
