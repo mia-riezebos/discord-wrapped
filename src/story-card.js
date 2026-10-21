@@ -38,8 +38,8 @@ export function storyCard(story, guessResult) {
 
 /**
  * The share context for a reel's summary: `title` ("2025", "All time") as the hero under the summary's heading, one
- * line per story's answer, and the score when any guess was locked in. The post skips answers that name someone
- * their story's post leaves out.
+ * line per story's answer, and the score when any guess was locked in, with every story's `names`. The post skips
+ * answers that name someone their story's post leaves out.
  */
 export function summaryCard(stories, {title, ending, score = ''}) {
   const names = stories.flatMap(s => s.card.names || []), mark = t => markNames(t, names);
@@ -50,5 +50,6 @@ export function summaryCard(stories, {title, ending, score = ''}) {
     headline: title,
     lines: stories.map(s => mark(s.answer)),
     guess: score,
+    names,
   };
 }
