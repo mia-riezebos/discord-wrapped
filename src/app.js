@@ -461,7 +461,7 @@ function findings() {
   const pk = D.peakDays[0];
   if (pk) {
     const [txt, n] = pk.topText, notable = n > pk.count * .2 && txt;
-    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day ${esc(P.in)}${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${notable ? ` You sent “${esc(txt.slice(0, 60))}” ${fmt(n)} times.` : ''}`,
+    out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day ${esc(P.in)}${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${notable ? ` You sent “${esc(discordText(txt).slice(0, 60))}” ${fmt(n)} times.` : ''}`,
       share('highlight.recordDay', {date: longDate(pk.date), n: pk.count, topText: notable ? txt : '', topCount: notable ? n : 0})]);
   }
   out.push(['length', `<strong>${pct(D.bursts.within60, T.messages - 1)} of your messages came within a minute of the one before.</strong> ${pct(T.shortMessages, T.messages)} have 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
@@ -560,7 +560,7 @@ function rhythm() {
   $('day').onchange = hours;
   table('streaks', ['From', 'To', 'Days'], D.streaks.slice(0, 6).map(s => [longDate(s[1]), longDate(s[2]), fmt(s[0])]));
   table('gaps', ['After', 'Until', 'Days without messages'], D.gaps.slice(0, 6).map(g => [longDate(g[1]), longDate(g[2]), fmt(g[0])]));
-  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× “${esc(p.topText[0].slice(0, 40))}”</small>` : ''), fmt(p.count)]));
+  table('peaks', ['Day', 'Mostly in', 'Messages'], D.peakDays.slice(0, 8).map(p => [longDate(p.date), esc(p.contexts.map(c => c[0]).slice(0, 2).join(', ')) + (p.topText[1] > p.count * .2 ? `<br><small>${fmt(p.topText[1])}× “${esc(discordText(p.topText[0]).slice(0, 40))}”</small>` : ''), fmt(p.count)]));
   const ks = rateKeys();
   $('wpm-title').textContent = `Words per message, ${per(D.unit)}`;
   const draw = () => {
@@ -594,7 +594,7 @@ function words() {
   drawBump(); draws.push(drawBump);
   $('topics-input').value = topicsText;
   ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i, markQuote)}));
-  ranks('expr-ranks', D.expressions, 12, fmt, (text, n, i) => share('rank.expression', {text, rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(t, 24))}”`)}));
+  ranks('expr-ranks', D.expressions.map(([t, n]) => [discordText(t), n]), 12, fmt, (text, n, i) => share('rank.expression', {text: D.expressions[i][0], rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(plainText(t), 24))}”`)}));
   ranks('link-ranks', D.domains, 10, fmt, (domain, n, i) => share('rank.link', {domain, rank: i + 1, n}, {bars: rankBars(D.domains, i)}));
   const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
   ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
@@ -634,7 +634,7 @@ $('topics-apply').onclick = () => retopic($('topics-input').value);
 $('topics-reset').onclick = () => retopic(DEFAULT_TOPICS);
 
 function messageCard(m, q) {
-  let text = esc(m.text || 'Attachment only');
+  let text = esc(discordText(m.text) || 'Attachment only');
   if (q) text = text.replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), x => `<mark>${x}</mark>`);
   return `<div class="msg"><div class="text">${text}</div><div class="meta" data-private>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}</div></div>`;
 }
@@ -680,13 +680,13 @@ function channels() {
 }
 function fame() {
   const F = D.fame, day = m => longDate(m.at.slice(0, 10));
-  const card = (title, m, extra = '', ctx) => m ? `<article ${shareAttr(ctx)}><h3>${title}</h3><blockquote>${esc((m.text || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
+  const card = (title, m, extra = '', ctx) => m ? `<article ${shareAttr(ctx)}><h3>${title}</h3><blockquote>${esc((discordText(m.text) || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
   const big = (title, n, what, ctx, note = '') => `<article ${shareAttr(ctx)}><h3>${title}</h3><p><strong class="big">${fmt(n)}</strong> ${what}</p>${note}</article>`;
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
   const chars = F.longest ? [...F.longest.text].length : 0, all = P.kind === 'all';
   $('fame').innerHTML = card(all ? 'Your first message' : 'First message', F.first, '', F.first && share('fame.first', {text: F.first.text || 'an attachment', date: day(F.first)}))
     + card('Latest message', F.last, '', F.last && share('fame.latest', {text: F.last.text || 'an attachment', date: day(F.last)}))
-    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${markQuote(quoteOf(t, 24))}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
+    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${markQuote(quoteOf(plainText(t), 24))}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(discordText(F.mostRepeated.text).slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
     + card('Longest message', F.longest, F.longest ? ` · ${fmt(chars)} characters` : '', F.longest && share('fame.longest', {chars, text: F.longest.text}, {chart: 'length-chart'}))
     + big('Fastest minute', bm.count, 'messages in 60 seconds', share('fame.fastestMinute', {n: bm.count}), `<small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small>`)
     + (ls ? big('Longest session', ls[0], 'messages without a 30-minute break', share('fame.longestSession', {n: ls[0], hours: Math.max(1, Math.round(ls[1] / 60))}), `<small>Started ${esc(ls[2])} · about ${fmt(Math.max(1, Math.round(ls[1] / 60)))} hours</small>`) : '')
@@ -700,7 +700,7 @@ async function roast() {
   renderRoast(roastPool.slice(0, 5));
 }
 function renderRoast(items) {
-  $('roast').innerHTML = items.map((m, i) => `<article class="quote"><h3>${esc(m.title || 'Exhibit ' + String.fromCharCode(65 + i))}</h3><blockquote>${esc(m.text)}</blockquote>${m.followup ? `<p class="roastline">${fmt(m.followup.seconds)} seconds later, you sent "${esc(m.followup.text.slice(0, 200))}".</p>` : ''}${m.caption ? `<p class="roastline">${esc(m.caption)}</p>` : ''}<small>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${m.aiScore !== undefined ? ` · AI score ${m.aiScore}/10` : ''}</small></article>`).join('') || '<p class="muted">No roast candidates in this report.</p>';
+  $('roast').innerHTML = items.map((m, i) => `<article class="quote"><h3>${esc(m.title || 'Exhibit ' + String.fromCharCode(65 + i))}</h3><blockquote>${esc(discordText(m.text))}</blockquote>${m.followup ? `<p class="roastline">${fmt(m.followup.seconds)} seconds later, you sent "${esc(discordText(m.followup.text).slice(0, 200))}".</p>` : ''}${m.caption ? `<p class="roastline">${esc(m.caption)}</p>` : ''}<small>${esc(m.at)} · ${esc(m.channel)}${m.guild ? ' · ' + esc(m.guild) : ''}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${m.aiScore !== undefined ? ` · AI score ${m.aiScore}/10` : ''}</small></article>`).join('') || '<p class="muted">No roast candidates in this report.</p>';
 }
 $('reroll').onclick = async () => { roastSeed++; await roast(); };
 
