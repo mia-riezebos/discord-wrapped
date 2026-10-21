@@ -227,11 +227,72 @@ const reelShare = {
   onShare: (ctx, button, host) => { host.append(pop); openShare(ctx, button.getBoundingClientRect()); },
   onClose: () => { closeShare(); document.body.append(pop); },
 };
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget, ...reelShare});
+// Plays the period's reel in its theme, year stories included. `only` plays one story (the theme preview).
+async function playReel(opts) {
+  const id = themeId(P), theme = await themeOf(id);
+  let stories = await themeStories(theme, buildStories(D, P), {report: D, period: P, reportOf});
+  if (opts.only) stories = stories.filter(s => s.id === opts.only);
+  if (!stories.length) return console.warn(`No story ${opts.only} ${P.in}`);
+  const note = !id || theme.id === id ? '' : canLoadThemes ? `The ${id} look didn't load, so this reel plays in the standard look.` : `The ${id} look plays on discordwrapped.app.`;
+  openReel({stories, theme, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, note, ...reelShare, ...opts});
+}
+$('p-play').onclick = e => playReel({opener: e.currentTarget});
 // "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
 $('hero-play').onclick = $('p-play').onclick;
-document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => openReel({stories: buildStories(D, P), theme: KINETIC, section: b.dataset.reel, title: reelTitle(),
-  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b, ...reelShare}));
+document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel,
+  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b}));
+
+/* ---------- themes ---------- */
+// Years with their own theme; build.py fills this in from src/themes/. A saved copy (file://) can't load them.
+const THEME_YEARS = [];
+const canLoadThemes = /^https?:$/.test(location.protocol);
+// ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
+// its year; any other (the example) on whichever year is selected. Undocumented.
+const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');
+// A year's theme applies only while that year is selected.
+function themeId(p) {
+  if (p.kind !== 'year') return null;
+  if (previewTheme && (previewTheme === p.label || !/^\d{4}$/.test(previewTheme))) return previewTheme;
+  return THEME_YEARS.includes(+p.label) ? p.label : null;
+}
+const themes = new Map();
+// Loaded once per visit. Without one, or where themes can't load, it's Kinetic.
+function themeOf(id) {
+  if (!id || !canLoadThemes) return Promise.resolve(KINETIC);
+  if (!themes.has(id)) themes.set(id, loadTheme(id, KINETIC));
+  return themes.get(id);
+}
+// While a themed year is selected, its tokens, fonts and stylesheet restyle the page; other periods remove them.
+// A saved copy of a themed page may carry the style over, so the first run clears any it finds.
+let themeStyle = null;
+document.querySelectorAll('style[data-theme]').forEach(s => s.remove());
+async function themePage() {
+  const id = themeId(P), theme = await themeOf(id);
+  if (themeId(P) !== id || (themeStyle?.dataset.theme ?? null) === (theme.id === id ? id : null)) return;
+  themeStyle?.remove(); themeStyle = null;
+  delete document.documentElement.dataset.theme;
+  if (theme.id !== id) return;
+  themeStyle = Object.assign(document.createElement('style'), {textContent: themeCss(theme)});
+  themeStyle.dataset.theme = id;
+  document.head.append(themeStyle);
+  document.documentElement.dataset.theme = id;
+  // Share cards draw on a canvas, which only uses a face once it has loaded.
+  theme.fonts.forEach(f => document.fonts.load(`${f.weight || 400} 1em "${f.family}"`).catch(console.error));
+}
+// Another period's report, for year stories that compare. The worker's view goes back to the selected period after.
+async function reportOf(p) {
+  const tz = $('tz').value, r = resolvePeriod(p, D.bounds), key = [tz, topicsText, r.from, r.to].join('|');
+  if (reports.has(key)) return reports.get(key);
+  const report = await call('aggregate', {tz, topics: parseTopics(topicsText), range: {from: r.from, to: r.to}});
+  reports.set(key, report);
+  await call('view', {tz, range: {from: P.from, to: P.to}});
+  return report;
+}
+async function startPreview() {
+  if (!previewTheme) return;
+  if (/^\d{4}$/.test(previewTheme) ? P.label !== previewTheme : P.kind !== 'year') await setPeriod({kind: 'year', anchor: /^\d{4}$/.test(previewTheme) ? `${previewTheme}-12-31` : undefined});
+  if (preview.get('story')) playReel({only: preview.get('story')});
+}
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
@@ -687,7 +748,7 @@ function dataQuality() {
 
 function renderAll() {
   draws.length = 0; shareCtx.clear();
-  periodControls();
+  periodControls(); themePage();
   const empty = !!D.empty;
   document.querySelectorAll('#report section.card').forEach(s => s.classList.toggle('hidden', empty ? s.id !== 's-empty' : s.id === 's-empty'));
   $('nav').hidden = empty;
@@ -714,4 +775,4 @@ document.querySelectorAll('section.card').forEach(s => observer.observe(s));
 startWorker();
 // Reopen the saved copy, if there is one, instead of asking for the zip again.
 $('status').innerHTML = '<div>Checking for a saved report…</div>';
-call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
+call('restore').then(info => info ? show(info).then(startPreview) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
