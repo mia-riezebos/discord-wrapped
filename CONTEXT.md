@@ -36,6 +36,13 @@ _Avoid_: screenshot, share image
 One animated question about the period and its answer, such as "How many messages did you send?" then 58,827.
 _Avoid_: slide, card, frame
 
+**Facts**:
+The part of a story that picks its data, decides whether there is enough, and supplies its question, answer and share text. Facts are the same in every theme.
+
+**Scene**:
+The part of a story that shows its question and answer on screen with motion. A theme replaces scenes, never facts.
+_Avoid_: animation, slide
+
 **Reel**:
 An ordered run of stories played back to back for a period.
 _Avoid_: story (for the whole run), wrapped, slideshow
