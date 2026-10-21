@@ -202,7 +202,7 @@ say "CI deploys wrapped.mia.cx with a Cloudflare API token limited to Workers on
 open_url "https://dash.cloudflare.com/profile/api-tokens"
 step "Click 'Create Token', then 'Use template' next to 'Edit Cloudflare Workers'."
 step "Account Resources: Include → mia.cx."
-step "Zone Resources: Include → Specific zone → mia.cx."
+step "Zone Resources: Include → Specific zone → mia.cx, then '+ Add more': Include → Specific zone → discordwrapped.app."
 step "Click 'Continue to summary', then 'Create Token', and copy the token."
 ask_secret CLOUDFLARE_API_TOKEN "Paste the Cloudflare token:"
 if curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
