@@ -1,0 +1,158 @@
+/* Kinetic, the default theme: heavy sentence-case type that drops, stacks, rolls and gets swept away, on full-frame
+   colour fields that wipe in over the last story. Scenes are keyed by story id; a story without one plays
+   `fallback`. Styles are the k- classes in style.css. */
+export const KINETIC = (() => {
+  const PAL = ['c1', 'c2', 'c3', 'c4', 'c5'];
+  // Colour conveyor: each story asks on one palette colour and answers on the next, ignoring sections.
+  // Placeholder until colour assignment across the full story set is decided.
+  const askCol = i => PAL[(2 * i) % 5], revCol = i => PAL[(2 * i + 1) % 5];
+  const ease = {snap: 'cubic-bezier(.2,1.4,.4,1)', out: 'cubic-bezier(.16,1,.3,1)', in: 'cubic-bezier(.7,0,.84,0)', inOut: 'cubic-bezier(.65,0,.35,1)'};
+  const num = n => Number(n).toLocaleString();
+  const el = (tag, cls, text, parent) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    parent?.append(n);
+    return n;
+  };
+  const hide = n => { n.setAttribute('aria-hidden', 'true'); return n; };
+  // Font size in cqw that makes `str` roughly fill `width` cqw of the frame; `k` is the glyph width per em.
+  const fit = (str, width = 88, k = 0.6, max = 60) => `${Math.min(max, width / (String(str).length * k)).toFixed(2)}cqw`;
+  // Greedy line breaks for question pills, about 13 characters a line.
+  const lines = (text, max = 13) => text.split(' ').reduce((out, w) => {
+    const last = out.at(-1);
+    if (last && (last + ' ' + w).length <= max) out[out.length - 1] = last + ' ' + w; else out.push(w);
+    return out;
+  }, []);
+
+  function wipe(stage, col, how = 'right', delay = 0) {
+    const f = el('div', 'k-field', null, stage);
+    f.style.background = `var(--${col})`; f.style.color = `var(--on-${col})`;
+    const from = {right: 'inset(0 0 0 100%)', up: 'inset(100% 0 0 0)', circle: 'circle(0% at 50% 100%)'}[how];
+    f.animate([{clipPath: from}, {clipPath: how === 'circle' ? 'circle(150% at 50% 100%)' : 'inset(0 0 0 0)'}], {duration: 560, delay, easing: ease.inOut, fill: 'both'});
+    return f;
+  }
+  // Question lines drop in from above and land with a bounce, one after another.
+  function stack(parent, text, at = 300) {
+    const box = el('h2', 'k-q', null, parent);
+    lines(text).forEach((t, k) => el('span', 'k-line', t, box).animate(
+      [{transform: 'translateY(-140cqh) rotate(-6deg)'}, {transform: 'none', offset: .75}, {transform: 'translateY(-4cqw)', offset: .87}, {transform: 'none'}],
+      {duration: 700, delay: at + k * 140, easing: ease.out, fill: 'both'}));
+  }
+  // At the reveal, the question lines get swept off to the left, staggered.
+  const sweep = stage => stage.querySelectorAll('.k-line').forEach((n, k) =>
+    n.animate([{transform: 'none'}, {transform: 'translateX(-130cqw) skewX(12deg)'}], {duration: 420, delay: k * 60, easing: ease.in, fill: 'both'}));
+  // Odometer: each digit is a strip of 0–9 repeated, rolled into place. Screen readers get the number as one label.
+  function odometer(parent, text, {at = 0, dur = 1600, cls = ''} = {}) {
+    const box = el('div', 'k-odo ' + cls, null, parent);
+    box.setAttribute('role', 'img'); box.setAttribute('aria-label', text);
+    const digits = [...text].filter(c => /\d/.test(c)).length;
+    let d = 0;
+    for (const c of text) {
+      if (!/\d/.test(c)) { hide(el('span', 'k-sep', c, box)); continue; }
+      const strip = el('span', 'k-strip', null, hide(el('span', 'k-col', null, box)));
+      const seq = [];
+      for (let r = 0; r < 1 + digits - d; r++) for (let n = 0; n < 10; n++) seq.push(n); // rightmost digits spin more
+      seq.push(+c);
+      strip.textContent = seq.join('\n');
+      strip.animate([{transform: 'translateY(0)'}, {transform: `translateY(-${seq.length - 1}em)`}], {duration: dur + d * 120, delay: at, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'both'});
+      d++;
+    }
+    return box;
+  }
+  const pop = (n, at, from = 'scale(0) rotate(-12deg)') => n.animate([{transform: from, opacity: 0}, {transform: 'none', opacity: 1}], {duration: 520, delay: at, easing: ease.snap, fill: 'both'});
+  const slideIn = (n, at, from = 'translateX(110cqw)') => n.animate([{transform: from}, {transform: 'none'}], {duration: 520, delay: at, easing: ease.out, fill: 'both'});
+  // A word that bounces in letter by letter, read as one word.
+  function letters(parent, cls, text, at) {
+    const w = el('p', cls, null, parent);
+    w.setAttribute('aria-label', text); w.style.fontSize = fit(text, 88, 0.6, 34);
+    [...text].forEach((ch, k) => pop(hide(el('span', null, ch, w)), at + k * 70, 'translateY(-60cqh) scale(.4)'));
+    return w;
+  }
+
+  const ask = (stage, s, c) => stack(wipe(stage, askCol(c.i)), s.question);
+  const scenes = {
+    messages: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'circle', 150), box = el('div', 'k-stack', null, F);
+        odometer(box, num(s.value), {at: 450}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'message' : 'messages', box), 1500);
+        slideIn(el('p', 'k-sub', `That's about ${num(s.data.perDay)} a day.`, box), 1900);
+      },
+    },
+    'active-days': {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150), box = el('div', 'k-stack', null, F);
+        odometer(box, num(s.value), {at: 400}).style.fontSize = fit(num(s.value), 86, 0.62, 30);
+        slideIn(el('p', 'k-unit', `of ${num(s.data.of)} days`, box), 1500);
+        slideIn(el('p', 'k-sub', `You showed up on ${s.data.pct}% of them.`, box), 1900);
+        // One square per day of the period, filled where you sent something. Long periods skip it.
+        const {days, from, of} = s.data;
+        if (of <= 400) {
+          const start = Date.parse(from + 'T00:00:00Z') / 864e5, on = new Set(days.map(([d]) => d - start));
+          const grid = hide(el('div', 'k-days', null, F));
+          for (let k = 0; k < of; k++) el('i', on.has(k) ? 'on' : null, null, grid);
+          grid.animate([{clipPath: 'inset(0 0 100% 0)'}, {clipPath: 'inset(0 0 0 0)'}], {duration: 1100, delay: 2200, easing: ease.out, fill: 'both'});
+        }
+        if (s.data.pct >= 90) {
+          const tag = el('p', 'k-sticker', s.data.pct === 100 ? 'Every single day' : 'Nearly every day', F);
+          c.sticker(F, tag, 0.72);
+          pop(tag, 3300);
+        }
+      },
+    },
+    loudest: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'right', 150), box = el('div', 'k-stack', null, F);
+        el('p', 'k-kicker', `Your loudest ${s.data.unit}`, box);
+        letters(box, 'k-word', s.data.label, 500);
+        slideIn(el('p', 'k-sub', `${num(s.value)} ${s.value === 1 ? 'message' : 'messages'}`, box), 1300);
+        // The period's buckets as chunky columns rising one after another, the loudest in ink.
+        const chart = hide(el('div', 'k-bars', null, F)), max = Math.max(1, ...s.data.buckets.map(b => b[1]));
+        s.data.buckets.forEach(([, n], k) => {
+          const b = el('i', k === s.data.top ? 'on' : null, null, chart);
+          b.style.height = `${Math.max(2, 100 * n / max)}%`;
+          b.animate([{transform: 'scaleY(0)'}, {transform: 'none'}], {duration: 480, delay: 1700 + k * 50, easing: ease.snap, fill: 'both'});
+        });
+      },
+    },
+    streak: {
+      ask,
+      reveal(stage, s, r, c) {
+        sweep(stage);
+        const F = wipe(stage, revCol(c.i), 'up', 150);
+        const box = el('div', 'k-stack k-center k-fill', null, F);
+        odometer(box, num(s.value), {at: 300, dur: 2600}).style.fontSize = fit(num(s.value), 86, 0.62, 50);
+        slideIn(el('p', 'k-unit', s.value === 1 ? 'day' : 'days in a row', box), 2900);
+        slideIn(el('p', 'k-sub', s.value > 1 ? `${s.data.fromText} to ${s.data.toText}.` : s.answer, box), 3200);
+        if (s.value > 1) {
+          // Every date of the streak rolls up in the space left under the answer, ending on its last day. It takes the
+          // stack's remaining height, so it never runs behind the header or the number.
+          const tick = hide(el('div', 'k-ticker', null, hide(el('div', 'k-ticker-box', null, box))));
+          const end = Date.parse(s.data.to + 'T00:00:00Z'), n = Math.min(s.value, 800);
+          tick.textContent = Array.from({length: n}, (_, k) => new Date(end - (n - 1 - k) * 864e5).toLocaleDateString(undefined, {day: 'numeric', month: 'short', timeZone: 'UTC'})).join('\n');
+          tick.animate([{transform: 'translateY(100%)'}, {transform: 'none'}], {duration: 3200, delay: 300, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
+        }
+      },
+    },
+  };
+  // Any story without its own scene: the question, then the answer set large.
+  const fallback = {
+    ask,
+    reveal(stage, s, r, c) {
+      sweep(stage);
+      const F = wipe(stage, revCol(c.i), 'circle', 150);
+      const a = el('p', 'k-answer', s.answer, F);
+      slideIn(a, 400);
+    },
+  };
+  // The controls take the text colour of the field on screen.
+  const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' ? askCol(i) : revCol(i)})`;
+  return {id: 'kinetic', scenes, fallback, chrome};
+})();
