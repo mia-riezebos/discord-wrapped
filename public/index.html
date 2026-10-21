@@ -2368,7 +2368,7 @@ export function createRotation(ads, rand) {
 // and never end up in share images (those are drawn separately on a canvas).
 const adEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const PLACEMENT_FALLBACK = {tall: {width: 160, height: 600, seconds: 30}, square: {width: 160, height: 160, seconds: 20}};
+const PLACEMENT_FALLBACK = {tall: {width: 160, height: 600, seconds: 20}, square: {width: 160, height: 160, seconds: 15}};
 
 const adMarkup = ad => ad.kind === 'text'
   ? `<a class="ad-text" href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
