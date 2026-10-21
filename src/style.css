@@ -360,7 +360,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-zone { position: absolute; top: 80px; bottom: 0; z-index: 3; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .reel-zone-prev { left: 0; width: 30%; }
 .reel-zone-next { right: 0; width: 70%; }
-.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 4; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
+.reel-chrome { position: absolute; inset: 0 0 auto; z-index: 6; padding: 10px 8px 0 12px; color: var(--reel-chrome, var(--fg)); pointer-events: none; }
 .reel-bars { display: flex; gap: 4px; padding-right: 4px; }
 .reel-bars span { flex: 1; height: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 30%, transparent); overflow: hidden; }
 .reel-bars i { display: block; height: 100%; background: currentColor; transform-origin: left; transform: scaleX(0); }
