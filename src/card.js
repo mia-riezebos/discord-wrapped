@@ -59,26 +59,28 @@ function clipTo(words, maxW, width) {
 }
 
 /**
- * Positions every piece of a card without touching a canvas. measure(text, size, weight) returns the drawn width.
+ * Positions every piece of a card without touching a canvas. measure(text, size, weight, display) returns the drawn
+ * width; display is set for the hero, which a theme may set in its display face.
  * Returns {width, height, band, runs, words, chart, bars}: runs are single lines of text (as text and as card words)
  * with their left x and baseline y; words are one box per word of each run, the targets tap overlays attach to.
  */
 export function layoutCard(model, shape, measure) {
   const [W, H] = CARD_SHAPES[shape], S = SPEC[shape], P = S.P, maxW = W - 2 * P, runs = [];
-  const width = (size, weight) => ws => lineWidth(ws, size, weight, measure);
+  const heroMeasure = (t, size, weight) => measure(t, size, weight, true), measureOf = role => role === 'hero' ? heroMeasure : measure;
+  const width = (size, weight, role) => ws => lineWidth(ws, size, weight, measureOf(role));
   const run = (role, words, x, y, size, weight, color) => {
     const ws = asWords(words);
     runs.push({role, text: ws.map(w => w.text).join(' '), words: ws, x, y, size, weight, color});
     return runs.length - 1;
   };
   const block = (role, text, size, weight, color, maxLines, lh, y) => {
-    for (const l of wrap(asWords(text), maxW, maxLines, width(size, weight))) { run(role, l, P, y, size, weight, color); y += size * lh; }
+    for (const l of wrap(asWords(text), maxW, maxLines, width(size, weight, role))) { run(role, l, P, y, size, weight, color); y += size * lh; }
     return y;
   };
   // Text first, from the brand line down; the tall card shifts it all later to centre the content.
   run('brand', 'Discord Wrapped', P, S.brandY, S.brand, 600, 'muted');
   const graphic = !!(model.chart || model.bars?.items.length || model.columns?.items.length || model.lines?.length);
-  const heroSize = fitSize(asWords(model.hero), S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, measure);
+  const heroSize = fitSize(asWords(model.hero), S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, heroMeasure);
   let y = S.brandY;
   if (model.question) y = block('question', model.question, S.question, 600, 'muted', 2, 1.3, y + S.question * 1.6) - S.question * 1.3;
   y = block('hero', model.hero, heroSize, 700, 'fg', 2, 1.06, y + heroSize * 1.2);
@@ -109,7 +111,7 @@ export function layoutCard(model, shape, measure) {
     if (bars) for (const r of bars.rows) r.y += dy;
   }
   run('host', model.host, P, H - S.hostY, S.host, 600, 'accent');
-  return {width: W, height: H, band: S.band, runs, words: runs.flatMap((r, i) => wordsOf(r, i, measure)), chart, bars: bars?.rows || null};
+  return {width: W, height: H, band: S.band, runs, words: runs.flatMap((r, i) => wordsOf(r, i, measureOf(r.role))), chart, bars: bars?.rows || null};
 }
 
 // A chart in the report's buckets as columns, labels under them and the top bucket in the accent colour with its count
@@ -158,15 +160,17 @@ function wordsOf(r, runIndex, measure) {
 }
 
 /**
- * Draws a card model to a new canvas. theme: {font, colors: {surface, fg, muted, accent, soft}}. redaction, when
- * given, maps the model to the one to draw (share.js passes redactCard with the sheet's state).
+ * Draws a card model to a new canvas. theme: {font, display?, colors: {surface, fg, muted, accent, soft}}; display
+ * is a year theme's display face, which sets the hero at its own weight. redaction, when given, maps the model to the
+ * one to draw (share.js passes redactCard with the sheet's state).
  * Returns {canvas, words} with word boxes in canvas pixels.
  */
 export function drawCard(model, shape, theme, redaction) {
   const c = document.createElement('canvas'), [W, H] = CARD_SHAPES[shape];
   c.width = W; c.height = H;
-  const g = c.getContext('2d'), col = theme.colors, font = (size, weight) => `${weight} ${size}px ${theme.font}`;
-  const measure = (t, size, weight) => { g.font = font(size, weight); return g.measureText(t).width; };
+  const g = c.getContext('2d'), col = theme.colors;
+  const font = (size, weight, display) => display && theme.display ? `${size}px ${theme.display}` : `${weight} ${size}px ${theme.font}`;
+  const measure = (t, size, weight, display) => { g.font = font(size, weight, display); return g.measureText(t).width; };
   const L = layoutCard(redaction ? redaction(model) : model, shape, measure);
   g.fillStyle = col.surface; g.fillRect(0, 0, W, H);
   g.fillStyle = col.accent; g.fillRect(0, 0, W, L.band);
@@ -177,9 +181,9 @@ export function drawCard(model, shape, theme, redaction) {
   let k = 0;
   for (const r of L.runs) for (const word of r.words) {
     const w = L.words[k++];
-    g.font = font(r.size, r.weight); g.fillStyle = col[r.color];
+    g.font = font(r.size, r.weight, r.role === 'hero'); g.fillStyle = col[r.color];
     if (!word.hidden) { g.fillText(word.text, w.x, r.y); continue; }
-    const pre = word.pre || '', post = word.post || '', at = w.x + measure(pre, r.size, r.weight);
+    const pre = word.pre || '', post = word.post || '', at = w.x + measure(pre, r.size, r.weight, r.role === 'hero');
     if (pre) g.fillText(pre, w.x, r.y);
     // Inset like a glyph's side bearings, so the mark doesn't touch its neighbours.
     scribble(g, at + r.size * .1, r.y - r.size * .74, markW(r.size) - r.size * .2, r.size * .9, col.fg, w.x * 7 + r.y);

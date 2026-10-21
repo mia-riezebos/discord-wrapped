@@ -6,6 +6,7 @@
   /* Text on each palette colour field, at least 4.5:1. */
   --on-c1: #ffffff; --on-c2: #000000; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
   --radius: 10px; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* A year theme may also set --display, one face for headings and big numbers; body text stays in --font. */
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #111216; --surface: #191a20; --fg: #ecedf1; --muted: #9a9daa; --border: #2c2e37; --soft: #22242c;
@@ -19,6 +20,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 64px; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
 a { color: inherit; text-underline-offset: 3px; }
 h1, h2, h3 { font-weight: 600; line-height: 1.2; }
+h1, h2, .metric strong, .fame .big { font-family: var(--display, var(--font)); }
 h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; letter-spacing: -0.02em; }
 h2 { font-size: 22px; margin: 0 0 6px; }
 h3 { font-size: 16px; margin: 28px 0 10px; }
@@ -406,6 +408,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-ctl button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 .reel-ctl svg { width: 22px; height: 22px; }
 .reel-frame :focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.reel-note { margin: 0 44px 0 0; font-size: 13px; font-weight: 600; line-height: 1.3; opacity: .85; }
 .reel-docked { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--fg); color: var(--bg); }
 /* After a reveal the story holds on its answer and offers a share; Next moves on. */
 .reel-after { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 10px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); animation: reel-in 200ms ease-out both; }

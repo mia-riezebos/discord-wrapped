@@ -82,3 +82,17 @@ scale, days linear), or pick-one cards. Nothing counts until "Lock it in" or Ent
 the frame never skips a guess. While a guess is open the story's bar stops, the rest of it is hatched, and "Waiting
 for you" shows beside the label. The reveal adds a sticker with the guess and a verdict line, placed where it covers
 no data; pick-one reveals show every choice as a bar. The summary gives the score, leaving skipped guesses out.
+
+## Year themes
+
+A year can have its own theme (`src/themes/<year>/`, declared with `defineTheme`). While that year is the selected
+period it restyles the reel, the report and the share cards; every other period, All time and Custom look standard,
+and the theme's injected style is removed as soon as the period changes. Within the report a theme may change the
+colour tokens, one display face for headings and big numbers (`--display`; body text stays in the system font),
+radius, borders and shadows, spacing within ±25%, the hero's one free slot, a section's inner layout and chart marks.
+Section order, headings, column width, the period bar's layout, controls, labelled axes, "Show the numbers" and all
+data stay as they are. A theme replaces scenes, never facts, and may reword a core question but not its answer.
+Anything that fails falls back to Kinetic: a missing or broken scene plays Kinetic's, a theme that fails to load
+plays the whole reel in Kinetic with one line saying so, and a broken year story is skipped. A saved copy of the page
+always plays Kinetic. `?theme=<year>&story=<id>` previews one story; `src/themes/example/` (a newspaper front page)
+is the worked example, reachable only through that preview.

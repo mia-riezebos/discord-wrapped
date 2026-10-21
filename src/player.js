@@ -3,7 +3,8 @@
    elements and start Web Animations; the player times, skips and crossfades them through getAnimations() on the
    story's stage, so scenes never handle timers or input.
 
-   A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase) => CSS colour for the controls}.
+   A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase, story) => CSS colour for the controls}:
+   Kinetic, or a year theme from loadTheme (theme.js).
    A scene is {ask(stage, story, ctx), reveal(stage, story, guessResult, ctx)}; ctx is {i, total, title, reduced,
    sticker(container, node, prefer)}. guessResult is scoreGuess()'s result for a story with a guess, null without one.
    Guess inputs belong to the player too, so every theme gets the same keyboard, touch and screen-reader behaviour;
@@ -49,9 +50,10 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
  * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
  * storyCard (with the story's guess) or summaryCard, and `host` is an element inside the dialog for any popover it
- * opens; without onShare neither button shows. Returns {close}.
+ * opens; without onShare neither button shows. `note` is one line shown over the first story (why a year's theme
+ * isn't playing). Returns {close}.
  */
-export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
+export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose, note}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
   const ASK_HOLD = 1500;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -71,6 +73,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
           <button type="button" class="reel-prev" aria-label="Previous story">${icon('M15 5l-7 7 7 7')}</button>
           <button type="button" class="reel-next" aria-label="Next story">${icon('M9 5l7 7-7 7')}</button>
           <button type="button" class="reel-close" aria-label="Close reel">${icon('M6 6l12 12M18 6 6 18')}</button></div>
+        <p class="reel-note"${note ? '' : ' hidden'}></p>
       </div>
       <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
@@ -80,6 +83,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const q = s => dialog.querySelector(s);
   const frame = q('.reel-frame'), stages = q('.reel-stages'), label = q('.reel-label'), after = q('.reel-after'), summary = q('.reel-summary'), live = q('[aria-live]');
   const form = q('.reel-guess'), lock = q('.reel-lock');
+  // Screen readers hear the note with the dialog's name as it opens.
+  if (note) { q('.reel-note').textContent = note; q('.reel-note').id = 'reel-note'; dialog.setAttribute('aria-describedby', 'reel-note'); }
   const bars = [...q('.reel-bars').children].map(s => s.firstChild);
   // guesses: story id => scoreGuess() result, skips included, kept for the summary and for sharing.
   const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false, guesses: {}};
@@ -91,7 +96,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime - (a.currentTime ?? 0); return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
   const setPhase = phase => {
     state.phase = phase; frame.dataset.phase = phase;
-    frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase) || '');
+    frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase, list[state.i]) || '');
     q('.reel-next').setAttribute('aria-label', phase === 'guess' ? 'Skip guess' : phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
     bars.forEach((b, k) => b.parentNode.classList.toggle('reel-waiting', phase === 'guess' && k === state.i));
   };
@@ -174,6 +179,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   async function play(i) {
     const my = ++state.token, story = list[i];
     state.i = i; state.skip = null;
+    if (my > 1) q('.reel-note').hidden = true;
     if (summary.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
     summary.hidden = true; hideAfter(); hideGuess();
     bars.forEach((b, k) => { b.getAnimations().forEach(a => a.cancel()); b.style.transform = `scaleX(${k < i ? 1 : 0})`; });
