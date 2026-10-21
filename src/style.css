@@ -467,6 +467,12 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-line:nth-child(even) { background: transparent; color: inherit; }
 .k-stack { position: absolute; left: 7cqw; right: 7cqw; top: 18cqh; display: flex; flex-direction: column; align-items: flex-start; gap: 3cqw; }
 .k-stack > * { margin: 0; }
+/* A reveal with a foot block (list, chips, bars) stacks it under the headline in one column, so the two never overlap. */
+.k-field:has(> .k-stack) { display: flex; flex-direction: column; gap: 5cqw; padding: 18cqh 7cqw 14cqh; box-sizing: border-box; }
+.k-field > .k-stack { position: static; flex: none; }
+.k-field > .k-fill { flex: 1; min-height: 0; }
+:is(.k-field, .k-stack) > :is(.k-picks, .k-bars, .k-days, .k-echo, .k-pile) { position: static; flex: none; align-self: stretch; margin-top: auto; }
+:is(.k-field, .k-stack) > .k-echo { flex-shrink: 1; min-height: 0; }
 .k-center { align-items: center; text-align: center; }
 .k-kicker { font-size: 6.5cqw; font-weight: 800; }
 .k-odo { display: flex; margin-left: -.04em; font-weight: 900; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
