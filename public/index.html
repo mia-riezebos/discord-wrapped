@@ -51,6 +51,7 @@
   /* Text on each palette colour field, at least 4.5:1. */
   --on-c1: #ffffff; --on-c2: #000000; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
   --radius: 10px; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* A year theme may also set --display, one face for headings and big numbers; body text stays in --font. */
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #111216; --surface: #191a20; --fg: #ecedf1; --muted: #9a9daa; --border: #2c2e37; --soft: #22242c;
@@ -64,6 +65,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 64px; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); }
 a { color: inherit; text-underline-offset: 3px; }
 h1, h2, h3 { font-weight: 600; line-height: 1.2; }
+h1, h2, .metric strong, .fame .big { font-family: var(--display, var(--font)); }
 h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; letter-spacing: -0.02em; }
 h2 { font-size: 22px; margin: 0 0 6px; }
 h3 { font-size: 16px; margin: 28px 0 10px; }
@@ -451,6 +453,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-ctl button:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 .reel-ctl svg { width: 22px; height: 22px; }
 .reel-frame :focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.reel-note { margin: 0 44px 0 0; font-size: 13px; font-weight: 600; line-height: 1.3; opacity: .85; }
 .reel-docked { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--fg); color: var(--bg); }
 /* After a reveal the story holds on its answer and offers a share; Next moves on. */
 .reel-after { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; gap: 10px; padding: 16px 16px max(18px, env(safe-area-inset-bottom)); animation: reel-in 200ms ease-out both; }
@@ -1965,11 +1968,72 @@ const reelShare = {
   onShare: (ctx, button, host) => { host.append(pop); openShare(ctx, button.getBoundingClientRect()); },
   onClose: () => { closeShare(); document.body.append(pop); },
 };
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget, ...reelShare});
+// Plays the period's reel in its theme, year stories included. `only` plays one story (the theme preview).
+async function playReel(opts) {
+  const id = themeId(P), theme = await themeOf(id);
+  let stories = await themeStories(theme, buildStories(D, P), {report: D, period: P, reportOf});
+  if (opts.only) stories = stories.filter(s => s.id === opts.only);
+  if (!stories.length) return console.warn(`No story ${opts.only} ${P.in}`);
+  const note = !id || theme.id === id ? '' : canLoadThemes ? `The ${id} look didn't load, so this reel plays in the standard look.` : `The ${id} look plays on discordwrapped.app.`;
+  openReel({stories, theme, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, note, ...reelShare, ...opts});
+}
+$('p-play').onclick = e => playReel({opener: e.currentTarget});
 // "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
 $('hero-play').onclick = $('p-play').onclick;
-document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => openReel({stories: buildStories(D, P), theme: KINETIC, section: b.dataset.reel, title: reelTitle(),
-  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b, ...reelShare}));
+document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel,
+  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b}));
+
+/* ---------- themes ---------- */
+// Years with their own theme; build.py fills this in from src/themes/. A saved copy (file://) can't load them.
+const THEME_YEARS = [];
+const canLoadThemes = /^https?:$/.test(location.protocol);
+// ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
+// its year; any other (the example) on whichever year is selected. Undocumented.
+const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');
+// A year's theme applies only while that year is selected.
+function themeId(p) {
+  if (p.kind !== 'year') return null;
+  if (previewTheme && (previewTheme === p.label || !/^\d{4}$/.test(previewTheme))) return previewTheme;
+  return THEME_YEARS.includes(+p.label) ? p.label : null;
+}
+const themes = new Map();
+// Loaded once per visit. Without one, or where themes can't load, it's Kinetic.
+function themeOf(id) {
+  if (!id || !canLoadThemes) return Promise.resolve(KINETIC);
+  if (!themes.has(id)) themes.set(id, loadTheme(id, KINETIC));
+  return themes.get(id);
+}
+// While a themed year is selected, its tokens, fonts and stylesheet restyle the page; other periods remove them.
+// A saved copy of a themed page may carry the style over, so the first run clears any it finds.
+let themeStyle = null;
+document.querySelectorAll('style[data-theme]').forEach(s => s.remove());
+async function themePage() {
+  const id = themeId(P), theme = await themeOf(id);
+  if (themeId(P) !== id || (themeStyle?.dataset.theme ?? null) === (theme.id === id ? id : null)) return;
+  themeStyle?.remove(); themeStyle = null;
+  delete document.documentElement.dataset.theme;
+  if (theme.id !== id) return;
+  themeStyle = Object.assign(document.createElement('style'), {textContent: themeCss(theme)});
+  themeStyle.dataset.theme = id;
+  document.head.append(themeStyle);
+  document.documentElement.dataset.theme = id;
+  // Share cards draw on a canvas, which only uses a face once it has loaded.
+  theme.fonts.forEach(f => document.fonts.load(`${f.weight || 400} 1em "${f.family}"`).catch(console.error));
+}
+// Another period's report, for year stories that compare. The worker's view goes back to the selected period after.
+async function reportOf(p) {
+  const tz = $('tz').value, r = resolvePeriod(p, D.bounds), key = [tz, topicsText, r.from, r.to].join('|');
+  if (reports.has(key)) return reports.get(key);
+  const report = await call('aggregate', {tz, topics: parseTopics(topicsText), range: {from: r.from, to: r.to}});
+  reports.set(key, report);
+  await call('view', {tz, range: {from: P.from, to: P.to}});
+  return report;
+}
+async function startPreview() {
+  if (!previewTheme) return;
+  if (/^\d{4}$/.test(previewTheme) ? P.label !== previewTheme : P.kind !== 'year') await setPeriod({kind: 'year', anchor: /^\d{4}$/.test(previewTheme) ? `${previewTheme}-12-31` : undefined});
+  if (preview.get('story')) playReel({only: preview.get('story')});
+}
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
@@ -2425,7 +2489,7 @@ function dataQuality() {
 
 function renderAll() {
   draws.length = 0; shareCtx.clear();
-  periodControls();
+  periodControls(); themePage();
   const empty = !!D.empty;
   document.querySelectorAll('#report section.card').forEach(s => s.classList.toggle('hidden', empty ? s.id !== 's-empty' : s.id === 's-empty'));
   $('nav').hidden = empty;
@@ -2452,7 +2516,7 @@ document.querySelectorAll('section.card').forEach(s => observer.observe(s));
 startWorker();
 // Reopen the saved copy, if there is one, instead of asking for the zip again.
 $('status').innerHTML = '<div>Checking for a saved report…</div>';
-call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
+call('restore').then(info => info ? show(info).then(startPreview) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
 
 /* Share card builder. Pure layout plus a thin canvas painter, so the tests can import it. */
 // Every share image comes from one card model:
@@ -2515,26 +2579,28 @@ function clipTo(words, maxW, width) {
 }
 
 /**
- * Positions every piece of a card without touching a canvas. measure(text, size, weight) returns the drawn width.
+ * Positions every piece of a card without touching a canvas. measure(text, size, weight, display) returns the drawn
+ * width; display is set for the hero, which a theme may set in its display face.
  * Returns {width, height, band, runs, words, chart, bars}: runs are single lines of text (as text and as card words)
  * with their left x and baseline y; words are one box per word of each run, the targets tap overlays attach to.
  */
 export function layoutCard(model, shape, measure) {
   const [W, H] = CARD_SHAPES[shape], S = SPEC[shape], P = S.P, maxW = W - 2 * P, runs = [];
-  const width = (size, weight) => ws => lineWidth(ws, size, weight, measure);
+  const heroMeasure = (t, size, weight) => measure(t, size, weight, true), measureOf = role => role === 'hero' ? heroMeasure : measure;
+  const width = (size, weight, role) => ws => lineWidth(ws, size, weight, measureOf(role));
   const run = (role, words, x, y, size, weight, color) => {
     const ws = asWords(words);
     runs.push({role, text: ws.map(w => w.text).join(' '), words: ws, x, y, size, weight, color});
     return runs.length - 1;
   };
   const block = (role, text, size, weight, color, maxLines, lh, y) => {
-    for (const l of wrap(asWords(text), maxW, maxLines, width(size, weight))) { run(role, l, P, y, size, weight, color); y += size * lh; }
+    for (const l of wrap(asWords(text), maxW, maxLines, width(size, weight, role))) { run(role, l, P, y, size, weight, color); y += size * lh; }
     return y;
   };
   // Text first, from the brand line down; the tall card shifts it all later to centre the content.
   run('brand', 'Discord Wrapped', P, S.brandY, S.brand, 600, 'muted');
   const graphic = !!(model.chart || model.bars?.items.length || model.columns?.items.length || model.lines?.length);
-  const heroSize = fitSize(asWords(model.hero), S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, measure);
+  const heroSize = fitSize(asWords(model.hero), S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, heroMeasure);
   let y = S.brandY;
   if (model.question) y = block('question', model.question, S.question, 600, 'muted', 2, 1.3, y + S.question * 1.6) - S.question * 1.3;
   y = block('hero', model.hero, heroSize, 700, 'fg', 2, 1.06, y + heroSize * 1.2);
@@ -2565,7 +2631,7 @@ export function layoutCard(model, shape, measure) {
     if (bars) for (const r of bars.rows) r.y += dy;
   }
   run('host', model.host, P, H - S.hostY, S.host, 600, 'accent');
-  return {width: W, height: H, band: S.band, runs, words: runs.flatMap((r, i) => wordsOf(r, i, measure)), chart, bars: bars?.rows || null};
+  return {width: W, height: H, band: S.band, runs, words: runs.flatMap((r, i) => wordsOf(r, i, measureOf(r.role))), chart, bars: bars?.rows || null};
 }
 
 // A chart in the report's buckets as columns, labels under them and the top bucket in the accent colour with its count
@@ -2614,15 +2680,17 @@ function wordsOf(r, runIndex, measure) {
 }
 
 /**
- * Draws a card model to a new canvas. theme: {font, colors: {surface, fg, muted, accent, soft}}. redaction, when
- * given, maps the model to the one to draw (share.js passes redactCard with the sheet's state).
+ * Draws a card model to a new canvas. theme: {font, display?, colors: {surface, fg, muted, accent, soft}}; display
+ * is a year theme's display face, which sets the hero at its own weight. redaction, when given, maps the model to the
+ * one to draw (share.js passes redactCard with the sheet's state).
  * Returns {canvas, words} with word boxes in canvas pixels.
  */
 export function drawCard(model, shape, theme, redaction) {
   const c = document.createElement('canvas'), [W, H] = CARD_SHAPES[shape];
   c.width = W; c.height = H;
-  const g = c.getContext('2d'), col = theme.colors, font = (size, weight) => `${weight} ${size}px ${theme.font}`;
-  const measure = (t, size, weight) => { g.font = font(size, weight); return g.measureText(t).width; };
+  const g = c.getContext('2d'), col = theme.colors;
+  const font = (size, weight, display) => display && theme.display ? `${size}px ${theme.display}` : `${weight} ${size}px ${theme.font}`;
+  const measure = (t, size, weight, display) => { g.font = font(size, weight, display); return g.measureText(t).width; };
   const L = layoutCard(redaction ? redaction(model) : model, shape, measure);
   g.fillStyle = col.surface; g.fillRect(0, 0, W, H);
   g.fillStyle = col.accent; g.fillRect(0, 0, W, L.band);
@@ -2633,9 +2701,9 @@ export function drawCard(model, shape, theme, redaction) {
   let k = 0;
   for (const r of L.runs) for (const word of r.words) {
     const w = L.words[k++];
-    g.font = font(r.size, r.weight); g.fillStyle = col[r.color];
+    g.font = font(r.size, r.weight, r.role === 'hero'); g.fillStyle = col[r.color];
     if (!word.hidden) { g.fillText(word.text, w.x, r.y); continue; }
-    const pre = word.pre || '', post = word.post || '', at = w.x + measure(pre, r.size, r.weight);
+    const pre = word.pre || '', post = word.post || '', at = w.x + measure(pre, r.size, r.weight, r.role === 'hero');
     if (pre) g.fillText(pre, w.x, r.y);
     // Inset like a glyph's side bearings, so the mark doesn't touch its neighbours.
     scribble(g, at + r.size * .1, r.y - r.size * .74, markW(r.size) - r.size * .2, r.size * .9, col.fg, w.x * 7 + r.y);
@@ -2730,9 +2798,10 @@ async function cardModel(ctx, red, charts = new Map()) {
 }
 // Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post.
 const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || [])];
+// The card takes the page's colours, so a themed year's cards come in its colours and display face (--display).
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
+  return {font: getComputedStyle(document.body).fontFamily, display: css('--display'), colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
 };
 // Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn; blob is the PNG to come.
 async function renderCard(ctx, shape, red, charts) {
@@ -3428,7 +3497,8 @@ export function summaryCard(stories, {title, ending, score = ''}) {
    elements and start Web Animations; the player times, skips and crossfades them through getAnimations() on the
    story's stage, so scenes never handle timers or input.
 
-   A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase) => CSS colour for the controls}.
+   A theme is {scenes: {[storyId]: scene}, fallback: scene, chrome?(i, phase, story) => CSS colour for the controls}:
+   Kinetic, or a year theme from loadTheme (theme.js).
    A scene is {ask(stage, story, ctx), reveal(stage, story, guessResult, ctx)}; ctx is {i, total, title, reduced,
    sticker(container, node, prefer)}. guessResult is scoreGuess()'s result for a story with a guess, null without one.
    Guess inputs belong to the player too, so every theme gets the same keyboard, touch and screen-reader behaviour;
@@ -3474,9 +3544,10 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
  * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
  * storyCard (with the story's guess) or summaryCard, and `host` is an element inside the dialog for any popover it
- * opens; without onShare neither button shows. Returns {close}.
+ * opens; without onShare neither button shows. `note` is one line shown over the first story (why a year's theme
+ * isn't playing). Returns {close}.
  */
-export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
+export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose, note}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
   const ASK_HOLD = 1500;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3496,6 +3567,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
           <button type="button" class="reel-prev" aria-label="Previous story">${icon('M15 5l-7 7 7 7')}</button>
           <button type="button" class="reel-next" aria-label="Next story">${icon('M9 5l7 7-7 7')}</button>
           <button type="button" class="reel-close" aria-label="Close reel">${icon('M6 6l12 12M18 6 6 18')}</button></div>
+        <p class="reel-note"${note ? '' : ' hidden'}></p>
       </div>
       <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
@@ -3505,6 +3577,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const q = s => dialog.querySelector(s);
   const frame = q('.reel-frame'), stages = q('.reel-stages'), label = q('.reel-label'), after = q('.reel-after'), summary = q('.reel-summary'), live = q('[aria-live]');
   const form = q('.reel-guess'), lock = q('.reel-lock');
+  // Screen readers hear the note with the dialog's name as it opens.
+  if (note) { q('.reel-note').textContent = note; q('.reel-note').id = 'reel-note'; dialog.setAttribute('aria-describedby', 'reel-note'); }
   const bars = [...q('.reel-bars').children].map(s => s.firstChild);
   // guesses: story id => scoreGuess() result, skips included, kept for the summary and for sharing.
   const state = {i: 0, phase: 'ask', token: 0, skip: null, closed: false, guesses: {}};
@@ -3516,7 +3590,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime - (a.currentTime ?? 0); return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
   const setPhase = phase => {
     state.phase = phase; frame.dataset.phase = phase;
-    frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase) || '');
+    frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase, list[state.i]) || '');
     q('.reel-next').setAttribute('aria-label', phase === 'guess' ? 'Skip guess' : phase === 'hold' && state.i + 1 >= list.length ? 'Summary' : 'Next story');
     bars.forEach((b, k) => b.parentNode.classList.toggle('reel-waiting', phase === 'guess' && k === state.i));
   };
@@ -3599,6 +3673,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   async function play(i) {
     const my = ++state.token, story = list[i];
     state.i = i; state.skip = null;
+    if (my > 1) q('.reel-note').hidden = true;
     if (summary.contains(document.activeElement)) q('.reel-next').focus({preventScroll: true});
     summary.hidden = true; hideAfter(); hideGuess();
     bars.forEach((b, k) => { b.getAnimations().forEach(a => a.cancel()); b.style.transform = `scaleX(${k < i ? 1 : 0})`; });
@@ -3736,9 +3811,123 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   return {close};
 }
 
+/* defineTheme: every theme's one entry. Inlined into the page for Kinetic, and served as /themes/define.js for year
+   themes to import, so both declare themselves the same way. Pure, so the tests can import it. */
+
+/**
+ * Declares a theme. Year themes live in src/themes/<id>/index.js and `export default defineTheme({...})`.
+ * - id: 'kinetic', or the theme's folder under /themes/: a year ('2025'), or 'example'.
+ * - tokens: {light, dark}, custom properties without their dashes ({bg: '#fff', display: '"Face", serif'}). They apply
+ *   to the whole page while the year is selected, so its reel, report and share cards all take them.
+ * - fonts: [{family, src, weight?}], one display face, src an absolute URL (new URL('x.woff2', import.meta.url)).
+ * - scenes: {[storyId]: scene, or () => import() resolving to one}. A story without one plays Kinetic's scene.
+ * - questions: {[storyId]: story => text}, rewording a core story's question. Answers and numbers never change.
+ * - stories: one to three year stories, [{id, section, facts(ctx), scene?}]. facts gets {report, period, reportOf} and
+ *   returns {question, answer, share, value, data, card, guess?} like buildStories' stories, or null without enough
+ *   data; reportOf(period) resolves with another period's report. section is the STORY_SECTIONS id it plays after.
+ * - css: () => import() resolving to {default: css}: scene styles and the report restyle, within DESIGN.md's limits.
+ * - chrome(i, phase): CSS colour for the player's controls over the theme's own scenes.
+ * - fallback: the scene for any story without one. Only Kinetic, the theme every other falls back to, sets it.
+ */
+export function defineTheme({id, tokens = {}, fonts = [], scenes = {}, questions = {}, stories = [], css = null, chrome = null, fallback = null}) {
+  if (!id) throw new Error('A theme needs an id');
+  return Object.freeze({id: String(id), tokens, fonts, scenes, questions, stories, css, chrome, fallback});
+}
+
+/* Theme loading: a year theme resolved over Kinetic, with fallbacks so a reel always plays. Pure apart from the
+   import() it's given, so the tests run it on stub themes. STORY_SECTIONS comes from the page's shared scope. */
+
+const STEPS = ['ask', 'reveal'];
+const isScene = s => STEPS.every(k => typeof s?.[k] === 'function');
+// A scene that throws hands the story to `safe` (Kinetic's scene for it), after removing whatever it had built.
+const guard = (scene, safe) => Object.fromEntries(STEPS.map(step => [step, async (stage, ...args) => {
+  const before = new Set(stage.children);
+  try { await scene[step](stage, ...args); }
+  catch (e) {
+    console.error(e);
+    [...stage.children].filter(n => !before.has(n)).forEach(n => n.remove());
+    await safe[step](stage, ...args);
+  }
+}]));
+// A scene given as () => import(): the module's default export, or the scene it resolves to.
+async function sceneOf(v) {
+  const m = typeof v === 'function' ? await v() : v, s = m?.default ?? m;
+  if (!isScene(s)) throw new Error('Not a scene: it needs ask and reveal');
+  return s;
+}
+
+/**
+ * Loads theme `id` over `base` (Kinetic, a defineTheme result with scenes as objects). `load(id)` imports its entry
+ * file. Resolves with a theme for openReel and themeCss: {id, scenes, fallback, chrome(i, phase, story), tokens,
+ * fonts, css, questions, stories}. Never rejects:
+ * - a scene that is missing, fails to load or throws plays base's scene for that story;
+ * - an entry file (or its stylesheet) that fails gives base itself with `failed: true`, so the reel plays all-Kinetic;
+ * - a year story whose scene fails to load is left out.
+ */
+export async function loadTheme(id, base, load = id => import(`/themes/${id}/index.js`)) {
+  let def, css;
+  try {
+    def = (await load(id))?.default;
+    if (def?.id !== String(id)) throw new Error(`/themes/${id}/ doesn't define theme ${id}`);
+    css = def.css ? String((await def.css()).default) : '';
+  } catch (e) {
+    console.error(e);
+    return {...base, failed: true};
+  }
+  const own = {}, safe = sid => base.scenes[sid] || base.fallback;
+  await Promise.all(Object.entries(def.scenes).map(async ([sid, v]) => {
+    try { own[sid] = guard(await sceneOf(v), safe(sid)); } catch (e) { console.error(e); }
+  }));
+  const stories = (await Promise.all(def.stories.map(async s => {
+    try {
+      if (s.scene) own[s.id] = guard(await sceneOf(s.scene), base.fallback);
+      return s;
+    } catch (e) { console.error(e); return null; }
+  }))).filter(Boolean);
+  // The controls follow the theme's own scenes and its summary, and Kinetic's wherever a story fell back to it.
+  const chrome = (i, phase, story) => ((story ? own[story.id] : true) && def.chrome || base.chrome)?.(i, phase);
+  return {id: def.id, scenes: {...base.scenes, ...own}, fallback: base.fallback, chrome, tokens: def.tokens, fonts: def.fonts, css, questions: def.questions, stories};
+}
+
+/**
+ * The reel's stories in `theme`: the core `stories` (from buildStories) with any question the theme rewords, and each
+ * year story after the last story of the section it names. ctx is {report, period, reportOf} for year-story facts.
+ * A year story whose facts throw or leave out its question, answer, share text or card hero is skipped, as is one
+ * whose facts return null (not enough data).
+ */
+export async function themeStories(theme, stories, ctx) {
+  const reword = s => {
+    try { return theme.questions[s.id] ? {...s, question: String(theme.questions[s.id](s))} : s; }
+    catch (e) { console.error(e); return s; }
+  };
+  const extra = await Promise.all(theme.stories.map(async ({id, section, facts}) => {
+    try {
+      const f = await facts(ctx);
+      if (!f) return null;
+      if (!f.question || !f.answer || !f.share || !f.card?.hero) throw new Error(`Year story ${id} needs a question, answer, share text and card hero`);
+      return {value: null, data: {}, ...f, id, section, enough: true};
+    } catch (e) { console.error(e); return null; }
+  }));
+  // A stable sort keeps core stories in their order and puts year stories last in their section.
+  const order = STORY_SECTIONS.map(s => s.id);
+  return [...stories.map(reword), ...extra.filter(Boolean)].sort((a, b) => order.indexOf(a.section) - order.indexOf(b.section));
+}
+
+/** The stylesheet a theme adds to the page while its year is selected: its tokens on html[data-theme], fonts and css. */
+export function themeCss(theme) {
+  const sel = `html[data-theme="${theme.id}"]`, vars = o => Object.entries(o || {}).map(([k, v]) => `--${k}: ${v};`).join(' ');
+  return [
+    `${sel} { ${vars(theme.tokens.light)} }`,
+    `@media (prefers-color-scheme: dark) { ${sel} { ${vars(theme.tokens.dark)} } }`,
+    ...theme.fonts.map(f => `@font-face { font-family: "${f.family}"; src: url("${f.src}") format("woff2"); font-weight: ${f.weight || 400}; font-display: swap; }`),
+    theme.css,
+  ].join('\n');
+}
+
 /* Kinetic, the default theme: heavy sentence-case type that drops, stacks, rolls and gets swept away, on full-frame
    colour fields that wipe in over the last story. Scenes are keyed by story id; a story without one plays
-   `fallback`. Styles are the k- classes in style.css. */
+   `fallback`. Styles are the k- classes in style.css. Kinetic ships inline, so a saved copy of the page plays it, and
+   every year theme falls back to it (theme.js). */
 export const KINETIC = (() => {
   const PAL = ['c1', 'c2', 'c3', 'c4', 'c5'];
   // Colour conveyor: each story asks on one palette colour and answers on the next, ignoring sections.
@@ -4125,7 +4314,7 @@ export const KINETIC = (() => {
   };
   // The controls take the text colour of the field on screen.
   const chrome = (i, phase) => phase === 'summary' ? 'var(--on-c4)' : `var(--on-${phase === 'ask' || phase === 'guess' ? askCol(i) : revCol(i)})`;
-  return {id: 'kinetic', scenes, fallback, chrome};
+  return defineTheme({id: 'kinetic', scenes, fallback, chrome});
 })();
 
 /* Sidebar rotation rules. Pure, so the tests can import it. */
