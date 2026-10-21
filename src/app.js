@@ -241,6 +241,7 @@ document.addEventListener('focusin', e => {
 document.addEventListener('focusout', () => tip.classList.remove('show'));
 // The period bar sticks under the header, whose height changes as it wraps.
 new ResizeObserver(([e]) => document.documentElement.style.setProperty('--header-h', e.target.offsetHeight + 'px')).observe(document.querySelector('header.top'));
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--period-h', e.target.offsetHeight + 'px')).observe($('period'));
 document.addEventListener('pointermove', e => {
   const t = e.target.closest?.('[data-tip]');
   if (!t) { tip.classList.remove('show'); return; }
