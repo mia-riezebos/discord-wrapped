@@ -1,6 +1,6 @@
 /* Service worker: keeps the site working offline after the first visit. build.py writes the release into VERSION and
    the files to save at install into SHELL, so every release changes this file's bytes and the browser installs it. */
-const VERSION = "0.3.0-808055a73a";
+const VERSION = "0.3.0-d019c6325e";
 const SHELL = ["/", "/advertise", "/manifest.webmanifest", "/icons/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png", "/icons/icon.svg"];
 const CACHE = `dw-${VERSION}`;
 
