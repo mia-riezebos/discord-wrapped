@@ -3,13 +3,14 @@ const SHARE_COPY = (() => {
   const noun = (raw, singular, plural = `${singular}s`) => raw === 1 ? singular : plural;
   const times = (value, raw) => `${value} ${noun(raw, 'time')}`;
 
-  // Keep quotes as exact prefixes; never rewrite words inside someone's message.
+  // Keep quotes as exact prefixes; never rewrite words inside someone's message. Redaction marks (redaction.js)
+  // don't count towards the limit, and a mark cut short still closes, with the ellipsis inside it.
   const clip = (value, limit) => {
-    const text = String(value).trim();
-    if (text.length <= limit) return text;
-    const prefix = text.slice(0, limit - 1);
-    const boundary = /\s/.test(text[limit - 1]) ? prefix.length : prefix.search(/\s+\S*$/);
-    return `${prefix.slice(0, Math.max(0, boundary)).trimEnd()}…`;
+    const text = String(value).trim(), bare = unmark(text);
+    if (bare.length <= limit) return text;
+    const prefix = bare.slice(0, limit - 1);
+    const boundary = /\s/.test(bare[limit - 1]) ? prefix.length : prefix.search(/\s+\S*$/);
+    return clipMarked(text, prefix.slice(0, Math.max(0, boundary)).trimEnd().length);
   };
   // Omit a prohibited token and everything after it, preserving an honest excerpt.
   // Bare domains identify the ranked sites; posts never add a URL or link scheme.
@@ -18,12 +19,16 @@ const SHARE_COPY = (() => {
     const forbidden = text.search(/Discord Wrapped|#|\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\ufe0f\u20e3]|\b(?:[a-z][a-z\d+.-]*:\/\/|www\.)/iu);
     return clip(forbidden < 0 ? text : `${text.slice(0, forbidden).trimEnd()}…`, limit);
   };
-  const quote = (value, limit = 62) => `“${excerpt(value, limit - 2)}”`;
+  // Quotes (messages, words, search terms) and Discord names are marked for redaction; name() is for other labels.
+  const quote = (value, limit = 62) => `“${markQuote(excerpt(value, limit - 2))}”`;
   const name = value => excerpt(value, 32);
-  const card = (text, headline, sub) => ({
+  const who = value => markName(name(value));
+  // alt replaces a headline that is only a name while that name is hidden.
+  const card = (text, headline, sub, alt) => ({
     text,
     headline: clip(headline, 40),
     sub: clip(sub, 70).replace(/\.$/, ''),
+    ...alt && {alt},
   });
   const caption = (label, p) => `${label} ${p.in}`;
   // Running totals take the present perfect, including singular totals.
@@ -125,8 +130,8 @@ const SHARE_COPY = (() => {
       name(v.name), caption(`Number ${v.rank} custom emoji · ${times(v.n, v.nRaw)}`, p)),
 
     'rank.server': (v, p) => card(
-      `${v.n} of my Discord messages ${p.in} went to ${name(v.name)}.`,
-      name(v.name), caption(`Number ${v.rank} server · ${v.n} ${noun(v.nRaw, 'message')}`, p)),
+      `${v.n} of my Discord messages ${p.in} went to ${who(v.name)}.`,
+      who(v.name), caption(`Number ${v.rank} server · ${v.n} ${noun(v.nRaw, 'message')}`, p), `${v.n} ${noun(v.nRaw, 'message')}`),
 
     'bump.word': (v, p) => card(
       v.rankRaw === 1

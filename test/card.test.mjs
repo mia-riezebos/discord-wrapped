@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {CARD_SHAPES, drawCard, layoutCard} from '../src/card.js';
+import {markName, newRedaction, redactCard, setToggle} from '../src/redaction.js';
 
 // Every character is 0.55 em wide, so widths are predictable.
 const measure = (t, size) => t.length * size * .55;
@@ -18,7 +19,7 @@ for (const shape of SHAPES) {
       let at = 0;
       for (const w of L.words.filter(w => w.run === i)) {
         at = r.text.indexOf(w.text, at);
-        assert.equal(w.x, r.x + measure(r.text.slice(0, at), r.size));
+        assert.ok(Math.abs(w.x - (r.x + measure(r.text.slice(0, at), r.size))) < 1e-9);
         assert.equal(w.w, measure(w.text, r.size));
         assert.ok(w.y < r.y && w.y + w.h > r.y, 'box spans the baseline');
         assert.ok(w.x >= 0 && w.x + w.w <= L.width && w.y >= 0 && w.y + w.h <= L.height, `${w.text} stays on the card`);
@@ -58,7 +59,7 @@ for (const shape of SHAPES) {
     assert.equal(L.bars, null);
   });
 
-  test(`${shape}: drawCard paints every run and returns the layout's word boxes`, () => {
+  test(`${shape}: drawCard paints every word and returns the layout's word boxes`, () => {
     const texts = [];
     const g = {font: '', measureText(t) { return {width: measure(t, +this.font.match(/(\d+(?:\.\d+)?)px/)[1])}; },
       fillText: t => texts.push(t), fillRect() {}, beginPath() {}, roundRect() {}, fill() {}, drawImage() {}};
@@ -68,8 +69,43 @@ for (const shape of SHAPES) {
       const {canvas, words} = drawCard(ranked, shape, theme, null);
       assert.deepEqual([canvas.width, canvas.height], CARD_SHAPES[shape]);
       const L = layoutCard(ranked, shape, measure);
-      assert.deepEqual(texts, L.runs.map(r => r.text));
+      assert.deepEqual(texts, L.words.map(w => w.text));
       assert.deepEqual(words, L.words);
+    } finally { delete globalThis.document; }
+  });
+}
+
+// A canvas stand-in that records what was written and how many marks were scribbled.
+function fakeCanvas() {
+  const g = {font: '', texts: [], strokes: 0, measureText(t) { return {width: measure(t, +this.font.match(/(\d+(?:\.\d+)?)px/)[1])}; },
+    fillText(t) { this.texts.push(t); }, fillRect() {}, beginPath() {}, roundRect() {}, fill() {}, drawImage() {},
+    save() {}, restore() {}, moveTo() {}, lineTo() {}, stroke() { this.strokes++; }};
+  globalThis.document = {createElement: () => ({getContext: () => g})};
+  return g;
+}
+const theme = {font: 'system-ui', colors: {surface: '#fff', fg: '#000', muted: '#666', accent: '#58f', soft: '#eee'}};
+const named = {hero: markName('Cozy Corner'), heroAlt: '4,210 messages', fact: 'Number 2 server in 2025', host: 'discordwrapped.app',
+  bars: {items: [[markName('Big Hall'), 9000, '9,000'], [markName('Cozy Corner'), 4210, '4,210'], [markName('A Very Long Server Name Indeed'), 12, '12']], highlight: 1}};
+
+for (const shape of SHAPES) {
+  test(`${shape}: a hidden word is a mark of one fixed width, whatever it covers`, () => {
+    const hide = text => ({text: '████', hidden: true, pre: '', post: ''});
+    const L = layoutCard({...plain, fact: [{text: 'I'}, hide('a'), {text: 'and'}, hide('a much longer phrase')]}, shape, measure);
+    const marks = L.words.filter(w => w.hidden);
+    assert.equal(marks.length, 2);
+    assert.equal(marks[0].w, marks[1].w);
+    assert.ok(marks[0].w > measure('a', marks[0].h));
+  });
+
+  test(`${shape}: drawCard scribbles hidden names, bar labels included, and keeps the rest as text`, () => {
+    const g = fakeCanvas();
+    try {
+      const {words} = drawCard(named, shape, theme, m => redactCard(m, setToggle(newRedaction(), 'name', true)));
+      assert.equal(g.strokes, 3, 'one mark per bar label');
+      assert.ok(!g.texts.some(t => /Hall|Cozy|Server/.test(t)), 'no name is written');
+      assert.ok(g.texts.includes('4,210') && g.texts.includes('messages'), 'the hero falls back to the count');
+      for (const w of words.filter(w => w.hidden)) assert.ok(w.ref.tokens.length >= 2, 'a mark covers the whole name');
+      assert.equal(new Set(words.filter(w => w.hidden).map(w => w.w)).size, 1, 'every label mark is the same width');
     } finally { delete globalThis.document; }
   });
 }

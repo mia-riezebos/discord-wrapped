@@ -295,11 +295,37 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .sharepop.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-width: none; max-height: 85vh; border-radius: 16px 16px 0 0; }
 .sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .sp-close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 8px; }
+/* The card preview: the image with a button over every word, so a tap hides it. Wider than the rest of the popover
+   so the card's small lines are tappable; phones zoom the card 2.5× and pan it instead. */
+.sharepop:not(.sheet) { width: 520px; }
+.sp-preview { border-radius: 8px; }
+.sp-card { position: relative; }
+.sp-card.tall { width: fit-content; margin: 0 auto; }
 .sp-img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); background: var(--soft); object-fit: cover; }
-.sp-img.tall { aspect-ratio: 9 / 16; width: auto; height: min(46vh, 420px); margin: 0 auto; }
+.sp-card.tall .sp-img { aspect-ratio: 9 / 16; width: auto; height: min(46vh, 420px); }
+.sp-hits { position: absolute; inset: 0; }
+.sp-hit { position: absolute; padding: 0; border: 1px solid transparent; background: none; border-radius: 3px; }
+.sp-hit:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); }
+.sp-hit:focus-visible { outline-offset: 0; }
+.sharepop.sheet .sp-preview.zoomed { overflow: auto; max-height: 52vh; overscroll-behavior: contain; border: 1px solid var(--border); }
+.sharepop.sheet .zoomed .sp-card:not(.tall) { width: 250%; }
+.sharepop.sheet .zoomed .sp-card.tall { margin: 0; }
+.sharepop.sheet .zoomed .sp-card.tall .sp-img { height: calc(2.5 * min(46vh, 420px)); }
+.sp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 10px; }
+.sp-zoom { margin-left: auto; padding: 4px 10px; font-size: 13px; border-radius: 99px; }
+.sharepop:not(.sheet) .sp-zoom { display: none; }
+.sp-zoom[aria-pressed=true] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sp-hint { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.sp-post { margin: 4px 0 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.9; }
+.sharepop:focus { outline: none; }
+.sp-word { padding: 0 1px; border: 0; border-radius: 3px; background: none; font-weight: 400; }
+.sp-cta { color: var(--muted); }
+.nowrap { white-space: nowrap; }
+.sp-edit { margin-left: auto; padding: 2px 8px; font-size: 13px; border: 0; background: none; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+@media (pointer: coarse) { .sp-word { padding: 4px 2px; } .sp-tools label { min-height: 40px; } }
 .sp-shape { margin-top: 8px; }
-.sp-label { margin: 10px 0; }
-.sp-text { min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
+.sp-label { display: flex; align-items: center; margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+.sp-text { margin-top: 4px; min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
 .sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .sp-platforms button, .sp-actions button { padding: 6px 10px; font-size: 13px; }
 .sp-step ol { margin: 10px 0 6px; padding-left: 18px; color: var(--muted); }
@@ -778,7 +804,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
   </div>
 </footer>
 <div class="tip" id="tip" role="presentation"></div>
-<div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
+<div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share" tabindex="-1"></div>
 <script type="text/plain" id="worker-src">/* Parses a Discord data package and computes aggregates. Runs in a Web Worker; never touches the network. */
 const STOP = new Set(('the and you that this for with have was but not are just like what can all your about how its it i a to of in is my me on so do be at we im if as or an they he she them his her from dont thats yeah yes no oh lol lmao okay really would there get know think one some more too well good has had when now then out been will also want did much only even right than why got should could into up here any still same because make need see something actually going gonna people someone time thing things us our very though who where these those their being were am id does ive ill didnt isnt lets youre said say go doesnt wont cant ' +
   'als een het ik je de en dat die niet voor maar met ook dan wat dit er mijn mij heb zijn op om wel nog aan zo te uit kan geen hoe ben bij naar dus ja nee door doen veel weet even gewoon want tot echt gaan meer jij ze hebben al mn ff ' +
@@ -1341,18 +1367,163 @@ self.onmessage = async e => {
   }
 };
 </script>
-<script type="module">// Share posts and image captions. Helpers stay private to this one browser binding.
+<script type="module">/* Redaction: what a share hides, on the card and in the post. Pure, so the tests can import it. All page scripts
+   share one scope, so only the exports below are top-level names. */
+// Share copy marks every name and quote it inserts with private-use characters, so they stay findable after clipping:
+//   markName('Cozy Corner') and markQuote('hello there'). Names are servers, channels, DMs and group DMs; quotes are
+// quoted messages, ranked words and search terms. Everything else is plain words, hidden one word at a time.
+const OPEN = {name: '', quote: ''}, CLOSE = '', KIND = {'': 'name', '': 'quote'};
+export const markName = t => OPEN.name + t + CLOSE;
+export const markQuote = t => OPEN.quote + t + CLOSE;
+/** The text with its marks removed, for anything shown as is (alt text, file names, the selection). */
+export const unmark = s => String(s ?? '').replace(/[-]/g, '');
+/** The first n characters of marked text, not counting marks, then an ellipsis; a mark cut short still closes. */
+export function clipMarked(text, n) {
+  let out = '', open = false;
+  for (let i = 0; i < text.length && n > 0; i++) {
+    const ch = text[i];
+    if (KIND[ch]) open = true; else if (ch === CLOSE) open = false; else n--;
+    out += ch;
+  }
+  return open ? out + '…' + CLOSE : out + '…';
+}
+// Hidden words become this in the post and in alt text. It has the same width whatever it covers.
+export const HIDDEN = '████';
+
+/**
+ * One redaction state per share sheet. names and quotes are the two toggles; words are single words hidden by a tap;
+ * hidden and shown are names or quotes hidden by a tap, or brought back while their toggle is on.
+ * Nothing starts hidden.
+ */
+export const newRedaction = () => ({names: false, quotes: false, words: [], hidden: [], shown: []});
+
+// A name or quote is matched by its text, so a clipped copy ("Programming Ser…") matches the whole one.
+const entity = (kind, text) => {
+  const t = text.toLowerCase().replace(/\s+/g, ' ').trim(), clipped = t.endsWith('…');
+  return {kind, text: clipped ? t.slice(0, -1).trimEnd() : t, clipped};
+};
+const same = (a, b) => a.kind === b.kind && (a.text === b.text || a.clipped && b.text.startsWith(a.text) || b.clipped && a.text.startsWith(b.text));
+const wordKey = core => core.toLowerCase();
+
+/**
+ * Splits marked text into words: {pre, core, post, punct, ent}. pre and post are the punctuation around a plain word
+ * (or outside a mark); punct words sit outside marks, have no letters or digits and never hide. ent is the name or quote a word sits in.
+ */
+export function tokenize(text) {
+  const out = [];
+  let kind = null, ent = null, chars = [];
+  const flush = () => {
+    if (!chars.length) return;
+    const s = cs => cs.map(c => c[0]).join(''), inside = chars.map(c => !!c[1]);
+    let a = inside.indexOf(true), b = inside.lastIndexOf(true) + 1;
+    if (a < 0) {
+      const m = s(chars).match(/^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u);
+      const n = x => [...x].length;
+      [a, b] = m[2] ? [n(m[1]), n(m[1]) + n(m[2])] : [0, chars.length];
+    }
+    const core = s(chars.slice(a, b)), e = chars[a][1];
+    out.push({pre: s(chars.slice(0, a)), core, post: s(chars.slice(b)), punct: !e && !/[\p{L}\p{N}]/u.test(core), ent: e});
+    chars = [];
+  };
+  for (const ch of String(text ?? '')) {
+    if (KIND[ch]) { kind = KIND[ch]; ent = {kind, raw: ''}; continue; }
+    if (ch === CLOSE) { if (ent) Object.assign(ent, entity(kind, ent.raw)); kind = ent = null; continue; }
+    if (ent) ent.raw += ch;
+    if (/\s/.test(ch)) flush(); else chars.push([ch, ent]);
+  }
+  flush();
+  if (ent) Object.assign(ent, entity(kind, ent.raw));
+  return out;
+}
+
+const entHidden = (e, s) => !s.shown.some(x => same(x, e)) && (s.hidden.some(x => same(x, e)) || s[e.kind === 'name' ? 'names' : 'quotes']);
+/** Whether a word is hidden: its name or quote is, or the word itself was tapped. */
+export const isHidden = (t, s) => !t.punct && (t.ent && entHidden(t.ent, s) || s.words.includes(wordKey(t.core)));
+
+/**
+ * Groups words for display: each visible word is a unit, and neighbouring hidden words merge into one, so a mark
+ * never tells how many words it covers. text is what the post shows for the unit.
+ */
+export function units(tokens, s) {
+  const out = [];
+  for (const t of tokens) {
+    const hidden = isHidden(t, s), prev = out.at(-1);
+    if (hidden && prev?.hidden && !prev.post && !t.pre) { prev.tokens.push(t); prev.post = t.post; }
+    else out.push({tokens: [t], hidden, pre: t.pre, post: t.post});
+  }
+  for (const u of out) u.text = u.pre + (u.hidden ? HIDDEN : u.tokens.map(t => t.core).join(' ')) + u.post;
+  return out;
+}
+/** Marked text as plain text with every hidden unit as ████. */
+export const redactText = (text, s) => units(tokenize(text), s).map(u => u.text).join(' ');
+/** The words a unit covers, as they read unhidden. */
+export const unitWords = u => u.tokens.map(t => t.core).join(' ');
+
+/**
+ * Tapping a unit flips it. A hidden unit comes back, overriding its toggle; a visible name hides as a whole, and any
+ * other word hides wherever it appears. Returns a new state.
+ */
+export function tap(s, u) {
+  const n = {...s, words: [...s.words], hidden: [...s.hidden], shown: [...s.shown]};
+  if (u.hidden) for (const t of u.tokens) {
+    n.words = n.words.filter(w => w !== wordKey(t.core));
+    if (t.ent && entHidden(t.ent, n)) {
+      n.hidden = n.hidden.filter(x => !same(x, t.ent));
+      if (n[t.ent.kind === 'name' ? 'names' : 'quotes']) n.shown.push(t.ent);
+    }
+  } else {
+    const t = u.tokens.find(t => !t.punct);
+    if (!t) return s;
+    if (t.ent?.kind === 'name') { n.shown = n.shown.filter(x => !same(x, t.ent)); n.hidden.push(t.ent); }
+    else n.words.push(wordKey(t.core));
+  }
+  return n;
+}
+/** Turns a toggle on or off for every name (or quote) in the share, dropping taps that disagree with it. */
+export function setToggle(s, kind, on) {
+  const other = x => x.kind !== kind;
+  return {...s, [kind === 'name' ? 'names' : 'quotes']: on, hidden: s.hidden.filter(other), shown: s.shown.filter(other)};
+}
+/** Which of 'name' and 'quote' occur in these marked texts, so the sheet only offers toggles that do something. */
+export const kindsIn = (...texts) => new Set(texts.flatMap(t => tokenize(t).map(w => w.ent?.kind)).filter(Boolean));
+
+/**
+ * A card model with redaction applied: every text field becomes a list of card words {text, hidden, pre, post, ref},
+ * one per unit, with ref the unit itself so a tap on the card can flip it. A hero that is wholly a hidden name falls
+ * back to model.heroAlt (the count), so the card is never just a mark.
+ */
+export function redactCard(model, s) {
+  const field = text => text && units(tokenize(text), s).map(u => ({text: u.text, hidden: u.hidden, pre: u.pre, post: u.post, ref: u}));
+  const hero = tokenize(model.hero).filter(t => !t.punct);
+  const heroHidden = model.heroAlt && hero.length && hero.every(t => t.ent?.kind === 'name' && isHidden(t, s));
+  return {...model, question: field(model.question), hero: field(heroHidden ? model.heroAlt : model.hero), fact: field(model.fact), guess: field(model.guess),
+    bars: model.bars && {...model.bars, items: model.bars.items.map(([label, ...rest]) => [field(label), ...rest])}};
+}
+
+/**
+ * Blacks out terms in text someone typed or edited, where marks are gone: each term, matched case-insensitively at
+ * word edges, becomes ████. Used to keep later redactions applying to an edited post.
+ */
+export function blackOut(text, terms) {
+  const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const list = [...new Set(terms.map(t => t.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!list.length) return text;
+  return text.replace(new RegExp(`(?<![\\p{L}\\p{N}])(?:${list.map(esc).join('|')})(?![\\p{L}\\p{N}])`, 'giu'), HIDDEN);
+}
+
+// Share posts and image captions. Helpers stay private to this one browser binding.
 const SHARE_COPY = (() => {
   const noun = (raw, singular, plural = `${singular}s`) => raw === 1 ? singular : plural;
   const times = (value, raw) => `${value} ${noun(raw, 'time')}`;
 
-  // Keep quotes as exact prefixes; never rewrite words inside someone's message.
+  // Keep quotes as exact prefixes; never rewrite words inside someone's message. Redaction marks (redaction.js)
+  // don't count towards the limit, and a mark cut short still closes, with the ellipsis inside it.
   const clip = (value, limit) => {
-    const text = String(value).trim();
-    if (text.length <= limit) return text;
-    const prefix = text.slice(0, limit - 1);
-    const boundary = /\s/.test(text[limit - 1]) ? prefix.length : prefix.search(/\s+\S*$/);
-    return `${prefix.slice(0, Math.max(0, boundary)).trimEnd()}…`;
+    const text = String(value).trim(), bare = unmark(text);
+    if (bare.length <= limit) return text;
+    const prefix = bare.slice(0, limit - 1);
+    const boundary = /\s/.test(bare[limit - 1]) ? prefix.length : prefix.search(/\s+\S*$/);
+    return clipMarked(text, prefix.slice(0, Math.max(0, boundary)).trimEnd().length);
   };
   // Omit a prohibited token and everything after it, preserving an honest excerpt.
   // Bare domains identify the ranked sites; posts never add a URL or link scheme.
@@ -1361,12 +1532,16 @@ const SHARE_COPY = (() => {
     const forbidden = text.search(/Discord Wrapped|#|\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\ufe0f\u20e3]|\b(?:[a-z][a-z\d+.-]*:\/\/|www\.)/iu);
     return clip(forbidden < 0 ? text : `${text.slice(0, forbidden).trimEnd()}…`, limit);
   };
-  const quote = (value, limit = 62) => `“${excerpt(value, limit - 2)}”`;
+  // Quotes (messages, words, search terms) and Discord names are marked for redaction; name() is for other labels.
+  const quote = (value, limit = 62) => `“${markQuote(excerpt(value, limit - 2))}”`;
   const name = value => excerpt(value, 32);
-  const card = (text, headline, sub) => ({
+  const who = value => markName(name(value));
+  // alt replaces a headline that is only a name while that name is hidden.
+  const card = (text, headline, sub, alt) => ({
     text,
     headline: clip(headline, 40),
     sub: clip(sub, 70).replace(/\.$/, ''),
+    ...alt && {alt},
   });
   const caption = (label, p) => `${label} ${p.in}`;
   // Running totals take the present perfect, including singular totals.
@@ -1468,8 +1643,8 @@ const SHARE_COPY = (() => {
       name(v.name), caption(`Number ${v.rank} custom emoji · ${times(v.n, v.nRaw)}`, p)),
 
     'rank.server': (v, p) => card(
-      `${v.n} of my Discord messages ${p.in} went to ${name(v.name)}.`,
-      name(v.name), caption(`Number ${v.rank} server · ${v.n} ${noun(v.nRaw, 'message')}`, p)),
+      `${v.n} of my Discord messages ${p.in} went to ${who(v.name)}.`,
+      who(v.name), caption(`Number ${v.rank} server · ${v.n} ${noun(v.nRaw, 'message')}`, p), `${v.n} ${noun(v.nRaw, 'message')}`),
 
     'bump.word': (v, p) => card(
       v.rankRaw === 1
@@ -2025,7 +2200,7 @@ function people() {
   const dmTotal = dms.reduce((a, x) => a + x[1], 0);
   $('dm-share').textContent = dms.length ? `${fmt(dms.length)} DM conversations · top 10 = ${pct(dms.slice(0, 10).reduce((a, x) => a + x[1], 0), dmTotal)} of DM messages` : '';
   const servers = D.guilds.map(g => [g.name, g.count]);
-  ranks('server-ranks', servers, 10, fmt, (name, n, i) => share('rank.server', {name, rank: i + 1, n}, {bars: rankBars(servers, i)}));
+  ranks('server-ranks', servers, 10, fmt, (name, n, i) => share('rank.server', {name, rank: i + 1, n}, {bars: rankBars(servers, i, markName)}));
   $('server-note').textContent = servers.length ? `${fmt(servers.length)} servers. A renamed server can appear twice when the export only identifies it by name.` : '';
   legend('share-legend', GROUPS);
   const draw = () => lines('share-chart', ks.map(k => bucketName(k, D.unit)), GROUPS.map(g => ({name: g, values: ks.map(k => 100 * D.periods[k][g] / D.periods[k].total)})), {height: 220, title: `Share of messages by conversation type ${per(D.unit)}`, format: v => v.toFixed(0) + '%'});
@@ -2041,8 +2216,8 @@ function words() {
   const drawBump = () => bump('bump-chart', cols);
   drawBump(); draws.push(drawBump);
   $('topics-input').value = topicsText;
-  ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i)}));
-  ranks('expr-ranks', D.expressions, 12, fmt, (text, n, i) => share('rank.expression', {text, rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${quoteOf(t, 24)}”`)}));
+  ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i, markQuote)}));
+  ranks('expr-ranks', D.expressions, 12, fmt, (text, n, i) => share('rank.expression', {text, rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(t, 24))}”`)}));
   ranks('link-ranks', D.domains, 10, fmt, (domain, n, i) => share('rank.link', {domain, rank: i + 1, n}, {bars: rankBars(D.domains, i)}));
   const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
   ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
@@ -2134,7 +2309,7 @@ function fame() {
   const chars = F.longest ? [...F.longest.text].length : 0, all = P.kind === 'all';
   $('fame').innerHTML = card(all ? 'Your first message' : 'First message', F.first, '', F.first && share('fame.first', {text: F.first.text || 'an attachment', date: day(F.first)}))
     + card('Latest message', F.last, '', F.last && share('fame.latest', {text: F.last.text || 'an attachment', date: day(F.last)}))
-    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${quoteOf(t, 24)}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
+    + (F.mostRepeated ? `<article ${shareAttr(share('fame.mostRepeated', {text: F.mostRepeated.text, n: F.mostRepeated.count}, {bars: rankBars(D.expressions, Math.max(0, D.expressions.findIndex(e => e[0] === F.mostRepeated.text.toLowerCase())), t => `“${markQuote(quoteOf(t, 24))}”`)}))}><h3>Most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} ${F.mostRepeated.count === 1 ? 'time' : 'times'}</small></article>` : '')
     + card('Longest message', F.longest, F.longest ? ` · ${fmt(chars)} characters` : '', F.longest && share('fame.longest', {chars, text: F.longest.text}, {chart: 'length-chart'}))
     + big('Fastest minute', bm.count, 'messages in 60 seconds', share('fame.fastestMinute', {n: bm.count}), `<small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small>`)
     + (ls ? big('Longest session', ls[0], 'messages without a 30-minute break', share('fame.longestSession', {n: ls[0], hours: Math.max(1, Math.round(ls[1] / 60))}), `<small>Started ${esc(ls[2])} · about ${fmt(Math.max(1, Math.round(ls[1] / 60)))} hours</small>`) : '')
@@ -2242,6 +2417,8 @@ call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).c
 // Every share image comes from one card model:
 //   {question?, hero, fact?, chart?: {image, width, height}, bars?: {items: [[label, value, shown]], highlight}, guess?, host}
 // chart is an already decoded image of a report chart; bars is a ranked list with the shared row highlighted.
+// Text fields are strings, or lists of card words {text, hidden?, pre?, post?, ref?} once redaction has run
+// (redactCard): a hidden word draws as a fixed-width scribble between its pre and post punctuation.
 export const CARD_SHAPES = {wide: [1200, 675], tall: [1080, 1920]};
 
 // Sizes per shape. Wide matches the original 16:9 card. Tall scales it up, centres the content and keeps the host
@@ -2251,53 +2428,74 @@ const SPEC = {
   tall: {P: 96, band: 24, brand: 40, brandY: 160, question: 44, hero: [180, 128], heroMin: 48, fact: 50, factStep: 64, guess: 46, row: 60, host: 44, hostY: 200, foot: 300},
 };
 
-// Greedy word wrap. Returns lines; the last kept line ends in an ellipsis when the text runs over maxLines.
-function wrap(text, maxW, maxLines, width) {
+const asWords = v => Array.isArray(v) ? v : String(v ?? '').split(/\s+/).filter(Boolean).map(text => ({text}));
+const withEllipsis = w => w.hidden ? {...w, text: w.text + '…', post: (w.post || '') + '…'} : {...w, text: w.text + '…'};
+// A mark is the same width whatever it hides, so its length gives nothing away.
+const markW = size => size * 2.2;
+// Width of a line of words at one size and weight, a single space between words.
+const lineWidth = (ws, size, weight, measure) => ws.reduce((a, w, i) => a + (i ? measure(' ', size, weight) : 0)
+  + (w.hidden ? measure(w.pre || '', size, weight) + markW(size) + measure(w.post || '', size, weight) : measure(w.text, size, weight)), 0);
+
+// Greedy word wrap. Returns lines of words; the last kept line ends in an ellipsis when the text runs over maxLines.
+function wrap(words, maxW, maxLines, width) {
   const out = [];
-  let line = '';
-  for (const w of text.split(/\s+/).filter(Boolean)) {
-    const next = line ? line + ' ' + w : w;
-    if (line && width(next) > maxW) { out.push(line); line = w; } else line = next;
+  let line = [];
+  for (const w of words) {
+    if (line.length && width([...line, w]) > maxW) { out.push(line); line = [w]; } else line.push(w);
   }
-  if (line) out.push(line);
-  if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
+  if (line.length) out.push(line);
+  if (out.length > maxLines) {
+    out.length = maxLines;
+    const last = out[maxLines - 1].slice(0, -1);
+    out[maxLines - 1] = last.length ? [...last.slice(0, -1), withEllipsis(last.at(-1))] : [{text: '…'}];
+  }
   return out;
 }
 // Largest size from max down to min at which text fits maxLines lines of maxW.
-function fitSize(text, max, min, weight, maxW, maxLines, measure) {
+function fitSize(words, max, min, weight, maxW, maxLines, measure) {
   let size = max;
   for (;; size -= 4) {
-    const width = t => measure(t, size, weight), lines = wrap(text, maxW, Infinity, width);
+    const width = ws => lineWidth(ws, size, weight, measure), lines = wrap(words, maxW, Infinity, width);
     if (size <= min || lines.length <= maxLines && lines.every(l => width(l) <= maxW)) return Math.max(size, min);
   }
 }
-// Shorten a single-line label by characters until it fits.
-function clipTo(text, maxW, width) {
-  let t = text;
-  while (t.length > 3 && width(t) > maxW) t = t.slice(0, -2).trimEnd() + '…';
-  return t;
+// Shorten a single-line label by characters until it fits. A mark is never cut; it drops whole.
+function clipTo(words, maxW, width) {
+  let ws = words;
+  while (width(ws) > maxW) {
+    const last = ws.at(-1), core = last.text.replace(/…$/, '');
+    if (!last.hidden && core.length > 2) ws = [...ws.slice(0, -1), {...last, text: core.slice(0, -2).trimEnd() + '…'}];
+    else if (ws.length > 1) ws = [...ws.slice(0, -2), withEllipsis(ws.at(-2))];
+    else break;
+  }
+  return ws;
 }
 
 /**
  * Positions every piece of a card without touching a canvas. measure(text, size, weight) returns the drawn width.
- * Returns {width, height, band, runs, words, chart, bars}: runs are single lines of text with their left x and
- * baseline y; words are one box per word of each run, the targets redaction and tap overlays attach to.
+ * Returns {width, height, band, runs, words, chart, bars}: runs are single lines of text (as text and as card words)
+ * with their left x and baseline y; words are one box per word of each run, the targets tap overlays attach to.
  */
 export function layoutCard(model, shape, measure) {
   const [W, H] = CARD_SHAPES[shape], S = SPEC[shape], P = S.P, maxW = W - 2 * P, runs = [];
-  const run = (role, text, x, y, size, weight, color) => { runs.push({role, text, x, y, size, weight, color}); return runs.length - 1; };
+  const width = (size, weight) => ws => lineWidth(ws, size, weight, measure);
+  const run = (role, words, x, y, size, weight, color) => {
+    const ws = asWords(words);
+    runs.push({role, text: ws.map(w => w.text).join(' '), words: ws, x, y, size, weight, color});
+    return runs.length - 1;
+  };
   const block = (role, text, size, weight, color, maxLines, lh, y) => {
-    for (const l of wrap(text, maxW, maxLines, t => measure(t, size, weight))) { run(role, l, P, y, size, weight, color); y += size * lh; }
+    for (const l of wrap(asWords(text), maxW, maxLines, width(size, weight))) { run(role, l, P, y, size, weight, color); y += size * lh; }
     return y;
   };
   // Text first, from the brand line down; the tall card shifts it all later to centre the content.
   run('brand', 'Discord Wrapped', P, S.brandY, S.brand, 600, 'muted');
   const graphic = !!(model.chart || model.bars?.items.length);
-  const heroSize = fitSize(model.hero, S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, measure);
+  const heroSize = fitSize(asWords(model.hero), S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, measure);
   let y = S.brandY;
   if (model.question) y = block('question', model.question, S.question, 600, 'muted', 2, 1.3, y + S.question * 1.6) - S.question * 1.3;
   y = block('hero', model.hero, heroSize, 700, 'fg', 2, 1.06, y + heroSize * 1.2);
-  if (model.fact) for (const l of wrap(model.fact, maxW, 2, t => measure(t, S.fact, 400))) { y += 4; run('fact', l, P, y, S.fact, 400, 'muted'); y += S.factStep; }
+  if (model.fact) for (const l of wrap(asWords(model.fact), maxW, 2, width(S.fact, 400))) { y += 4; run('fact', l, P, y, S.fact, 400, 'muted'); y += S.factStep; }
   if (model.guess) y = block('guess', model.guess, S.guess, 600, 'fg', 2, 1.3, y + S.guess * .4);
   const top = y + 10, bottom = H - S.foot, room = bottom - top;
   let chart = null, bars = null, height = 0;
@@ -2306,7 +2504,7 @@ export function layoutCard(model, shape, measure) {
     chart = {image: model.chart.image, x: P, y: top, w: model.chart.width * k, h: model.chart.height * k};
     height = chart.h;
   } else if (!model.chart && model.bars?.items.length && room >= 60) {
-    bars = layoutBars(model.bars, P, top, maxW, room, S.row, measure, run);
+    bars = layoutBars(model.bars, P, top, maxW, room, S.row, measure, width, run);
     height = bars.height;
   }
   // Tall cards centre everything above the footer.
@@ -2321,12 +2519,12 @@ export function layoutCard(model, shape, measure) {
 }
 
 // A ranked list as horizontal bars, the shared row in the accent colour and the rest quiet. Labels and values are runs.
-function layoutBars({items, highlight}, x, top, w, h, maxRow, measure, run) {
+function layoutBars({items, highlight}, x, top, w, h, maxRow, measure, width, run) {
   const n = items.length, gap = maxRow / 34 * 6, rh = Math.min(maxRow, (h - gap * (n - 1)) / n), size = Math.round(rh * .62);
   const labelW = Math.min(w * .36, maxRow / 34 * 360), max = Math.max(...items.map(r => r[1])), rows = [];
   items.forEach(([name, v, shown], i) => {
     const y = top + i * (rh + gap), on = i === highlight, weight = on ? 700 : 400, color = on ? 'fg' : 'muted', base = y + rh / 2 + size * .36;
-    const value = shown ?? String(v), label = clipTo(name, labelW - 16, t => measure(t, size, weight));
+    const value = shown ?? String(v), label = clipTo(asWords(name), labelW - 16, width(size, weight));
     run('bar-label', label, x, base, size, weight, color);
     run('bar-value', value, x + w - measure(value, size, weight), base, size, weight, color);
     rows.push({x: x + labelW, y: y + 3, w: Math.max(4, (w - labelW - 120) * v / max), h: rh - 6, on});
@@ -2334,33 +2532,63 @@ function layoutBars({items, highlight}, x, top, w, h, maxRow, measure, run) {
   return {rows, height: n * rh + (n - 1) * gap};
 }
 
-// One box per word: x from the width of the text before it, height from the font size.
+// One box per word: x from the width of the words before it, height from the font size. A hidden word's box covers
+// its mark and punctuation; ref is whatever the model attached to the word, so a tap knows what to flip.
 function wordsOf(r, runIndex, measure) {
-  const out = [];
-  for (const m of r.text.matchAll(/\S+/g)) {
-    const x = r.x + (m.index ? measure(r.text.slice(0, m.index), r.size, r.weight) : 0);
-    out.push({text: m[0], run: runIndex, role: r.role, x, y: r.y - r.size * .82, w: measure(m[0], r.size, r.weight), h: r.size * 1.02});
-  }
-  return out;
+  let x = r.x;
+  return r.words.map(word => {
+    const w = lineWidth([word], r.size, r.weight, measure), box = {text: word.text, run: runIndex, role: r.role, x, y: r.y - r.size * .82, w, h: r.size * 1.02};
+    if (word.hidden) box.hidden = true;
+    if (word.ref) box.ref = word.ref;
+    x += w + measure(' ', r.size, r.weight);
+    return box;
+  });
 }
 
 /**
- * Draws a card model to a new canvas. theme: {font, colors: {surface, fg, muted, accent, soft}}.
- * Returns {canvas, words} with word boxes in canvas pixels. redaction is reserved for hiding names and quotes.
+ * Draws a card model to a new canvas. theme: {font, colors: {surface, fg, muted, accent, soft}}. redaction, when
+ * given, maps the model to the one to draw (share.js passes redactCard with the sheet's state).
+ * Returns {canvas, words} with word boxes in canvas pixels.
  */
 export function drawCard(model, shape, theme, redaction) {
   const c = document.createElement('canvas'), [W, H] = CARD_SHAPES[shape];
   c.width = W; c.height = H;
   const g = c.getContext('2d'), col = theme.colors, font = (size, weight) => `${weight} ${size}px ${theme.font}`;
   const measure = (t, size, weight) => { g.font = font(size, weight); return g.measureText(t).width; };
-  const L = layoutCard(model, shape, measure);
+  const L = layoutCard(redaction ? redaction(model) : model, shape, measure);
   g.fillStyle = col.surface; g.fillRect(0, 0, W, H);
   g.fillStyle = col.accent; g.fillRect(0, 0, W, L.band);
   if (L.chart) try { g.drawImage(L.chart.image, L.chart.x, L.chart.y, L.chart.w, L.chart.h); } catch { /* The card still works without its chart. */ }
   for (const b of L.bars || []) { g.fillStyle = b.on ? col.accent : col.soft; g.beginPath(); g.roundRect(b.x, b.y, b.w, b.h, 4); g.fill(); }
   g.textBaseline = 'alphabetic'; g.textAlign = 'left';
-  for (const r of L.runs) { g.font = font(r.size, r.weight); g.fillStyle = col[r.color]; g.fillText(r.text, r.x, r.y); }
+  // Word by word at the layout's boxes, so what's drawn lines up with the tap targets.
+  let k = 0;
+  for (const r of L.runs) for (const word of r.words) {
+    const w = L.words[k++];
+    g.font = font(r.size, r.weight); g.fillStyle = col[r.color];
+    if (!word.hidden) { g.fillText(word.text, w.x, r.y); continue; }
+    const pre = word.pre || '', post = word.post || '', at = w.x + measure(pre, r.size, r.weight);
+    if (pre) g.fillText(pre, w.x, r.y);
+    // Inset like a glyph's side bearings, so the mark doesn't touch its neighbours.
+    scribble(g, at + r.size * .1, r.y - r.size * .74, markW(r.size) - r.size * .2, r.size * .9, col.fg, w.x * 7 + r.y);
+    if (post) g.fillText(post, at + markW(r.size), r.y);
+  }
   return {canvas: c, words: L.words};
+}
+
+// A felt-tip scribble: two passes of tight zigzags across the box. Seeded by position, never by the hidden text, so
+// two marks over the same word don't match.
+function scribble(g, x, y, w, h, ink, seed) {
+  let n = seed >>> 0 || 1;
+  const rand = () => (n = Math.imul(n ^ n >>> 15, 2246822507) + 0x9e3779b9 >>> 0) / 2 ** 32;
+  const lw = h * .2, steps = Math.max(4, Math.round(w / (h * .2)));
+  g.save(); g.strokeStyle = ink; g.lineWidth = lw; g.lineCap = g.lineJoin = 'round'; g.beginPath();
+  for (let pass = 0; pass < 2; pass++) for (let i = 0; i <= steps; i++) {
+    const f = pass ? 1 - i / steps : i / steps, px = x + lw / 2 + f * (w - lw) + (rand() - .5) * h * .08;
+    const py = y + h * (i % 2 ? .08 + rand() * .08 : .84 + rand() * .08);
+    if (i || pass) g.lineTo(px, py); else g.moveTo(px, py);
+  }
+  g.stroke(); g.restore();
 }
 
 /* ---------- sharing ---------- */
@@ -2399,7 +2627,7 @@ const PLATFORMS = [
 ];
 
 /* image card */
-async function svgImage(svg, focus) {
+async function svgImage(svg, focus, hideWord = () => false) {
   // Copy computed styles inline so CSS variables and classes survive outside the page.
   const clone = svg.cloneNode(true), from = [svg, ...svg.querySelectorAll('*')], to = [clone, ...clone.querySelectorAll('*')];
   from.forEach((el, i) => {
@@ -2409,6 +2637,8 @@ async function svgImage(svg, focus) {
   clone.querySelectorAll('.hit').forEach(n => n.remove());
   // A shared bump-chart word keeps full colour; every other word fades back.
   if (focus) clone.querySelectorAll('.bw').forEach(g => { if (g.dataset.word !== focus) g.style.opacity = '.15'; });
+  // Ranked words are quotes, so hidden ones go from the chart too, as the same mark as in the post.
+  clone.querySelectorAll('.bw').forEach(g => { if (hideWord(g.dataset.word)) g.querySelectorAll('text').forEach(t => t.textContent = HIDDEN); });
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.removeAttribute('style');
   const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], {type: 'image/svg+xml'}));
@@ -2417,21 +2647,27 @@ async function svgImage(svg, focus) {
   try { await img.decode(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
   return {img, w: +svg.getAttribute('width'), h: +svg.getAttribute('height')};
 }
-// A share context as a card model. The chart is rasterised here; a chart that fails to load leaves it off the card.
-async function cardModel(ctx) {
+// A share context as a card model, its text still marked for redaction. The chart is rasterised here, once per set
+// of hidden chart words (charts caches them for the open sheet); a chart that fails to load leaves it off the card.
+async function cardModel(ctx, red, charts = new Map()) {
   const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
   let chart = null;
-  if (chartSvg) try { const {img, w, h} = await svgImage(chartSvg, ctx.focus); chart = {image: img, width: w, height: h}; } catch { /* no chart */ }
+  if (chartSvg) {
+    const hide = w => isHidden(tokenize(markQuote(w))[0], red), key = [...chartSvg.querySelectorAll('.bw')].map(g => g.dataset.word).filter(hide).join('\n');
+    if (!charts.has(key)) charts.set(key, svgImage(chartSvg, ctx.focus, hide).then(({img, w, h}) => ({image: img, width: w, height: h}), () => null));
+    chart = await charts.get(key);
+  }
   const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
-  return {hero: ctx.headline, fact: ctx.sub, chart, bars, host: SITE_HOST};
+  return {hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, chart, bars, host: SITE_HOST};
 }
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
 };
-async function renderCard(ctx, shape) {
-  const {canvas} = drawCard(await cardModel(ctx), shape, pageTheme(), null);
-  return new Promise(r => canvas.toBlob(r, 'image/png'));
+// Draws a share with its redaction. Resolves with the word boxes as soon as they're drawn; blob is the PNG to come.
+async function renderCard(ctx, shape, red, charts) {
+  const {canvas, words} = drawCard(await cardModel(ctx, red, charts), shape, pageTheme(), m => redactCard(m, red));
+  return {words, blob: new Promise(r => canvas.toBlob(r, 'image/png'))};
 }
 
 /* popover */
@@ -2441,34 +2677,113 @@ let current = null, anchor = null;
 let cardShape = null;
 const SHAPES = [['tall', '9:16'], ['wide', '16:9']];
 function openShare(ctx, rect) {
-  current = {ctx};
+  const red = newRedaction(), kinds = kindsIn(ctx.text, ctx.headline, ctx.sub, ...(ctx.bars?.items || []).map(([n]) => n));
+  // A shared bump-chart word is a ranked word, drawn on the chart image.
+  if (ctx.chart === 'bump-chart') kinds.add('quote');
+  current = {ctx, red, charts: new Map(), zoomed: false, edited: false};
   const canNative = !!navigator.share, shape = cardShape || (innerWidth < 600 ? 'tall' : 'wide');
+  const toggle = (kind, label) => kinds.has(kind) ? `<label class="inline"><input type="checkbox" data-hide="${kind}"${red[kind === 'name' ? 'names' : 'quotes'] ? ' checked' : ''}> ${label}</label>` : '';
   pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close sharing">×</button></div>
-    <img class="sp-img" alt="Share card showing ${esc(ctx.headline)}. ${esc(ctx.sub || '')}">
+    <div class="sp-preview"><div class="sp-card"><img class="sp-img" alt=""><div class="sp-hits" role="group" aria-label="Words on the card" aria-describedby="sp-hint"></div></div></div>
+    <div class="sp-tools">${toggle('name', 'Hide names')}${toggle('quote', 'Hide quotes')}<button type="button" class="sp-zoom" data-act="zoom" aria-pressed="false">Zoom in</button></div>
+    <p class="sp-hint" id="sp-hint">Tap a word on the card or in the post to hide it. Tap it again to show it.</p>
     <fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
-    <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(`${ctx.text} ${CTA}`)}</textarea></label>
+    <div class="sp-label"><span id="sp-post-label">Post text</span><button type="button" class="sp-edit" data-act="edit">Edit text</button></div>
+    <p class="sp-post" role="group" aria-labelledby="sp-post-label" aria-describedby="sp-hint"></p>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
     <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
+  renderPost();
   showCard(shape);
   addEventListener('resize', () => current && place(), {once: true});
   pop.classList.remove('hidden');
   place(rect);
-  pop.querySelector('.sp-text').focus({preventScroll: true});
+  // Focus the sheet itself, so Tab starts at its first control.
+  pop.focus({preventScroll: true});
+}
+// The post as tappable words, hidden units as ████. Once edited by hand it's a plain text box instead.
+function renderPost() {
+  const box = pop.querySelector('.sp-post');
+  if (!box) return;
+  const us = current.postUnits = units(tokenize(current.ctx.text), current.red);
+  box.innerHTML = us.map((u, i) => u.tokens[0].punct ? esc(u.text)
+    : `<span class="nowrap">${esc(u.pre)}<button type="button" class="sp-word" data-unit="${i}" tabindex="-1" aria-pressed="${u.hidden}"${u.hidden ? ` aria-label="${esc(unitWords(u))}"` : ''}>${esc(u.hidden ? HIDDEN : unitWords(u))}</button>${esc(u.post)}</span>`).join(' ')
+    + ` <span class="sp-cta">${esc(CTA)}</span>`;
+  rove(box);
+}
+// One tab stop per group of words; the arrow keys move between them (see the keydown handler). After a tap, focus
+// returns to the button nearest the one tapped, since hiding or showing words can change how many there are.
+function rove(group) {
+  const bs = [...group.querySelectorAll('button')], f = current.focus?.group === group.className && current.focus;
+  if (!bs.length) return;
+  const at = b => b.getBoundingClientRect(), d = r => Math.hypot(r.left - f.left, r.top - f.top);
+  const b = f ? bs.reduce((a, x) => d(at(x)) < d(at(a)) ? x : a) : bs[0];
+  b.tabIndex = 0;
+  if (f) { b.focus({preventScroll: true}); current.focus = null; }
 }
 // Renders the open context at a shape; a later call wins if an earlier render is still running.
 function showCard(shape) {
-  const cur = current, card = renderCard(cur.ctx, shape), img = pop.querySelector('.sp-img');
-  Object.assign(cur, {card, shape});
-  img.classList.toggle('tall', shape === 'tall');
-  card.then(b => {
-    if (!b || current !== cur || cur.card !== card) return;
+  const cur = current, render = renderCard(cur.ctx, shape, cur.red, cur.charts), img = pop.querySelector('.sp-img');
+  Object.assign(cur, {render, card: render.then(r => r.blob), shape});
+  pop.querySelector('.sp-card').classList.toggle('tall', shape === 'tall');
+  render.then(async ({words, blob}) => {
+    const b = await blob;
+    if (!b || current !== cur || cur.render !== render) return;
     if (img.src) URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(b);
+    img.alt = `Share card showing ${cardSummary()}`;
+    cur.words = words;
+    hits();
   });
 }
+const cardSummary = () => {
+  const m = redactCard({hero: current.ctx.headline, heroAlt: current.ctx.alt, fact: current.ctx.sub}, current.red), line = f => f ? f.map(w => w.text).join(' ') : '';
+  return [line(m.hero), line(m.fact)].filter(Boolean).join('. ');
+};
+// A button over every word the card drew, at least 24 px tall on screen. Brand and host can't be hidden.
+function hits() {
+  if (!current.words) return;
+  const box = pop.querySelector('.sp-hits'), shape = current.shape, [W, H] = CARD_SHAPES[shape];
+  const k = (pop.querySelector('.sp-img').clientWidth || 300) / W, minH = 24 / k;
+  box.innerHTML = '';
+  current.words.forEach((w, i) => {
+    if (!w.ref || w.ref.tokens[0].punct) return;
+    const h = Math.max(w.h, minH), b = document.createElement('button');
+    b.type = 'button'; b.className = 'sp-hit'; b.dataset.word = i; b.tabIndex = -1;
+    b.setAttribute('aria-pressed', !!w.hidden);
+    b.setAttribute('aria-label', w.hidden ? unitWords(w.ref) : w.text);
+    Object.assign(b.style, {left: (w.x - 4) / W * 100 + '%', top: (w.y - (h - w.h) / 2) / H * 100 + '%', width: (w.w + 8) / W * 100 + '%', height: h / H * 100 + '%'});
+    box.append(b);
+  });
+  rove(box);
+}
+// A tap, a toggle or a reveal: redraw the card and the post, and black out new terms in an edited post.
+function redact(red, focus) {
+  current.red = red;
+  current.focus = focus;
+  if (current.edited) {
+    const c = current.ctx, terms = [c.text, c.headline, c.sub, ...(c.bars?.items || []).map(([n]) => n)]
+      .flatMap(t => units(tokenize(t), red).filter(u => u.hidden).map(unitWords));
+    const area = pop.querySelector('.sp-text');
+    area.value = blackOut(area.value, [...terms, ...red.words]);
+  } else renderPost();
+  showCard(current.shape);
+}
+const focusOf = b => { const {left, top} = b.getBoundingClientRect(); return {group: b.closest('.sp-hits, .sp-post').className, left, top}; };
+pop.addEventListener('keydown', e => {
+  const b = e.target.closest?.('.sp-hit, .sp-word');
+  if (!b) return;
+  const bs = [...b.closest('.sp-hits, .sp-post').querySelectorAll('button')], i = bs.indexOf(b);
+  const j = {ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: bs.length - 1}[e.key];
+  if (j === undefined) return;
+  e.preventDefault();
+  const next = bs[Math.max(0, Math.min(bs.length - 1, j))];
+  b.tabIndex = -1; next.tabIndex = 0; next.focus();
+});
 pop.addEventListener('change', e => {
-  if (e.target.name !== 'sp-shape' || !current) return;
+  if (!current) return;
+  if (e.target.dataset.hide) return redact(setToggle(current.red, e.target.dataset.hide, e.target.checked));
+  if (e.target.name !== 'sp-shape') return;
   cardShape = e.target.value;
   showCard(cardShape);
   place();
@@ -2486,14 +2801,14 @@ function place(rect = anchor) {
   pop.style.top = Math.max(8, top) + 'px';
 }
 function closeShare() { pop.classList.add('hidden'); current = null; }
-const postText = () => pop.querySelector('.sp-text').value.trim();
+const postText = () => current.edited ? pop.querySelector('.sp-text').value.trim() : `${redactText(current.ctx.text, current.red)} ${CTA}`;
 const stepOut = html => { pop.querySelector('.sp-step').innerHTML = html; place(); };
 function copyImage() {
   // Passing the promise keeps the click's user activation for the clipboard write.
   if (!window.ClipboardItem || !navigator.clipboard?.write) return Promise.reject(new Error('no image clipboard'));
   return navigator.clipboard.write([new ClipboardItem({'image/png': current.card})]);
 }
-const slug = () => quoteOf(current.ctx.headline, 40).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'card';
+const slug = () => quoteOf(cardSummary().split('. ')[0].replaceAll(HIDDEN, ''), 40).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'card';
 
 function sharePlatform(p) {
   let server = '';
@@ -2518,12 +2833,28 @@ function sharePlatform(p) {
 pop.addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.classList.contains('sp-close')) return closeShare();
+  if (b.dataset.word) return redact(tap(current.red, current.words[b.dataset.word].ref), focusOf(b));
+  if (b.dataset.unit) return redact(tap(current.red, current.postUnits[b.dataset.unit]), focusOf(b));
   if (b.dataset.platform) return sharePlatform(PLATFORMS.find(p => p.id === b.dataset.platform));
   const act = b.dataset.act;
   try {
     if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
     else if (act === 'copy-text') { await navigator.clipboard.writeText(ensureLink(postText())); stepOut('<p>Text and link copied.</p>'); }
-    else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }
+    else if (act === 'zoom') {
+      current.zoomed = !current.zoomed;
+      b.setAttribute('aria-pressed', current.zoomed);
+      pop.querySelector('.sp-preview').classList.toggle('zoomed', current.zoomed);
+      hits();
+    } else if (act === 'edit') {
+      // From here the post is the person's own text; later redactions still black out newly hidden terms in it.
+      const area = Object.assign(document.createElement('textarea'), {className: 'sp-text', rows: 3, value: postText()});
+      area.setAttribute('aria-labelledby', 'sp-post-label');
+      const note = Object.assign(document.createElement('p'), {className: 'sp-hint', textContent: 'Words you hide now are blacked out here too. Showing them again won’t restore them.'});
+      current.edited = true;
+      pop.querySelector('.sp-post').replaceWith(area, note);
+      b.remove();
+      area.focus();
+    } else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }
     else if (act === 'download') {
       const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(await current.card), download: `discord-wrapped-${slug()}.png`});
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
