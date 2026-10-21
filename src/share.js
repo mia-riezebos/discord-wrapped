@@ -360,7 +360,22 @@ pop.addEventListener('click', async e => {
 /* triggers */
 // Shares without a chart of their own borrow the main chart of the section they came from.
 const SECTION_CHART = {'s-overview': 'year-chart', 's-rhythm': 'heat-chart', 's-people': 'share-chart', 's-words': 'bump-chart', 's-search': 'search-chart'};
-const withSectionChart = (ctx, el) => ctx.chart || ctx.bars ? ctx : {...ctx, chart: SECTION_CHART[el.closest('section.card')?.id]};
+// Shares from a chart's own text (its heading, legend, readout or callout) borrow that chart instead.
+const withSectionChart = (ctx, el) => ctx.chart || ctx.bars ? ctx : {...ctx, chart: chartNear(el) || SECTION_CHART[el.closest('section.card')?.id]};
+// The chart that report text belongs to: the one it sits in, else the first chart under its heading, before the next.
+function chartNear(el) {
+  const isChart = n => n.id && n.querySelector(':scope > svg.chart');
+  const own = el.closest('[id]'); if (own && isChart(own)) return own.id;
+  const section = el.closest('section.card');
+  if (!section) return null;
+  // Headings and charts in reading order; a block that holds its own heading (the calendar) reads as its own run.
+  const marks = [...section.querySelectorAll('h3, [id]')].filter(n => n.matches('h3') || isChart(n));
+  const before = marks.filter(n => n.compareDocumentPosition(el) & (Node.DOCUMENT_POSITION_FOLLOWING | Node.DOCUMENT_POSITION_CONTAINED_BY) || n.contains(el));
+  const head = before.findLast(n => n.matches('h3'));
+  if (!head) return null;
+  const next = marks[marks.indexOf(head) + 1];
+  return next && !next.matches('h3') ? next.id : null;
+}
 function contextFromSelection() {
   const sel = getSelection();
   if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
@@ -371,7 +386,9 @@ function contextFromSelection() {
   const owner = el.closest('[data-share]');
   // Quoted messages share as a quote; interface text shares its section instead.
   const section = el.closest('section.card')?.id?.replace(/^s-/, '');
-  const ctx = owner ? shareCtx.get(owner.dataset.share) : el.closest('blockquote, .msg .text') ? share('selection', {text}) : section && sectionShare(section);
+  const quote = !owner && el.closest('blockquote, .msg .text'), whole = !owner && !quote && section && sectionShare(section);
+  // A section's share takes the chart the selected text belongs to, over the section's main one.
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : quote ? share('selection', {text}) : whole && {...whole, chart: chartNear(el) || whole.chart};
   return ctx && {ctx: withSectionChart(ctx, el), rect: range.getBoundingClientRect()};
 }
 document.addEventListener('pointerup', e => {

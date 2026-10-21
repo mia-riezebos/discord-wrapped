@@ -3113,7 +3113,22 @@ pop.addEventListener('click', async e => {
 /* triggers */
 // Shares without a chart of their own borrow the main chart of the section they came from.
 const SECTION_CHART = {'s-overview': 'year-chart', 's-rhythm': 'heat-chart', 's-people': 'share-chart', 's-words': 'bump-chart', 's-search': 'search-chart'};
-const withSectionChart = (ctx, el) => ctx.chart || ctx.bars ? ctx : {...ctx, chart: SECTION_CHART[el.closest('section.card')?.id]};
+// Shares from a chart's own text (its heading, legend, readout or callout) borrow that chart instead.
+const withSectionChart = (ctx, el) => ctx.chart || ctx.bars ? ctx : {...ctx, chart: chartNear(el) || SECTION_CHART[el.closest('section.card')?.id]};
+// The chart that report text belongs to: the one it sits in, else the first chart under its heading, before the next.
+function chartNear(el) {
+  const isChart = n => n.id && n.querySelector(':scope > svg.chart');
+  const own = el.closest('[id]'); if (own && isChart(own)) return own.id;
+  const section = el.closest('section.card');
+  if (!section) return null;
+  // Headings and charts in reading order; a block that holds its own heading (the calendar) reads as its own run.
+  const marks = [...section.querySelectorAll('h3, [id]')].filter(n => n.matches('h3') || isChart(n));
+  const before = marks.filter(n => n.compareDocumentPosition(el) & (Node.DOCUMENT_POSITION_FOLLOWING | Node.DOCUMENT_POSITION_CONTAINED_BY) || n.contains(el));
+  const head = before.findLast(n => n.matches('h3'));
+  if (!head) return null;
+  const next = marks[marks.indexOf(head) + 1];
+  return next && !next.matches('h3') ? next.id : null;
+}
 function contextFromSelection() {
   const sel = getSelection();
   if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
@@ -3124,7 +3139,9 @@ function contextFromSelection() {
   const owner = el.closest('[data-share]');
   // Quoted messages share as a quote; interface text shares its section instead.
   const section = el.closest('section.card')?.id?.replace(/^s-/, '');
-  const ctx = owner ? shareCtx.get(owner.dataset.share) : el.closest('blockquote, .msg .text') ? share('selection', {text}) : section && sectionShare(section);
+  const quote = !owner && el.closest('blockquote, .msg .text'), whole = !owner && !quote && section && sectionShare(section);
+  // A section's share takes the chart the selected text belongs to, over the section's main one.
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : quote ? share('selection', {text}) : whole && {...whole, chart: chartNear(el) || whole.chart};
   return ctx && {ctx: withSectionChart(ctx, el), rect: range.getBoundingClientRect()};
 }
 document.addEventListener('pointerup', e => {
@@ -3624,8 +3641,8 @@ export function storyCard(story, guessResult) {
 
 /**
  * The share context for a reel's summary: `title` ("2025", "All time") as the hero under the summary's heading, one
- * line per story's answer, and the score when any guess was locked in. The post skips answers that name someone
- * their story's post leaves out.
+ * line per story's answer, and the score when any guess was locked in, with every story's `names`. The post skips
+ * answers that name someone their story's post leaves out.
  */
 export function summaryCard(stories, {title, ending, score = ''}) {
   const names = stories.flatMap(s => s.card.names || []), mark = t => markNames(t, names);
@@ -3636,6 +3653,7 @@ export function summaryCard(stories, {title, ending, score = ''}) {
     headline: title,
     lines: stories.map(s => mark(s.answer)),
     guess: score,
+    names,
   };
 }
 
@@ -3690,7 +3708,7 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
  * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
- * storyCard (with the story's guess, and `snapshot()`, a frozen copy of the frame for the share image) or summaryCard, and `host` is an element inside the dialog for any popover it
+ * storyCard (with the story's guess) or summaryCard, plus `snapshot()`, a frozen copy of the frame for the share image, and `host` is an element inside the dialog for any popover it
  * opens; without onShare neither button shows. `note` is one line shown over the first story (why a year's theme
  * isn't playing). Returns {close}.
  */
@@ -3918,10 +3936,24 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
   q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
-  // The story as it stands, for its share image: the frame with only its label and the current stage, every animated
-  // box held at its end state, mounted out of sight in the dialog so the share sheet can redact and measure it.
+  // The frame as it stands, for its share image, mounted out of sight in the dialog so the share sheet can redact and
+  // measure it. A story keeps its label and current stage, every animated box held at its end state; the summary
+  // keeps its heading, score and answers, grown to show every answer.
   const snapshot = () => {
-    const live = stages.lastElementChild, stage = live.cloneNode(true), copy = frame.cloneNode(false), {width, height} = frame.getBoundingClientRect();
+    const copy = frame.cloneNode(false), {width, height} = frame.getBoundingClientRect();
+    Object.assign(copy.style, {position: 'fixed', left: '-200vw', top: '0', width: width + 'px', height: height + 'px', aspectRatio: 'auto', borderRadius: '0'});
+    if (state.phase === 'summary') {
+      const s = summary.cloneNode(true);
+      s.lastElementChild.remove();
+      Object.assign(s.style, {overflow: 'visible', paddingBottom: 'calc(40px + 10cqw)'});
+      copy.append(s);
+      dialog.append(copy);
+      s.style.bottom = 'auto';
+      copy.style.height = Math.max(height, s.offsetHeight) + 'px';
+      s.style.bottom = '0';
+      return copy;
+    }
+    const live = stages.lastElementChild, stage = live.cloneNode(true);
     const to = [stage, ...stage.querySelectorAll('*')];
     [live, ...live.querySelectorAll('*')].forEach((n, k) => {
       if (!n.getAnimations().length) return;
@@ -3935,12 +3967,11 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     const stagesCopy = stages.cloneNode(false);
     stagesCopy.append(stage);
     copy.append(stagesCopy, chrome);
-    Object.assign(copy.style, {position: 'fixed', left: '-200vw', top: '0', width: width + 'px', height: height + 'px', aspectRatio: 'auto', borderRadius: '0'});
     dialog.append(copy);
     return copy;
   };
   q('.reel-share').onclick = e => onShare?.({...storyCard(list[state.i], state.guesses[list[state.i].id]), snapshot}, e.currentTarget, dialog);
-  if (onShare) q('.reel-share-all').onclick = e => onShare(state.share, e.currentTarget, dialog);
+  if (onShare) q('.reel-share-all').onclick = e => onShare({...state.share, snapshot}, e.currentTarget, dialog);
   q('.reel-zone-prev').onclick = prev;
   // Tapping the frame never skips an open guess; Skip, Next and → do.
   q('.reel-zone-next').onclick = () => state.phase !== 'guess' && next();
