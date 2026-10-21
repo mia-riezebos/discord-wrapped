@@ -53,7 +53,7 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  */
 export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
-  const ASK_MIN = 1500;
+  const ASK_HOLD = 1500;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sectionName = id => STORY_SECTIONS.find(s => s.id === id)?.name || '';
   const icon = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -87,7 +87,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   const say = text => { live.textContent = ''; setTimeout(() => { live.textContent = text; }, 50); };
   const settle = anims => Promise.allSettled(anims.map(a => a.finished));
   const finish = anims => anims.forEach(a => { try { a.finish(); } catch { a.cancel(); } });
-  const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime; return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
+  // Milliseconds until the last of `anims` ends.
+  const endOf = anims => anims.reduce((m, a) => { const e = a.effect?.getComputedTiming().endTime - (a.currentTime ?? 0); return Number.isFinite(e) ? Math.max(m, e) : m; }, 0);
   const setPhase = phase => {
     state.phase = phase; frame.dataset.phase = phase;
     frame.style.setProperty('--reel-chrome', theme.chrome?.(state.i, phase) || '');
@@ -201,8 +202,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       if (my !== state.token) return;
       state.guesses[story.id] = result;
     } else {
-      // Otherwise the question holds for 1.5 s, or until its entrance ends if that's longer.
-      const beat = fill(0.3, Math.max(ASK_MIN, endOf(askAnims)));
+      // Otherwise the question stays readable for 1.5 s after its entrance lands.
+      const beat = fill(0.3, endOf(askAnims) + ASK_HOLD);
       state.skip = () => { finish(askAnims); beat.finish(); };
       await settle([beat]);
       if (my !== state.token) return;
