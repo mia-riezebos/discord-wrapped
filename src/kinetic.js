@@ -82,11 +82,16 @@ export const KINETIC = (() => {
     pop(tag, at);
   }
   // Ranked rows of [label, shown value, count] at the foot of the field, each over a bar of its count, row `on` in full ink.
-  function ranked(F, rows, on, at) {
+  // Row `mine` is marked as your guess; its label clips first, so the mark always shows.
+  function ranked(F, rows, on, at, mine = -1) {
     const max = Math.max(1, ...rows.map(r => r[2])), box = el('ol', 'k-picks', null, F);
     rows.forEach(([label, value, n], k) => {
       const row = el('li', k === on ? 'on' : null, null, box);
-      el('span', null, label, row);
+      if (k === mine) {
+        const cell = el('span', 'k-mine', null, row);
+        el('span', null, label, cell);
+        el('em', null, ' (your guess)', cell);
+      } else el('span', null, label, row);
       el('b', null, value, row);
       const bar = hide(el('i', null, null, row));
       bar.style.width = `${Math.max(2, 100 * n / max)}%`;
@@ -96,7 +101,7 @@ export const KINETIC = (() => {
   // A pick-one reveal: every choice as a bar of its count, the answer in full ink and your pick marked.
   function choices(F, s, r, at) {
     const {options, answer} = s.guess;
-    ranked(F, options.map(o => [o.label + (r && o.key === r.guess ? ' (your guess)' : ''), num(o.count), o.count]), options.findIndex(o => o.key === answer), at);
+    ranked(F, options.map(o => [o.label, num(o.count), o.count]), options.findIndex(o => o.key === answer), at, r ? options.findIndex(o => o.key === r.guess) : -1);
   }
   const plural = (n, one, many = one + 's') => `${num(n)} ${n === 1 ? one : many}`, times = n => plural(n, 'time');
 
