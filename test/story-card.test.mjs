@@ -53,6 +53,19 @@ test('hiding names hides them on the card and puts the count in place of a name 
   assert.doesNotMatch(text(hidden.fact), /Sam|Alex/);
 });
 
+test('a DM name stays out of every post, even a right guess or the summary, but stays on the card', () => {
+  const dm = (id, name, count) => ({id, name, count, group: 'DMs'});
+  const people = buildStories({...report, channels: [dm('1', 'Sam', 900), dm('2', 'Alex', 400), dm('3', 'Kim', 100)]}, YEAR);
+  const topDm = people.find(s => s.id === 'top-dm');
+  const ctx = storyCard(topDm, scoreGuess(topDm.guess, topDm.guess.answer, '1'));
+  assert.doesNotMatch(ctx.text, /Sam/);
+  assert.equal(unmark(ctx.headline), 'Sam');
+  assert.match(unmark(ctx.guess), /I guessed Sam/);
+  const summary = summaryCard(people.filter(s => s.section === 'people'), {title: '2025', ending: ''});
+  assert.doesNotMatch(summary.text, /Sam/);
+  assert.ok(summary.lines.some(l => unmark(l).startsWith('Sam')));
+});
+
 test("the summary card lists every story's answer under the period, with the score", () => {
   const ctx = summaryCard(stories, {title: '2025', ending: 'That was your 2025', score: '2 of 2 right'});
   assert.equal(ctx.headline, '2025');
