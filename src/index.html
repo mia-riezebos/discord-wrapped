@@ -131,11 +131,11 @@
       <div class="custom" id="p-custom" hidden><label>From<input type="date" id="p-from"></label><label>To<input type="date" id="p-to"></label></div>
       <button type="button" class="play primary" id="p-play" hidden></button>
     </div>
-    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
+    <div class="hero"><h1 id="hero-title"></h1><p id="hero-sub"></p><button type="button" class="play-cta primary" id="hero-play" hidden>Play your Wrapped</button><p class="muted share-tip">Select a number, word or highlight to share it.</p><div id="notice" aria-live="polite"></div></div>
     <section class="card empty-period hidden" id="s-empty"><h2 id="empty-title">No messages in this period</h2><p>Pick another period, or choose All time.</p></section>
 
     <section class="card" id="s-overview">
-      <div class="sechead"><h2>Overview</h2><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
+      <div class="sechead"><h2>Overview</h2><button class="share-btn reel-btn" type="button" data-reel="overview" aria-label="Play Overview" hidden>Play</button><button class="share-btn" type="button" data-share-section="overview">Share</button></div>
       <div class="metrics" id="counts"></div>
       <h3 id="period-chart-title">Messages per year</h3>
       <div class="legend" id="group-legend"></div>
@@ -188,7 +188,7 @@
     </section>
 
     <section class="card" id="s-words">
-      <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn" type="button" data-share-section="words">Share</button></div>
+      <div class="sechead"><h2>Words &amp; links</h2><button class="share-btn reel-btn" type="button" data-reel="words" aria-label="Play Words &amp; links" hidden>Play</button><button class="share-btn" type="button" data-share-section="words">Share</button></div>
       <h3>Topics over time</h3>
       <div class="legend" id="topic-legend"></div>
       <div id="topic-chart"></div>
@@ -236,7 +236,7 @@
     </section>
 
     <section class="card" id="s-fame">
-      <div class="sechead"><h2>Hall of fame</h2><button class="share-btn" type="button" data-share-section="fame">Share</button></div>
+      <div class="sechead"><h2>Hall of fame</h2><button class="share-btn reel-btn" type="button" data-reel="fame" aria-label="Play Hall of fame" hidden>Play</button><button class="share-btn" type="button" data-share-section="fame">Share</button></div>
       <div class="fame" id="fame"></div>
     </section>
 

@@ -193,8 +193,11 @@ function periodControls() {
     }
   }
   // Reels exist for a year or All time only.
-  $('p-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
+  $('p-play').hidden = $('hero-play').hidden = !!D.empty || !['year', 'all'].includes(P.kind);
   $('p-play').textContent = `Play ${reelTitle()}`;
+  // A section's reel button shows when the section has stories to play.
+  const playing = new Set($('p-play').hidden ? [] : buildStories(D, P).map(s => s.section));
+  document.querySelectorAll('[data-reel]').forEach(b => b.hidden = !playing.has(b.dataset.reel));
   $('p-from').min = $('p-to').min = D.bounds.first; $('p-from').max = $('p-to').max = D.bounds.last;
   // Leave a date alone while someone is typing in it.
   if (P.kind === 'custom') for (const [id, v] of [['p-from', P.from], ['p-to', P.to]]) if (document.activeElement !== $(id)) $(id).value = v;
@@ -220,7 +223,9 @@ $('period').addEventListener('change', e => {
 });
 const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
 // No "Share this" until a story can share its own card (#29).
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
+$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, section: e.currentTarget.dataset.reel, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
+// "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
+document.querySelectorAll('#hero-play, [data-reel]').forEach(b => b.onclick = $('p-play').onclick);
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
