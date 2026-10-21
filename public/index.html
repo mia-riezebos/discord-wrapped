@@ -289,6 +289,8 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .sp-close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 8px; }
 .sp-img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); background: var(--soft); object-fit: cover; }
+.sp-img.tall { aspect-ratio: 9 / 16; width: auto; height: min(46vh, 420px); margin: 0 auto; }
+.sp-shape { margin-top: 8px; }
 .sp-label { margin: 10px 0; }
 .sp-text { min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
 .sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -2094,6 +2096,131 @@ startWorker();
 $('status').innerHTML = '<div>Checking for a saved report…</div>';
 call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).catch(() => { $('status').innerHTML = ''; });
 
+/* Share card builder. Pure layout plus a thin canvas painter, so the tests can import it. */
+// Every share image comes from one card model:
+//   {question?, hero, fact?, chart?: {image, width, height}, bars?: {items: [[label, value, shown]], highlight}, guess?, host}
+// chart is an already decoded image of a report chart; bars is a ranked list with the shared row highlighted.
+export const CARD_SHAPES = {wide: [1200, 675], tall: [1080, 1920]};
+
+// Sizes per shape. Wide matches the original 16:9 card. Tall scales it up, centres the content and keeps the host
+// clear of the bottom of the screen, where story apps put their reply bar.
+const SPEC = {
+  wide: {P: 64, band: 10, brand: 26, brandY: 74, question: 28, hero: [120, 76], heroMin: 30, fact: 34, factStep: 42, guess: 30, row: 34, host: 28, hostY: 36, foot: 80},
+  tall: {P: 96, band: 24, brand: 40, brandY: 160, question: 44, hero: [180, 128], heroMin: 48, fact: 50, factStep: 64, guess: 46, row: 60, host: 44, hostY: 200, foot: 300},
+};
+
+// Greedy word wrap. Returns lines; the last kept line ends in an ellipsis when the text runs over maxLines.
+function wrap(text, maxW, maxLines, width) {
+  const out = [];
+  let line = '';
+  for (const w of text.split(/\s+/).filter(Boolean)) {
+    const next = line ? line + ' ' + w : w;
+    if (line && width(next) > maxW) { out.push(line); line = w; } else line = next;
+  }
+  if (line) out.push(line);
+  if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
+  return out;
+}
+// Largest size from max down to min at which text fits maxLines lines of maxW.
+function fitSize(text, max, min, weight, maxW, maxLines, measure) {
+  let size = max;
+  for (;; size -= 4) {
+    const width = t => measure(t, size, weight), lines = wrap(text, maxW, Infinity, width);
+    if (size <= min || lines.length <= maxLines && lines.every(l => width(l) <= maxW)) return Math.max(size, min);
+  }
+}
+// Shorten a single-line label by characters until it fits.
+function clipTo(text, maxW, width) {
+  let t = text;
+  while (t.length > 3 && width(t) > maxW) t = t.slice(0, -2).trimEnd() + '…';
+  return t;
+}
+
+/**
+ * Positions every piece of a card without touching a canvas. measure(text, size, weight) returns the drawn width.
+ * Returns {width, height, band, runs, words, chart, bars}: runs are single lines of text with their left x and
+ * baseline y; words are one box per word of each run, the targets redaction and tap overlays attach to.
+ */
+export function layoutCard(model, shape, measure) {
+  const [W, H] = CARD_SHAPES[shape], S = SPEC[shape], P = S.P, maxW = W - 2 * P, runs = [];
+  const run = (role, text, x, y, size, weight, color) => { runs.push({role, text, x, y, size, weight, color}); return runs.length - 1; };
+  const block = (role, text, size, weight, color, maxLines, lh, y) => {
+    for (const l of wrap(text, maxW, maxLines, t => measure(t, size, weight))) { run(role, l, P, y, size, weight, color); y += size * lh; }
+    return y;
+  };
+  // Text first, from the brand line down; the tall card shifts it all later to centre the content.
+  run('brand', 'Discord Wrapped', P, S.brandY, S.brand, 600, 'muted');
+  const graphic = !!(model.chart || model.bars?.items.length);
+  const heroSize = fitSize(model.hero, S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, measure);
+  let y = S.brandY;
+  if (model.question) y = block('question', model.question, S.question, 600, 'muted', 2, 1.3, y + S.question * 1.6) - S.question * 1.3;
+  y = block('hero', model.hero, heroSize, 700, 'fg', 2, 1.06, y + heroSize * 1.2);
+  if (model.fact) for (const l of wrap(model.fact, maxW, 2, t => measure(t, S.fact, 400))) { y += 4; run('fact', l, P, y, S.fact, 400, 'muted'); y += S.factStep; }
+  if (model.guess) y = block('guess', model.guess, S.guess, 600, 'fg', 2, 1.3, y + S.guess * .4);
+  const top = y + 10, bottom = H - S.foot, room = bottom - top;
+  let chart = null, bars = null, height = 0;
+  if (model.chart && room > 60) {
+    const k = Math.min(maxW / model.chart.width, room / model.chart.height);
+    chart = {image: model.chart.image, x: P, y: top, w: model.chart.width * k, h: model.chart.height * k};
+    height = chart.h;
+  } else if (!model.chart && model.bars?.items.length && room >= 60) {
+    bars = layoutBars(model.bars, P, top, maxW, room, S.row, measure, run);
+    height = bars.height;
+  }
+  // Tall cards centre everything above the footer.
+  if (shape === 'tall') {
+    const from = S.brandY - S.brand, dy = Math.max(0, S.band + (bottom - S.band - (top + height - from)) / 2 - from);
+    for (const r of runs) r.y += dy;
+    if (chart) chart.y += dy;
+    if (bars) for (const r of bars.rows) r.y += dy;
+  }
+  run('host', model.host, P, H - S.hostY, S.host, 600, 'accent');
+  return {width: W, height: H, band: S.band, runs, words: runs.flatMap((r, i) => wordsOf(r, i, measure)), chart, bars: bars?.rows || null};
+}
+
+// A ranked list as horizontal bars, the shared row in the accent colour and the rest quiet. Labels and values are runs.
+function layoutBars({items, highlight}, x, top, w, h, maxRow, measure, run) {
+  const n = items.length, gap = maxRow / 34 * 6, rh = Math.min(maxRow, (h - gap * (n - 1)) / n), size = Math.round(rh * .62);
+  const labelW = Math.min(w * .36, maxRow / 34 * 360), max = Math.max(...items.map(r => r[1])), rows = [];
+  items.forEach(([name, v, shown], i) => {
+    const y = top + i * (rh + gap), on = i === highlight, weight = on ? 700 : 400, color = on ? 'fg' : 'muted', base = y + rh / 2 + size * .36;
+    const value = shown ?? String(v), label = clipTo(name, labelW - 16, t => measure(t, size, weight));
+    run('bar-label', label, x, base, size, weight, color);
+    run('bar-value', value, x + w - measure(value, size, weight), base, size, weight, color);
+    rows.push({x: x + labelW, y: y + 3, w: Math.max(4, (w - labelW - 120) * v / max), h: rh - 6, on});
+  });
+  return {rows, height: n * rh + (n - 1) * gap};
+}
+
+// One box per word: x from the width of the text before it, height from the font size.
+function wordsOf(r, runIndex, measure) {
+  const out = [];
+  for (const m of r.text.matchAll(/\S+/g)) {
+    const x = r.x + (m.index ? measure(r.text.slice(0, m.index), r.size, r.weight) : 0);
+    out.push({text: m[0], run: runIndex, role: r.role, x, y: r.y - r.size * .82, w: measure(m[0], r.size, r.weight), h: r.size * 1.02});
+  }
+  return out;
+}
+
+/**
+ * Draws a card model to a new canvas. theme: {font, colors: {surface, fg, muted, accent, soft}}.
+ * Returns {canvas, words} with word boxes in canvas pixels. redaction is reserved for hiding names and quotes.
+ */
+export function drawCard(model, shape, theme, redaction) {
+  const c = document.createElement('canvas'), [W, H] = CARD_SHAPES[shape];
+  c.width = W; c.height = H;
+  const g = c.getContext('2d'), col = theme.colors, font = (size, weight) => `${weight} ${size}px ${theme.font}`;
+  const measure = (t, size, weight) => { g.font = font(size, weight); return g.measureText(t).width; };
+  const L = layoutCard(model, shape, measure);
+  g.fillStyle = col.surface; g.fillRect(0, 0, W, H);
+  g.fillStyle = col.accent; g.fillRect(0, 0, W, L.band);
+  if (L.chart) try { g.drawImage(L.chart.image, L.chart.x, L.chart.y, L.chart.w, L.chart.h); } catch { /* The card still works without its chart. */ }
+  for (const b of L.bars || []) { g.fillStyle = b.on ? col.accent : col.soft; g.beginPath(); g.roundRect(b.x, b.y, b.w, b.h, 4); g.fill(); }
+  g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+  for (const r of L.runs) { g.font = font(r.size, r.weight); g.fillStyle = col[r.color]; g.fillText(r.text, r.x, r.y); }
+  return {canvas: c, words: L.words};
+}
+
 /* ---------- sharing ---------- */
 // Anything marked with shareAttr() can be shared: by selecting text inside it, clicking it (data-share-click),
 // or a section's Share button. Each context carries first-person post text plus what goes on the image.
@@ -2148,90 +2275,62 @@ async function svgImage(svg, focus) {
   try { await img.decode(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
   return {img, w: +svg.getAttribute('width'), h: +svg.getAttribute('height')};
 }
-function wrapLines(g, text, maxWidth, maxLines) {
-  const words = text.split(' '), out = [];
-  let line = '';
-  for (const w of words) {
-    const next = line ? line + ' ' + w : w;
-    if (g.measureText(next).width > maxWidth && line) { out.push(line); line = w; } else line = next;
-  }
-  if (line) out.push(line);
-  if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
-  return out;
+// A share context as a card model. The chart is rasterised here; a chart that fails to load leaves it off the card.
+async function cardModel(ctx) {
+  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
+  let chart = null;
+  if (chartSvg) try { const {img, w, h} = await svgImage(chartSvg, ctx.focus); chart = {image: img, width: w, height: h}; } catch { /* no chart */ }
+  const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
+  return {hero: ctx.headline, fact: ctx.sub, chart, bars, host: SITE_HOST};
 }
-async function renderCard(ctx) {
-  const W = 1200, H = 675, P = 64, c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d'), css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const font = getComputedStyle(document.body).fontFamily;
-  g.fillStyle = css('--surface'); g.fillRect(0, 0, W, H);
-  g.fillStyle = css('--accent'); g.fillRect(0, 0, W, 10);
-  g.textBaseline = 'alphabetic';
-  g.fillStyle = css('--muted'); g.font = `600 26px ${font}`;
-  g.fillText('Discord Wrapped', P, 74);
-  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg'), graphic = chartSvg || ctx.bars;
-  // Headline shrinks until it fits on two lines; charts leave less room.
-  let size = graphic ? 76 : 120, lines;
-  do { g.font = `700 ${size}px ${font}`; lines = wrapLines(g, ctx.headline, W - 2 * P, 2); size -= 4; }
-  while (lines.some(l => g.measureText(l).width > W - 2 * P) && size > 30);
-  g.fillStyle = css('--fg');
-  let y = 74 + size * 1.25;
-  for (const l of lines) { g.fillText(l, P, y); y += size * 1.1; }
-  if (ctx.sub) {
-    g.font = `400 34px ${font}`; g.fillStyle = css('--muted');
-    for (const l of wrapLines(g, ctx.sub, W - 2 * P, 2)) { y += 4; g.fillText(l, P, y); y += 42; }
-  }
-  if (chartSvg) {
-    try {
-      const {img, w, h} = await svgImage(chartSvg, ctx.focus), top = y + 10, boxH = H - 80 - top, boxW = W - 2 * P;
-      const k = Math.min(boxW / w, boxH / h);
-      if (boxH > 60) g.drawImage(img, P, top, w * k, h * k);
-    } catch { /* The card still works without its chart. */ }
-  }
-  if (ctx.bars && !chartSvg) drawBars(g, ctx.bars, P, y + 10, W - 2 * P, H - 80 - (y + 10), font, css);
-  g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
-  g.fillText(SITE_HOST, P, H - 36);
-  g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
-  g.fillText('Package processed in your browser', W - P, H - 38);
-  return new Promise(r => c.toBlob(r, 'image/png'));
-}
-
-// A ranked list as horizontal bars, the shared row in the accent colour and the rest muted.
-function drawBars(g, {items, highlight}, x, top, w, h, font, css) {
-  if (h < 60 || !items.length) return;
-  const rows = items.length, gap = 6, rh = Math.min(34, (h - gap * (rows - 1)) / rows), labelW = Math.min(360, w * .36), max = Math.max(...items.map(r => r[1]));
-  g.textBaseline = 'middle';
-  items.forEach(([name, v], i) => {
-    const y = top + i * (rh + gap), on = i === highlight;
-    g.font = `${on ? 700 : 400} ${Math.round(rh * .62)}px ${font}`; g.fillStyle = css(on ? '--fg' : '--muted'); g.textAlign = 'left';
-    let label = name; while (label.length > 3 && g.measureText(label).width > labelW - 16) label = label.slice(0, -2) + '…';
-    g.fillText(label, x, y + rh / 2);
-    g.fillStyle = css(on ? '--accent' : '--soft');
-    g.beginPath(); g.roundRect(x + labelW, y + 3, Math.max(4, (w - labelW - 120) * v / max), rh - 6, 4); g.fill();
-    g.fillStyle = css(on ? '--fg' : '--muted'); g.textAlign = 'right';
-    g.fillText(fmt(v), x + w, y + rh / 2);
-  });
-  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+const pageTheme = () => {
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
+};
+async function renderCard(ctx, shape) {
+  const {canvas} = drawCard(await cardModel(ctx), shape, pageTheme(), null);
+  return new Promise(r => canvas.toBlob(r, 'image/png'));
 }
 
 /* popover */
 const pop = $('share-pop');
 let current = null, anchor = null;
+// 9:16 for stories on phones, 16:9 for posts elsewhere; a choice holds for the rest of the visit.
+let cardShape = null;
+const SHAPES = [['tall', '9:16'], ['wide', '16:9']];
 function openShare(ctx, rect) {
-  current = {ctx, card: renderCard(ctx)};
-  const canNative = !!navigator.share;
+  current = {ctx};
+  const canNative = !!navigator.share, shape = cardShape || (innerWidth < 600 ? 'tall' : 'wide');
   pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close sharing">×</button></div>
     <img class="sp-img" alt="Share card showing ${esc(ctx.headline)}. ${esc(ctx.sub || '')}">
+    <fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
     <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(`${ctx.text} ${CTA}`)}</textarea></label>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
     <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
-  current.card.then(b => { if (b && current?.ctx === ctx) pop.querySelector('.sp-img').src = URL.createObjectURL(b); });
+  showCard(shape);
   addEventListener('resize', () => current && place(), {once: true});
   pop.classList.remove('hidden');
   place(rect);
   pop.querySelector('.sp-text').focus({preventScroll: true});
 }
+// Renders the open context at a shape; a later call wins if an earlier render is still running.
+function showCard(shape) {
+  const cur = current, card = renderCard(cur.ctx, shape), img = pop.querySelector('.sp-img');
+  Object.assign(cur, {card, shape});
+  img.classList.toggle('tall', shape === 'tall');
+  card.then(b => {
+    if (!b || current !== cur || cur.card !== card) return;
+    if (img.src) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(b);
+  });
+}
+pop.addEventListener('change', e => {
+  if (e.target.name !== 'sp-shape' || !current) return;
+  cardShape = e.target.value;
+  showCard(cardShape);
+  place();
+});
 function place(rect = anchor) {
   anchor = rect;
   if (innerWidth < 600 || !rect) { pop.classList.add('sheet'); pop.style.left = pop.style.top = ''; return; }
