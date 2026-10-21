@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; worker-src 'self'; style-src 'unsafe-inline'; img-src 'self' data: blob:; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Advertise on Discord Wrapped | Sidebar ads and prices</title>
 <meta name="description" content="Book a tall or square sidebar ad on Discord Wrapped. See sizes, launch prices and next openings. Pay once through GitHub Sponsors, then send me your ad.">
 <link rel="canonical" href="https://discordwrapped.app/advertise">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Discord Wrapped">
 <meta property="og:url" content="https://discordwrapped.app/advertise">
@@ -324,6 +327,13 @@ footer.site .sponsor-level li { flex: 0 0 calc((100% - (var(--cols) - 1) * var(-
 .level-hero a { min-height: 120px; }
 .level-featured a { min-height: 72px; }
 @media (max-width: 760px) { footer.site .sponsor-level { --cols: 3 !important; } footer.site .level-grid, footer.site .level-featured { --cols: 2 !important; } footer.site .level-hero { --cols: 1 !important; } }
+/* Offline there are no sponsors to show, so the rails and footer grid go rather than show invitations. */
+.offline .rail, .offline .sponsor-grid { display: none !important; }
+
+/* "New version ready": waits at the bottom until you reload, and stays out of the way while a modal (the story player) is open. */
+.update-notice { position: fixed; z-index: 25; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / .2); font-size: 14px; white-space: nowrap; }
+body:has([aria-modal="true"]:not([hidden])) .update-notice { display: none; }
+@media print { .update-notice { display: none; } }
 
 /* advertise page */
 .advertise { padding-top: 32px; }
@@ -588,7 +598,7 @@ async function startRails() {
   try {
     const r = await fetch('/api/ads', {signal: AbortSignal.timeout(5000)});
     if (r.ok) data = await r.json();
-  } catch { /* Offline or opened from a file: show the invitation instead. */ }
+  } catch { document.documentElement.classList.add('offline'); /* No network: hide the rails (style.css). */ }
   const placements = data?.placements ?? PLACEMENT_FALLBACK;
   for (const [placement, conf] of Object.entries(placements)) {
     const ads = (data?.ads ?? []).filter(a => a.placement === placement).map(a => ({...a, width: conf.width, height: conf.height}));
@@ -619,7 +629,7 @@ async function startFooterGrid() {
   try {
     const r = await fetch('/api/footer', {signal: AbortSignal.timeout(5000)});
     if (r.ok) data = await r.json();
-  } catch { /* Offline: the invitation below still shows. */ }
+  } catch { document.documentElement.classList.add('offline'); }
   const levels = (data?.levels ?? []).filter(l => l.sponsors.length);
   host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${l.columns}">${l.sponsors.map(s => `<li><a href="${adEsc(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
     <p class="muted">${levels.length ? 'Thank you. ' : ''}<a href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor monthly on GitHub</a> to appear here.</p>`;
@@ -709,6 +719,39 @@ form.addEventListener('change', async e => {
 form.addEventListener('reset', () => setTimeout(() => { if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = null; renderPreview(); }));
 renderPreview();
 loadAvailability();
+
+/* ---------- offline and updates ---------- */
+// Offline, the sponsor rails and footer grid hide (style.css) instead of showing invitations nobody can follow.
+// ads.js also sets the class when the sponsor request can't reach the network, which navigator.onLine can miss.
+const markOffline = () => document.documentElement.classList.toggle('offline', !navigator.onLine);
+addEventListener('online', markOffline); addEventListener('offline', markOffline); markOffline();
+
+// The service worker only runs on the site. A saved copy (file://) can't register one and keeps working from its one file.
+if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
+  const sw = navigator.serviceWorker;
+  let asked = false;
+  // Shown at the bottom and never forced: style.css hides it while a modal (the story player) is open.
+  const updateReady = reg => {
+    if (document.querySelector('.update-notice')) return;
+    const box = Object.assign(document.createElement('div'), {className: 'update-notice', innerHTML: '<span>New version ready.</span> <button type="button" class="primary">Reload</button>'});
+    box.setAttribute('role', 'status');
+    box.querySelector('button').addEventListener('click', () => {
+      // Reloading alone keeps the old worker while any tab uses it, so the waiting one is told to take over first.
+      if (reg.waiting) { asked = true; reg.waiting.postMessage('activate'); } else location.reload();
+    });
+    document.body.append(box);
+  };
+  sw.register('/sw.js').then(reg => {
+    const watch = w => w?.addEventListener('statechange', () => { if (w.state === 'installed' && sw.controller) updateReady(reg); });
+    if (reg.waiting && sw.controller) updateReady(reg);
+    watch(reg.installing);
+    reg.addEventListener('updatefound', () => watch(reg.installing));
+    // Long-open tabs look for a release when they come back to the front.
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    // Another tab chose Reload: this one now runs on the new worker, so offer the same reload.
+    sw.addEventListener('controllerchange', () => asked ? location.reload() : updateReady(reg));
+  }).catch(() => { /* No worker: the site still works online. */ });
+}
 </script>
 </body>
 </html>
