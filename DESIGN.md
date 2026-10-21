@@ -57,6 +57,14 @@ with the shared row in the accent colour. A shared bump-chart word keeps its col
 9:16 card centres its content and keeps it clear of the bottom of the screen. The footer is the site host alone,
 bottom left.
 
+Every word on the card preview and in the post is a button: a tap hides it in both, and another tap brings it back.
+A hidden word is a felt-tip scribble on the card and ████ in the post, one fixed width whatever it covers, and
+neighbouring hidden words merge into one mark. "Hide names" (on by default) covers server, channel and DM names
+everywhere, bar labels included; "Hide quotes" covers quoted messages, ranked words and search terms, on the bump
+chart too. When the headline is a hidden name, the card shows the count instead. On phones, "Zoom in" shows the card
+at 2.5× in a pannable frame, so its small text is tappable. "Edit text" turns the post into a text box; later
+redactions still black out newly hidden terms in it.
+
 ## Motion
 
 Only opacity and colour transitions under 150 ms. Smooth scrolling and transitions turn off under

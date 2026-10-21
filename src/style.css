@@ -250,11 +250,37 @@ footer.site p { margin: 6px 0; font-size: 13px; }
 .sharepop.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-width: none; max-height: 85vh; border-radius: 16px 16px 0 0; }
 .sp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .sp-close { border: 0; background: none; font-size: 22px; line-height: 1; padding: 2px 8px; }
+/* The card preview: the image with a button over every word, so a tap hides it. Wider than the rest of the popover
+   so the card's small lines are tappable; phones zoom the card 2.5× and pan it instead. */
+.sharepop:not(.sheet) { width: 520px; }
+.sp-preview { border-radius: 8px; }
+.sp-card { position: relative; }
+.sp-card.tall { width: fit-content; margin: 0 auto; }
 .sp-img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; border: 1px solid var(--border); background: var(--soft); object-fit: cover; }
-.sp-img.tall { aspect-ratio: 9 / 16; width: auto; height: min(46vh, 420px); margin: 0 auto; }
+.sp-card.tall .sp-img { aspect-ratio: 9 / 16; width: auto; height: min(46vh, 420px); }
+.sp-hits { position: absolute; inset: 0; }
+.sp-hit { position: absolute; padding: 0; border: 1px solid transparent; background: none; border-radius: 3px; }
+.sp-hit:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); }
+.sp-hit:focus-visible { outline-offset: 0; }
+.sharepop.sheet .sp-preview.zoomed { overflow: auto; max-height: 52vh; overscroll-behavior: contain; border: 1px solid var(--border); }
+.sharepop.sheet .zoomed .sp-card:not(.tall) { width: 250%; }
+.sharepop.sheet .zoomed .sp-card.tall { margin: 0; }
+.sharepop.sheet .zoomed .sp-card.tall .sp-img { height: calc(2.5 * min(46vh, 420px)); }
+.sp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 10px; }
+.sp-zoom { margin-left: auto; padding: 4px 10px; font-size: 13px; border-radius: 99px; }
+.sharepop:not(.sheet) .sp-zoom { display: none; }
+.sp-zoom[aria-pressed=true] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.sp-hint { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.sp-post { margin: 4px 0 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; line-height: 1.9; }
+.sharepop:focus { outline: none; }
+.sp-word { padding: 0 1px; border: 0; border-radius: 3px; background: none; font-weight: 400; }
+.sp-cta { color: var(--muted); }
+.nowrap { white-space: nowrap; }
+.sp-edit { margin-left: auto; padding: 2px 8px; font-size: 13px; border: 0; background: none; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+@media (pointer: coarse) { .sp-word { padding: 4px 2px; } .sp-tools label { min-height: 40px; } }
 .sp-shape { margin-top: 8px; }
-.sp-label { margin: 10px 0; }
-.sp-text { min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
+.sp-label { display: flex; align-items: center; margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+.sp-text { margin-top: 4px; min-height: 72px; font-family: var(--font); font-size: 14px; resize: vertical; }
 .sp-platforms, .sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .sp-platforms button, .sp-actions button { padding: 6px 10px; font-size: 13px; }
 .sp-step ol { margin: 10px 0 6px; padding-left: 18px; color: var(--muted); }
