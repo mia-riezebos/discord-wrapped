@@ -1,13 +1,15 @@
 # Discord Wrapped
 
 Live at https://discordwrapped.app (also https://wrapped.mia.cx): drop in the `package.zip` from Discord (or the unzipped folder).
-To use it offline, download `public/index.html` and open it in a browser.
+It works offline after the first visit and can be installed as an app. You can also download `public/index.html` and open it in a browser.
 Everything is computed in the tab: a Web Worker unzips the package with the browser's own `DecompressionStream` and counts everything. Nothing is uploaded.
 The page's Content-Security-Policy only allows network requests to the hosts that serve the optional WebLLM library and model weights.
 
 - `src/`: `index.html`, `style.css`, `worker.js` (zip reader, parsing, aggregates, search, roast candidates), `app.js` (charts and UI), `share.js` (share popover), `card.js` (share card layout and drawing, tested in `test/card.test.mjs`), `ads.js` and `ads-schedule.js` (sponsor rails)
 - `worker/`: the Cloudflare Worker. It serves the static pages and forwards sponsor requests to the sponsor service
-- `python3 build.py` inlines `src/` into the single `public/index.html`
+- `python3 build.py` inlines `src/` into the single `public/index.html`, and writes `public/sw.js` and `public/manifest.webmanifest`
+- `src/sw.js` is the service worker. The build fills in the release (package version plus a hash of `public/`) and the files saved on the first visit: both pages, the manifest and `public/icons/`. It never caches `/api/`. Year themes under `public/themes/<year>/` are saved on first use. A new release waits until you choose Reload in the "New version ready" notice (`src/offline.js`)
+- `python3 scripts/icons.py` draws the icons in `public/icons/`; run it by hand when the mark changes
 - `pnpm check` rebuilds and fails if `public/index.html` is out of date; commit the rebuilt file with your change
 - `node test/node-check.mjs path/to/package.zip path/to/analysis.json` runs the worker under Node and compares it with a reference `analysis.json` from an earlier Python analysis (not included)
 

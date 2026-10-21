@@ -4,11 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; manifest-src 'self'; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Discord Wrapped | Your Discord stats and message history</title>
 <meta name="description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
 <link rel="canonical" href="https://discordwrapped.app/">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Discord Wrapped">
 <meta property="og:url" content="https://discordwrapped.app/">
@@ -44,6 +47,7 @@
 </head>
 <body id="top">
 <!--HEADER-->
+<div class="frame">
 <main id="landing" class="landing">
   <div class="wrap">
     <h1>Discord Wrapped</h1>
@@ -61,7 +65,7 @@
     </div>
     <ul class="promise">
       <li><strong>Stays on your device</strong>Your browser reads the package. The package and its messages are never uploaded.</li>
-      <li><strong>Works offline</strong>Save this page and open it with Wi-Fi off. Your browser saves the report so it survives reloads.</li>
+      <li><strong>Works offline</strong>After your first visit, the site opens with Wi-Fi off. Your browser saves the report so it survives reloads.</li>
       <li><strong>Only your side</strong>Discord exports the messages you sent, not replies from others.</li>
     </ul>
     <details class="howto">
@@ -89,7 +93,8 @@
       </details>
       <details>
         <summary>Can I use Discord Wrapped offline?</summary>
-        <p>Yes. Save the page and open it with Wi-Fi off. The report works from one HTML file. The optional AI roast needs a model download first.</p>
+        <p>Yes. It works offline after your first visit: open discordwrapped.app again with Wi-Fi off, or install it as an app from your browser's menu. You can also save the page and open the file. A saved copy uses the standard look. The optional AI roast needs a model download first.</p>
+        <p>Safari deletes a site's saved data after 7 days of browsing without a visit to it. That includes the offline copy and your saved report.</p>
       </details>
       <details>
         <summary>Does my report stay saved when I close the page?</summary>
@@ -257,8 +262,9 @@
     </section>
   </div>
 </div>
-<!--FOOTER-->
 <!--RAILS-->
+</div>
+<!--FOOTER-->
 <div class="tip" id="tip" role="presentation"></div>
 <div class="sharepop hidden" id="share-pop" role="dialog" aria-label="Share"></div>
 <script type="text/plain" id="worker-src">/*WORKER*/</script>

@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; worker-src 'self'; style-src 'unsafe-inline'; img-src 'self' data: blob:; manifest-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Advertise on Discord Wrapped | Sidebar ads and prices</title>
 <meta name="description" content="Book a tall or square sidebar ad on Discord Wrapped. See sizes, launch prices and next openings. Pay once through GitHub Sponsors, then send me your ad.">
 <link rel="canonical" href="https://discordwrapped.app/advertise">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Discord Wrapped">
 <meta property="og:url" content="https://discordwrapped.app/advertise">
@@ -21,6 +24,7 @@
 </head>
 <body id="top" class="page-advertise">
 <!--HEADER-->
+<div class="frame">
 <main class="wrap advertise">
   <section class="ad-hero">
     <h1>Advertise on Discord Wrapped</h1>
@@ -136,8 +140,9 @@
     <p><a class="button" href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor me monthly</a></p>
   </section>
 </main>
-<!--FOOTER-->
 <!--RAILS-->
+</div>
+<!--FOOTER-->
 <script type="module">/*ADVERTISE*/</script>
 </body>
 </html>

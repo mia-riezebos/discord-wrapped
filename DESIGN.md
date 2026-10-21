@@ -37,8 +37,8 @@ The selected period length is the one inverted control (foreground on background
 
 ## Shape and depth
 
-Radius 8 px for controls, 14 px for cards. Depth comes from borders. Only the share popover and the data menu
-cast shadows, because they float over content.
+Radius 8 px for controls, 14 px for cards. Depth comes from borders. Only the share popover, the data menu and the
+"New version ready" notice cast shadows, because they float over content.
 
 ## Charts
 
