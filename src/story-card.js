@@ -14,7 +14,8 @@ const markNames = (text, names = []) => {
 const keepsOut = (story, text) => (story.card.names || []).some(n => text.includes(n) && !story.share.includes(n));
 
 /**
- * The share context for one story: {text, question, headline, alt, sub, guess, columns?, bars?}. `guessResult` is
+ * The share context for one story: {text, question, headline, alt, sub, guess, names, columns?, bars?}; `names` are
+ * the names to mark wherever the story itself shows them. `guessResult` is
  * scoreGuess()'s result for the story's guess; a locked-in guess adds one line to the card and the post (unless it
  * names someone the post leaves out), a skip adds nothing. When the hero is a name and names are hidden, the card
  * shows the story's count (`alt`) instead.
@@ -29,6 +30,7 @@ export function storyCard(story, guessResult) {
     alt: Number(story.value).toLocaleString(),
     sub: mark(c.fact),
     guess: mark(line),
+    names: c.names || [],
     ...c.chart && {columns: {items: c.chart.buckets, highlight: c.chart.top}},
     ...c.list && {bars: {items: c.list.map(([label, n]) => [mark(label), n]), highlight: 0}},
   };

@@ -200,7 +200,7 @@ test('who you DMed most guesses between your #1 and two of #2 to #10, and keeps 
   assert.equal(s.share, 'I sent one person 300 Discord DMs in 2025. That\'s 31% of all my DMs.');
   assert.doesNotMatch(s.share, /ada/);
   assert.equal(s.card.hero, 'ada');
-  assert.deepEqual(s.card.names, ['ada']);
+  assert.deepEqual([...s.card.names].sort(), s.guess.options.map(o => o.label).sort(), 'every name the choices show can be hidden');
   assert.match(s.card.fact, /^300 messages, /);
 });
 
@@ -212,7 +212,7 @@ test('inner circle is the top ten DMs\' share of all DM messages', () => {
   assert.equal(s.share, 'I DMed 12 people on Discord in 2025, but 91% of my DMs went to just ten of them.');
   assert.equal(s.data.names.length, 10);
   assert.equal(s.card.hero, '91%');
-  assert.equal(s.card.names, undefined, 'the card shows no names');
+  assert.deepEqual(s.card.names, s.data.names, 'the ten names its frame shows can be hidden');
 });
 
 test('a share under 1% stays in the list but out of the sentence', () => {

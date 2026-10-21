@@ -49,7 +49,7 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
  * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
- * storyCard (with the story's guess) or summaryCard, and `host` is an element inside the dialog for any popover it
+ * storyCard (with the story's guess, and `snapshot()`, a frozen copy of the frame for the share image) or summaryCard, and `host` is an element inside the dialog for any popover it
  * opens; without onShare neither button shows. `note` is one line shown over the first story (why a year's theme
  * isn't playing). Returns {close}.
  */
@@ -277,7 +277,28 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
   q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
-  q('.reel-share').onclick = e => onShare?.(storyCard(list[state.i], state.guesses[list[state.i].id]), e.currentTarget, dialog);
+  // The story as it stands, for its share image: the frame with only its label and the current stage, every animated
+  // box held at its end state, mounted out of sight in the dialog so the share sheet can redact and measure it.
+  const snapshot = () => {
+    const live = stages.lastElementChild, stage = live.cloneNode(true), copy = frame.cloneNode(false), {width, height} = frame.getBoundingClientRect();
+    const to = [stage, ...stage.querySelectorAll('*')];
+    [live, ...live.querySelectorAll('*')].forEach((n, k) => {
+      if (!n.getAnimations().length) return;
+      const s = getComputedStyle(n);
+      for (const p of ['transform', 'opacity', 'clip-path', 'translate', 'rotate', 'scale']) to[k].style.setProperty(p, s.getPropertyValue(p));
+    });
+    const chrome = document.createElement('div');
+    chrome.className = 'reel-chrome';
+    chrome.innerHTML = '<div class="reel-ctl"></div>';
+    chrome.firstChild.append(label.cloneNode(true));
+    const stagesCopy = stages.cloneNode(false);
+    stagesCopy.append(stage);
+    copy.append(stagesCopy, chrome);
+    Object.assign(copy.style, {position: 'fixed', left: '-200vw', top: '0', width: width + 'px', height: height + 'px', aspectRatio: 'auto', borderRadius: '0'});
+    dialog.append(copy);
+    return copy;
+  };
+  q('.reel-share').onclick = e => onShare?.({...storyCard(list[state.i], state.guesses[list[state.i].id]), snapshot}, e.currentTarget, dialog);
   if (onShare) q('.reel-share-all').onclick = e => onShare(state.share, e.currentTarget, dialog);
   q('.reel-zone-prev').onclick = prev;
   // Tapping the frame never skips an open guess; Skip, Next and → do.
