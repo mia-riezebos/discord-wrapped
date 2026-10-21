@@ -499,7 +499,7 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .reel-summary ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: max(16px, 5cqw); font-weight: 700; line-height: 1.2; }
 .reel-summary div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 .reel-summary button { min-height: 48px; padding: 0 22px; border: 0; border-radius: 99px; background: var(--fg); color: var(--bg); font-size: 16px; font-weight: 700; }
-.reel-summary .reel-done { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
+.reel-summary .reel-done, .reel-share-all ~ .reel-again { background: transparent; color: inherit; box-shadow: inset 0 0 0 2px currentColor; }
 @media (prefers-reduced-motion: reduce) { .reel-after, .reel-guess { animation: none; } }
 
 /* Kinetic, the default reel theme (scenes in kinetic.js) */
@@ -1520,7 +1520,9 @@ export function redactCard(model, s) {
   const hero = tokenize(model.hero).filter(t => !t.punct);
   const heroHidden = model.heroAlt && hero.length && hero.every(t => t.ent?.kind === 'name' && isHidden(t, s));
   return {...model, question: field(model.question), hero: field(heroHidden ? model.heroAlt : model.hero), fact: field(model.fact), guess: field(model.guess),
-    bars: model.bars && {...model.bars, items: model.bars.items.map(([label, ...rest]) => [field(label), ...rest])}};
+    lines: model.lines?.map(field),
+    bars: model.bars && {...model.bars, items: model.bars.items.map(([label, ...rest]) => [field(label), ...rest])},
+    columns: model.columns && {...model.columns, items: model.columns.items.map(([label, ...rest]) => [field(label), ...rest])}};
 }
 
 /**
@@ -1958,12 +1960,16 @@ $('period').addEventListener('change', e => {
   }
 });
 const reelTitle = () => P.kind === 'all' ? 'All time' : P.label;
-// No "Share this" until a story can share its own card (#29).
-$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget});
+// The share popover moves into the player while it's open, so it stays usable over the modal dialog.
+const reelShare = {
+  onShare: (ctx, button, host) => { host.append(pop); openShare(ctx, button.getBoundingClientRect()); },
+  onClose: () => { closeShare(); document.body.append(pop); },
+};
+$('p-play').onclick = e => openReel({stories: buildStories(D, P), theme: KINETIC, title: reelTitle(), ending: P.kind === 'all' ? `That was you on Discord ${P.label}` : `That was your ${P.label}`, opener: e.currentTarget, ...reelShare});
 // "Play your Wrapped" plays the same reel; a section's reel button plays only that section's stories.
 $('hero-play').onclick = $('p-play').onclick;
 document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => openReel({stories: buildStories(D, P), theme: KINETIC, section: b.dataset.reel, title: reelTitle(),
-  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b}));
+  ending: `That was ${STORY_SECTIONS.find(s => s.id === b.dataset.reel).name} ${P.in}`, opener: b, ...reelShare}));
 $('p-prev').onclick = () => setPeriod(stepPeriod(-1));
 $('p-next').onclick = () => setPeriod(stepPeriod(1));
 // Bucket keys from the worker: YYYY, YYYY-MM, a week's Monday or a day as YYYY-MM-DD, or YYYY-MM-DDTHH.
@@ -2450,8 +2456,10 @@ call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).c
 
 /* Share card builder. Pure layout plus a thin canvas painter, so the tests can import it. */
 // Every share image comes from one card model:
-//   {question?, hero, fact?, chart?: {image, width, height}, bars?: {items: [[label, value, shown]], highlight}, guess?, host}
-// chart is an already decoded image of a report chart; bars is a ranked list with the shared row highlighted.
+//   {question?, hero, fact?, lines?, chart?: {image, width, height}, columns?: {items: [[label, value]], highlight},
+//    bars?: {items: [[label, value, shown]], highlight}, guess?, host}
+// chart is an already decoded image of a report chart; columns is a story's chart in the report's buckets; bars is a
+// ranked list with the shared row highlighted; lines are short single lines under the fact (a reel's summary).
 // Text fields are strings, or lists of card words {text, hidden?, pre?, post?, ref?} once redaction has run
 // (redactCard): a hidden word draws as a fixed-width scribble between its pre and post punctuation.
 export const CARD_SHAPES = {wide: [1200, 675], tall: [1080, 1920]};
@@ -2525,16 +2533,23 @@ export function layoutCard(model, shape, measure) {
   };
   // Text first, from the brand line down; the tall card shifts it all later to centre the content.
   run('brand', 'Discord Wrapped', P, S.brandY, S.brand, 600, 'muted');
-  const graphic = !!(model.chart || model.bars?.items.length);
+  const graphic = !!(model.chart || model.bars?.items.length || model.columns?.items.length || model.lines?.length);
   const heroSize = fitSize(asWords(model.hero), S.hero[graphic ? 1 : 0], S.heroMin, 700, maxW, 2, measure);
   let y = S.brandY;
   if (model.question) y = block('question', model.question, S.question, 600, 'muted', 2, 1.3, y + S.question * 1.6) - S.question * 1.3;
   y = block('hero', model.hero, heroSize, 700, 'fg', 2, 1.06, y + heroSize * 1.2);
   if (model.fact) for (const l of wrap(asWords(model.fact), maxW, 2, width(S.fact, 400))) { y += 4; run('fact', l, P, y, S.fact, 400, 'muted'); y += S.factStep; }
-  if (model.guess) y = block('guess', model.guess, S.guess, 600, 'fg', 2, 1.3, y + S.guess * .4);
+  // Lines share the room left above the guess and the footer: they shrink to 70% before the last ones are dropped.
+  const lines = model.lines || [], room0 = H - S.foot - y - (model.guess ? S.guess * 3.3 : 0);
+  const lineSize = Math.max(S.fact * .7, Math.min(S.fact, room0 / (lines.length * 1.4)));
+  for (const l of lines.slice(0, Math.floor(room0 / (lineSize * 1.4)))) y = block('line', l, lineSize, 600, 'fg', 1, 1.4, y + lineSize * 1.4) - lineSize * 1.4;
+  if (model.guess) y = block('guess', model.guess, S.guess, 600, 'fg', 2, 1.3, y + S.guess * (model.lines ? 2 : .4));
   const top = y + 10, bottom = H - S.foot, room = bottom - top;
   let chart = null, bars = null, height = 0;
-  if (model.chart && room > 60) {
+  if (model.columns?.items.length && room >= 120) {
+    bars = layoutColumns(model.columns, P, top + S.row * .4, maxW, Math.min(room, S.row * 12) - S.row * .4, S.row, measure, width, run);
+    height = bars.height + S.row * .4;
+  } else if (model.chart && room > 60) {
     const k = Math.min(maxW / model.chart.width, room / model.chart.height);
     chart = {image: model.chart.image, x: P, y: top, w: model.chart.width * k, h: model.chart.height * k};
     height = chart.h;
@@ -2553,16 +2568,34 @@ export function layoutCard(model, shape, measure) {
   return {width: W, height: H, band: S.band, runs, words: runs.flatMap((r, i) => wordsOf(r, i, measure)), chart, bars: bars?.rows || null};
 }
 
+// A chart in the report's buckets as columns, labels under them and the top bucket in the accent colour with its count
+// above it. Labels shrink to fit the column width.
+function layoutColumns({items, highlight}, x, top, w, h, maxRow, measure, width, run) {
+  const n = items.length, cw = w / n, gap = Math.min(cw * .25, maxRow * .4), max = Math.max(1, ...items.map(r => r[1])), rows = [];
+  const size = Math.max(10, Math.min(Math.round(maxRow * .6), ...items.map(([l]) => Math.floor(maxRow * .6 * (cw - 4) / Math.max(1, width(maxRow * .6, 400)(asWords(l)))))));
+  const plot = h - size * 1.6, value = highlight >= 0 ? String(Number(items[highlight][1]).toLocaleString()) : '', head = value ? size * 1.5 : 0;
+  items.forEach(([label, v], i) => {
+    const on = i === highlight, bh = Math.max(4, (plot - head) * v / max), cx = x + i * cw, color = on ? 'fg' : 'muted', weight = on ? 700 : 400;
+    rows.push({x: cx + gap / 2, y: top + plot - bh, w: cw - gap, h: bh, on});
+    const ws = clipTo(asWords(label), cw - 2, width(size, weight));
+    run('col-label', ws, cx + (cw - width(size, weight)(ws)) / 2, top + h - size * .3, size, weight, color);
+    if (on) run('col-value', value, Math.min(Math.max(x, cx + cw / 2 - measure(value, size, 700) / 2), x + w - measure(value, size, 700)), top + plot - bh - size * .45, size, 700, 'fg');
+  });
+  return {rows, height: h};
+}
+
 // A ranked list as horizontal bars, the shared row in the accent colour and the rest quiet. Labels and values are runs.
 function layoutBars({items, highlight}, x, top, w, h, maxRow, measure, width, run) {
   const n = items.length, gap = maxRow / 34 * 6, rh = Math.min(maxRow, (h - gap * (n - 1)) / n), size = Math.round(rh * .62);
   const labelW = Math.min(w * .36, maxRow / 34 * 360), max = Math.max(...items.map(r => r[1])), rows = [];
+  // The value column fits the widest value, set bold, plus the gap between rows.
+  const valueW = Math.max(...items.map(([, v, shown]) => measure(shown ?? String(v), size, 700))) + gap * 2;
   items.forEach(([name, v, shown], i) => {
     const y = top + i * (rh + gap), on = i === highlight, weight = on ? 700 : 400, color = on ? 'fg' : 'muted', base = y + rh / 2 + size * .36;
     const value = shown ?? String(v), label = clipTo(asWords(name), labelW - 16, width(size, weight));
     run('bar-label', label, x, base, size, weight, color);
     run('bar-value', value, x + w - measure(value, size, weight), base, size, weight, color);
-    rows.push({x: x + labelW, y: y + 3, w: Math.max(4, (w - labelW - 120) * v / max), h: rh - 6, on});
+    rows.push({x: x + labelW, y: y + 3, w: Math.max(4, (w - labelW - valueW) * v / max), h: rh - 6, on});
   });
   return {rows, height: n * rh + (n - 1) * gap};
 }
@@ -2693,8 +2726,10 @@ async function cardModel(ctx, red, charts = new Map()) {
     chart = await charts.get(key);
   }
   const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
-  return {hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, chart, bars, host: SITE_HOST};
+  return {question: ctx.question, hero: ctx.headline, heroAlt: ctx.alt, fact: ctx.sub, lines: ctx.lines, chart, columns: ctx.columns, bars, guess: ctx.guess, host: SITE_HOST};
 }
+// Every marked text a share puts on its card or in its post, for the redaction toggles and an edited post.
+const ctxTexts = c => [c.text, c.question, c.headline, c.sub, c.guess, ...(c.lines || []), ...[c.bars, c.columns].flatMap(g => g?.items.map(([n]) => n) || [])];
 const pageTheme = () => {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
@@ -2712,7 +2747,7 @@ let current = null, anchor = null;
 let cardShape = null;
 const SHAPES = [['tall', '9:16'], ['wide', '16:9']];
 function openShare(ctx, rect) {
-  const red = newRedaction(), kinds = kindsIn(ctx.text, ctx.headline, ctx.sub, ...(ctx.bars?.items || []).map(([n]) => n));
+  const red = newRedaction(), kinds = kindsIn(...ctxTexts(ctx));
   // A shared bump-chart word is a ranked word, drawn on the chart image.
   if (ctx.chart === 'bump-chart') kinds.add('quote');
   current = {ctx, red, charts: new Map(), zoomed: false, edited: false};
@@ -2797,7 +2832,7 @@ function redact(red, focus) {
   current.red = red;
   current.focus = focus;
   if (current.edited) {
-    const c = current.ctx, terms = [c.text, c.headline, c.sub, ...(c.bars?.items || []).map(([n]) => n)]
+    const terms = ctxTexts(current.ctx)
       .flatMap(t => units(tokenize(t), red).filter(u => u.hidden).map(unitWords));
     const area = pop.querySelector('.sp-text');
     area.value = blackOut(area.value, [...terms, ...red.words]);
@@ -2989,9 +3024,14 @@ export function linkHost(text) {
 
 /**
  * The core stories for one period report, in reel order. `period` is the app's resolved period
- * ({kind, label, in, from, to}). Each story is {id, section, enough, question, answer, share, guess?, value, data}:
+ * ({kind, label, in, from, to}). Each story is {id, section, enough, question, answer, share, guess?, value, data, card}:
  * `enough` says whether the data carries the story; stories without enough data are dropped, except Overview's,
  * which always play. `data` holds whatever the scenes draw, so a theme can restyle a story without new facts.
+ * `card` is what the story's share card shows (story-card.js), every string final copy:
+ *   {hero, fact, chart?: {buckets: [[label, count]], top}, list?: [[label, count]], names?: [name]}
+ * hero is the big number or word and fact one line under it. A card has at most one of chart (bars in the report's
+ * buckets, bucket `top` highlighted) and list (a short ranked list, at most 5). names lists every personal name the
+ * card shows, so Redaction's names toggle can hide them; a hero that is a hidden name shows the story's value instead.
  */
 export function buildStories(report, period) {
   const T = report.totals, all = period.kind === 'all';
@@ -3001,6 +3041,11 @@ export function buildStories(report, period) {
   // Running totals over all time take the present perfect: "have you sent", "I've sent".
   const did = (past, perfect) => all ? perfect : past;
   const stories = [];
+  // The period's bar chart buckets: months in a year, years across all time. A card chart labels them as the report does.
+  const unit = report.unit, keys = Object.keys(report.periods).sort();
+  const short = k => unit === 'year' ? k : unit === 'month' ? new Date(k + '-01T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', month: 'short', ...(all ? {year: '2-digit'} : {})}) : day(k);
+  const chartOf = (field, top) => ({buckets: keys.map(k => [short(k), report.periods[k][field] || 0]), top});
+  const busiest = field => keys.reduce((a, k, i) => (report.periods[k][field] || 0) > (report.periods[keys[a]][field] || 0) ? i : a, 0);
 
   stories.push({
     id: 'messages', section: 'overview', enough: T.messages > 0,
@@ -3011,6 +3056,7 @@ export function buildStories(report, period) {
     guess: {type: 'slider', scale: 'log', max: 1000 * T.calendarDays, tolerance: 0.15, unit: 'messages'},
     value: T.messages,
     data: {perDay: Math.round(T.messages / Math.max(1, T.calendarDays))},
+    card: {hero: num(T.messages), fact: `About ${num(Math.round(T.messages / Math.max(1, T.calendarDays)))} a day.`, chart: chartOf('total', busiest('total'))},
   });
 
   stories.push({
@@ -3021,10 +3067,10 @@ export function buildStories(report, period) {
     guess: {type: 'slider', scale: 'linear', max: T.calendarDays, tolerance: 0.1, unit: 'days'},
     value: T.activeDays,
     data: {of: T.calendarDays, pct: Math.round(100 * T.activeDays / Math.max(1, T.calendarDays)), days: report.days, from: report.range.from, to: report.range.to},
+    card: {hero: plural(T.activeDays, 'day'), fact: `Out of ${num(T.calendarDays)}. That's ${Math.round(100 * T.activeDays / Math.max(1, T.calendarDays))}%.`, chart: chartOf('activeDays', busiest('activeDays'))},
   });
 
   // The busiest bucket of the period's bar chart: a month in a year, a year across all time.
-  const unit = report.unit, keys = Object.keys(report.periods).sort();
   const bucket = k => unit === 'year' ? k : unit === 'month' ? new Date(k + '-01T00:00:00Z').toLocaleDateString(undefined, {timeZone: 'UTC', month: 'long', ...(all ? {year: 'numeric'} : {})})
     : unit === 'week' ? `the week of ${day(k, all)}` : day(k, all);
   const top = keys.reduce((a, k) => report.periods[k].total > report.periods[a].total ? k : a, keys[0]);
@@ -3036,6 +3082,7 @@ export function buildStories(report, period) {
     share: top ? `My loudest ${unit} on Discord ${period.in} was ${topName}, with ${plural(topCount, 'message')}.` : '',
     value: topCount,
     data: {unit, label: topName, top: keys.indexOf(top), buckets: keys.map(k => [k, report.periods[k].total])},
+    card: {hero: top ? topName : 'No messages yet', fact: top ? `${plural(topCount, 'message')}.` : '', chart: chartOf('total', keys.indexOf(top))},
   });
 
   const [len = 0, from = '', to = ''] = report.streaks[0] || [];
@@ -3046,6 +3093,7 @@ export function buildStories(report, period) {
     share: len > 1 ? `My longest Discord streak ${period.in}: ${num(len)} days in a row.` : '',
     value: len,
     data: {from, to, fromText: from && day(from, all), toText: to && day(to, all)},
+    card: len > 1 ? {hero: `${num(len)} days`, fact: `In a row, ${day(from, all)} to ${day(to, all)}.`} : {hero: len ? '1 day' : 'No streak yet', fact: len ? 'No two days in a row.' : ''},
   });
 
   /* ---------- Rhythm ---------- */
@@ -3322,6 +3370,59 @@ export function guessLine(spec, answer, result) {
   return `I guessed ${say(result.guess)}. It was ${say(answer)}.`;
 }
 
+/* Story share cards: a story's `card` facts (see buildStories) as a share context for the share popover, with its
+   names marked for redaction. Pure, so the tests can import it; markName (redaction.js) and guessLine (guess.js)
+   come from the page's shared scope. */
+
+// Marks every occurrence of the card's names, longest first, so Redaction's names toggle and taps can hide them.
+const markNames = (text, names = []) => {
+  if (!text || !names.length) return text;
+  const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const list = [...new Set(names)].filter(Boolean).sort((a, b) => b.length - a.length).map(esc);
+  return list.length ? String(text).replace(new RegExp(list.join('|'), 'g'), n => markName(n)) : text;
+};
+
+// A name the story's own post leaves out (a DM's name) stays out of every post; the card still shows it, marked.
+const keepsOut = (story, text) => (story.card.names || []).some(n => text.includes(n) && !story.share.includes(n));
+
+/**
+ * The share context for one story: {text, question, headline, alt, sub, guess, columns?, bars?}. `guessResult` is
+ * scoreGuess()'s result for the story's guess; a locked-in guess adds one line to the card and the post (unless it
+ * names someone the post leaves out), a skip adds nothing. When the hero is a name and names are hidden, the card
+ * shows the story's count (`alt`) instead.
+ */
+export function storyCard(story, guessResult) {
+  const c = story.card, mark = t => markNames(t, c.names);
+  const line = story.guess ? guessLine(story.guess, story.guess.type === 'pick' ? story.guess.answer : story.value, guessResult) : '';
+  return {
+    text: mark([story.share, !keepsOut(story, line) && line].filter(Boolean).join(' ')),
+    question: story.question,
+    headline: mark(c.hero),
+    alt: Number(story.value).toLocaleString(),
+    sub: mark(c.fact),
+    guess: mark(line),
+    ...c.chart && {columns: {items: c.chart.buckets, highlight: c.chart.top}},
+    ...c.list && {bars: {items: c.list.map(([label, n]) => [mark(label), n]), highlight: 0}},
+  };
+}
+
+/**
+ * The share context for a reel's summary: `title` ("2025", "All time") as the hero under the summary's heading, one
+ * line per story's answer, and the score when any guess was locked in. The post skips answers that name someone
+ * their story's post leaves out.
+ */
+export function summaryCard(stories, {title, ending, score = ''}) {
+  const names = stories.flatMap(s => s.card.names || []), mark = t => markNames(t, names);
+  const said = stories.filter(s => !keepsOut(s, s.answer)).map(s => s.answer);
+  return {
+    text: mark(`${title} on Discord: ${said.join('. ')}.${score ? ' ' + score : ''}`),
+    question: ending,
+    headline: title,
+    lines: stories.map(s => mark(s.answer)),
+    guess: score,
+  };
+}
+
 /* The story player: a 9:16 frame over the report that plays a reel of stories in a theme.
    The player owns timing, controls, progress bars, announcements and reduced motion. A theme's scenes only build
    elements and start Web Animations; the player times, skips and crossfades them through getAnimations() on the
@@ -3371,9 +3472,9 @@ export function placeClear(container, node, prefer = 0.6, dock = null) {
  * Opens the player over the page and plays `stories` (from buildStories) in `theme`, from story `start`, or only
  * the stories of `section` (a section reel). Each story holds on its answer until Next; a summary ends the reel.
  * `title` names the period on screen ("2025", "All time"), `ending` heads the summary, `opener` gets focus back on close, and
- * `onShare(story, button, host, guessResult)` handles "Share this", where `host` is an element inside the dialog for any
- * popover it opens and `guessResult` is the story's scored guess (skipped or not), if it has one; without onShare
- * there is no "Share this". Returns {close}.
+ * `onShare(ctx, button, host)` handles "Share this" and the summary's Share, where `ctx` is the share context from
+ * storyCard (with the story's guess) or summaryCard, and `host` is an element inside the dialog for any popover it
+ * opens; without onShare neither button shows. Returns {close}.
  */
 export function openReel({stories, theme, start = 0, section, title, ending = `That was your ${title}`, opener, onShare, onClose}) {
   const list = section ? stories.filter(s => s.section === section) : stories;
@@ -3398,7 +3499,7 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
       </div>
       <form class="reel-guess" hidden><div></div><div class="reel-guess-acts"><button type="button" class="reel-skip">Skip</button><button type="submit" class="reel-lock">Lock it in</button></div></form>
       <div class="reel-after" hidden><button type="button" class="reel-share"${onShare ? '' : ' hidden'}>Share this</button><button type="button" class="reel-go">Next <span aria-hidden="true">→</span></button></div>
-      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div><button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
+      <div class="reel-summary" hidden><h2></h2><p class="reel-score"></p><ol></ol><div>${onShare ? '<button type="button" class="reel-share-all">Share</button>' : ''}<button type="button" class="reel-again">Play again</button><button type="button" class="reel-done">Close</button></div></div>
       <p class="sr-only" aria-live="polite"></p>
     </div>`;
   const q = s => dialog.querySelector(s);
@@ -3567,7 +3668,9 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
     summary.querySelector('h2').textContent = ending;
     // Skipped guesses come off the total, the way a skip leaves no trace anywhere else.
     const played = list.filter(s => state.guesses[s.id] && !state.guesses[s.id].skipped), right = played.filter(s => state.guesses[s.id].right).length;
-    const score = played.length ? `You got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    const got = who => played.length ? `${who} got ${right} of ${played.length} ${played.length === 1 ? 'guess' : 'guesses'} right.` : '';
+    const score = got('You');
+    state.share = summaryCard(list, {title, ending, score: got('I')});
     summary.querySelector('.reel-score').textContent = score;
     summary.querySelector('ol').replaceChildren(...list.map(s => Object.assign(document.createElement('li'), {textContent: s.answer})));
     summary.hidden = false;
@@ -3593,7 +3696,8 @@ export function openReel({stories, theme, start = 0, section, title, ending = `T
   q('.reel-go').onclick = next;
   q('.reel-close').onclick = q('.reel-done').onclick = close;
   q('.reel-again').onclick = () => { state.guesses = {}; play(0); };
-  q('.reel-share').onclick = e => onShare?.(list[state.i], e.currentTarget, dialog, state.guesses[list[state.i].id]);
+  q('.reel-share').onclick = e => onShare?.(storyCard(list[state.i], state.guesses[list[state.i].id]), e.currentTarget, dialog);
+  if (onShare) q('.reel-share-all').onclick = e => onShare(state.share, e.currentTarget, dialog);
   q('.reel-zone-prev').onclick = prev;
   // Tapping the frame never skips an open guess; Skip, Next and → do.
   q('.reel-zone-next').onclick = () => state.phase !== 'guess' && next();

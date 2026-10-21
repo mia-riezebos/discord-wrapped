@@ -128,7 +128,9 @@ export function redactCard(model, s) {
   const hero = tokenize(model.hero).filter(t => !t.punct);
   const heroHidden = model.heroAlt && hero.length && hero.every(t => t.ent?.kind === 'name' && isHidden(t, s));
   return {...model, question: field(model.question), hero: field(heroHidden ? model.heroAlt : model.hero), fact: field(model.fact), guess: field(model.guess),
-    bars: model.bars && {...model.bars, items: model.bars.items.map(([label, ...rest]) => [field(label), ...rest])}};
+    lines: model.lines?.map(field),
+    bars: model.bars && {...model.bars, items: model.bars.items.map(([label, ...rest]) => [field(label), ...rest])},
+    columns: model.columns && {...model.columns, items: model.columns.items.map(([label, ...rest]) => [field(label), ...rest])}};
 }
 
 /**
