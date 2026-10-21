@@ -10,6 +10,8 @@ const LINK_RE = /https?:\/\/[^\s<>\[\]"`{}]+/g;
 const MARKUP_RE = /<(?:@!?|@&|#|a?:\w+:)\d+>/g;
 const WORD_RE = /[\p{L}\p{Nl}\p{No}]+(?:['’][\p{L}\p{Nl}\p{No}]+)?/gu;
 const EMOJI_RE = /<a?:(\w+):\d+>/g;
+// Phones type curly apostrophes (it’s), keyboards straight ones (it's); count them as one word.
+const foldQuotes = s => s.replace(/[’‘]/g, "'");
 const DAY = 86400000, EPOCH = 1420070400000;
 
 let STORE = null;
@@ -296,7 +298,7 @@ function aggregate({tz, topics}) {
     inc(days, d); hourly[h]++; weekdays[wd]++; heat[wd][h]++;
     cs.count++; cs.years[y] = (cs.years[y] || 0) + 1; if (d < cs.first) cs.first = d; if (d > cs.last) cs.last = d;
     const clean = cleanText(txt);
-    const toks = clean.toLowerCase().match(WORD_RE) || [];
+    const toks = foldQuotes(clean.toLowerCase()).match(WORD_RE) || [];
     tokensOf[i] = toks;
     const len = codePoints(txt); lens[i] = len;
     totalWords += toks.length; cs.words += toks.length; Y.words += toks.length; Y.chars += len; chars += len;
@@ -309,7 +311,7 @@ function aggregate({tz, topics}) {
     }
     const trimmed = txt.trim();
     const tl = codePoints(trimmed);
-    if (tl > 0 && tl <= 40 && !txt.includes('\n') && !/https?:\/\/[^\s<>]/.test(txt) && !/<[@#]/.test(txt)) inc(expressions, trimmed.toLowerCase());
+    if (tl > 0 && tl <= 40 && !txt.includes('\n') && !/https?:\/\/[^\s<>]/.test(txt) && !/<[@#]/.test(txt)) inc(expressions, foldQuotes(trimmed.toLowerCase()));
     for (const m of txt.matchAll(EMOJI_RE)) inc(emoji, m[1]);
     let hosts = 0;
     for (const u of txt.match(LINK_RE) || []) {
@@ -420,7 +422,8 @@ function search({query, wholeWord, limit = 150}) {
   const S = STORE, n = S.ts.length;
   const q = query.trim();
   if (!q) return {query, total: 0, months: {}, years: {}, channels: [], results: []};
-  const body = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Either apostrophe in the query matches both kinds in messages.
+  const body = foldQuotes(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, "['’‘]");
   const re = new RegExp(wholeWord ? `(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])` : body, 'iu');
   const months = {}, years = {}, chans = new Map(), hits = [];
   for (let k = 0; k < n; k++) {

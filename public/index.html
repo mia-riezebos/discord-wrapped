@@ -585,6 +585,8 @@ const LINK_RE = /https?:\/\/[^\s<>\[\]"`{}]+/g;
 const MARKUP_RE = /<(?:@!?|@&|#|a?:\w+:)\d+>/g;
 const WORD_RE = /[\p{L}\p{Nl}\p{No}]+(?:['’][\p{L}\p{Nl}\p{No}]+)?/gu;
 const EMOJI_RE = /<a?:(\w+):\d+>/g;
+// Phones type curly apostrophes (it’s), keyboards straight ones (it's); count them as one word.
+const foldQuotes = s => s.replace(/[’‘]/g, "'");
 const DAY = 86400000, EPOCH = 1420070400000;
 
 let STORE = null;
@@ -871,7 +873,7 @@ function aggregate({tz, topics}) {
     inc(days, d); hourly[h]++; weekdays[wd]++; heat[wd][h]++;
     cs.count++; cs.years[y] = (cs.years[y] || 0) + 1; if (d < cs.first) cs.first = d; if (d > cs.last) cs.last = d;
     const clean = cleanText(txt);
-    const toks = clean.toLowerCase().match(WORD_RE) || [];
+    const toks = foldQuotes(clean.toLowerCase()).match(WORD_RE) || [];
     tokensOf[i] = toks;
     const len = codePoints(txt); lens[i] = len;
     totalWords += toks.length; cs.words += toks.length; Y.words += toks.length; Y.chars += len; chars += len;
@@ -884,7 +886,7 @@ function aggregate({tz, topics}) {
     }
     const trimmed = txt.trim();
     const tl = codePoints(trimmed);
-    if (tl > 0 && tl <= 40 && !txt.includes('\n') && !/https?:\/\/[^\s<>]/.test(txt) && !/<[@#]/.test(txt)) inc(expressions, trimmed.toLowerCase());
+    if (tl > 0 && tl <= 40 && !txt.includes('\n') && !/https?:\/\/[^\s<>]/.test(txt) && !/<[@#]/.test(txt)) inc(expressions, foldQuotes(trimmed.toLowerCase()));
     for (const m of txt.matchAll(EMOJI_RE)) inc(emoji, m[1]);
     let hosts = 0;
     for (const u of txt.match(LINK_RE) || []) {
@@ -995,7 +997,8 @@ function search({query, wholeWord, limit = 150}) {
   const S = STORE, n = S.ts.length;
   const q = query.trim();
   if (!q) return {query, total: 0, months: {}, years: {}, channels: [], results: []};
-  const body = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Either apostrophe in the query matches both kinds in messages.
+  const body = foldQuotes(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, "['’‘]");
   const re = new RegExp(wholeWord ? `(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])` : body, 'iu');
   const months = {}, years = {}, chans = new Map(), hits = [];
   for (let k = 0; k < n; k++) {
@@ -1292,36 +1295,36 @@ function findings() {
   const full = ys.slice(1, -1).filter(y => Y[y].calendarDays >= 365);
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
   out.push(['years', `<strong>${busiest} was your busiest year</strong> with ${fmt(Y[busiest].total)} messages. That's ${pct(Y[busiest].total, T.messages)} of the messages in this report.`,
-    {text: `My busiest year in Discord Wrapped was ${busiest}, with ${fmt(Y[busiest].total)} messages.`, headline: busiest, sub: `My busiest year · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
+    {text: `${busiest} was my loudest year on Discord: ${fmt(Y[busiest].total)} messages!`, headline: busiest, sub: `My busiest year · ${fmt(Y[busiest].total)} messages`, chart: 'year-chart'}]);
   // Biggest fall between two consecutive full years; partial first and last years would exaggerate it.
   const drops = full.slice(1).filter(y => full.includes(String(+y - 1))).map(y => [y, 1 - Y[y].total / Y[+y - 1].total]).sort((a, b) => b[1] - a[1]);
   if (drops[0]?.[1] > .3) { const [y, d] = drops[0]; out.push(['years', `<strong>You sent ${(100 * d).toFixed(0)}% fewer messages in ${y} than in ${+y - 1}.</strong> That's ${fmt(Y[y].total)} messages across ${fmt(Y[y].activeDays)} days.`,
-    {text: `I sent ${(100 * d).toFixed(0)}% fewer Discord messages in ${y} than in ${+y - 1}.`, headline: y, sub: `${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
+    {text: `I went quiet on Discord in ${y}: ${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}.`, headline: y, sub: `${(100 * d).toFixed(0)}% fewer messages than ${+y - 1}`, chart: 'year-chart'}]); }
   const months = Object.entries(D.months), topMonth = months.reduce((a, m) => m[1].total > a[1].total ? m : a);
   const monthName = new Date(topMonth[0] + '-01T00:00:00Z').toLocaleDateString(undefined, {month: 'long', year: 'numeric', timeZone: 'UTC'}), perDay = fmt(Math.round(topMonth[1].total / 30));
   out.push(['month', `<strong>Your busiest month was ${monthName},</strong> with ${fmt(topMonth[1].total)} messages.`,
-    {text: `My busiest month in Discord Wrapped was ${monthName}, with ${fmt(topMonth[1].total)} messages.`, headline: monthName, sub: `My busiest month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
+    {text: `My busiest month on Discord ever was ${monthName}: ${fmt(topMonth[1].total)} messages!`, headline: monthName, sub: `My busiest month · ${fmt(topMonth[1].total)} messages`, chart: 'month-chart'}]);
   const peakHour = D.hourly.indexOf(Math.max(...D.hourly));
   out.push(['rhythm', `<strong>You sent ${pct(T.lateNight, T.messages)} of your messages between midnight and 6 am.</strong> Your busiest hour was ${String(peakHour).padStart(2, '0')}:00–${String((peakHour + 1) % 24).padStart(2, '0')}:00.`,
-    {text: `I sent ${pct(T.lateNight, T.messages)} of the messages in my Discord Wrapped between midnight and 6 am.`, headline: pct(T.lateNight, T.messages), sub: 'Sent between midnight and 6 am', chart: 'heat-chart'}]);
+    {text: `${pct(T.lateNight, T.messages)} of my Discord messages were sent between midnight and 6 am. Night owl confirmed.`, headline: pct(T.lateNight, T.messages), sub: 'Sent between midnight and 6 am', chart: 'heat-chart'}]);
   const st = D.streaks[0];
   if (st) out.push(['calendar', `<strong>Your longest streak was ${fmt(st[0])} days,</strong> from ${longDate(st[1])} to ${longDate(st[2])}. You sent messages on ${pct(T.activeDays, T.calendarDays)} of days in this report's date range.`,
-    {text: `My longest streak in Discord Wrapped was ${fmt(st[0])} days.`, headline: `${fmt(st[0])} days in a row`, sub: `My longest streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
+    {text: `I sent a Discord message every single day for ${fmt(st[0])} days straight!`, headline: `${fmt(st[0])} days in a row`, sub: `My longest streak, ${longDate(st[1])} to ${longDate(st[2])}`}]);
   const pk = D.peakDays[0];
   if (pk) {
     const [txt, n] = pk.topText;
     out.push(['peaks', `<strong>You sent ${fmt(pk.count)} messages on ${longDate(pk.date)},</strong> your busiest day in this report${pk.contexts[0] ? `. Most went to ${esc(pk.contexts[0][0])}` : ''}.${n > pk.count * .2 && txt ? ` You sent "${esc(txt.slice(0, 60))}" ${fmt(n)} times.` : ''}`,
-      {text: `My busiest day in Discord Wrapped was ${longDate(pk.date)}, with ${fmt(pk.count)} messages.${n > pk.count * .2 && txt ? ` I sent "${quoteOf(txt, 60)}" ${fmt(n)} times.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`}]);
+      {text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}!${n > pk.count * .2 && txt ? ` ${fmt(n)} of them were just “${quoteOf(txt, 60)}”.` : ''}`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`}]);
   }
   out.push(['length', `<strong>${pct(D.bursts.within60, T.messages - 1)} of consecutive message pairs were at most a minute apart.</strong> ${pct(T.shortMessages, T.messages)} of your messages have 20 characters or fewer. Your fastest minute had ${fmt(D.bursts.bestMinute.count)} messages.`,
-    {text: `My fastest minute in Discord Wrapped had ${fmt(D.bursts.bestMinute.count)} messages. ${pct(T.shortMessages, T.messages)} of my messages have 20 characters or fewer.`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `${pct(T.shortMessages, T.messages)} of my messages have 20 characters or fewer`, chart: 'length-chart'}]);
+    {text: `My Discord record: ${fmt(D.bursts.bestMinute.count)} messages in one minute!`, headline: `${fmt(D.bursts.bestMinute.count)} messages in a minute`, sub: `${pct(T.shortMessages, T.messages)} of my messages have 20 characters or fewer`, chart: 'length-chart'}]);
   const dms = D.channels.filter(c => c.group === 'DMs' && c.count), dmTotal = dms.reduce((a, c) => a + c.count, 0);
   if (dms.length > 10) out.push(['people', `<strong>Your top 10 DM conversations contain</strong> ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of your ${fmt(dmTotal)} DM messages. Your report includes ${fmt(dms.length)} DM conversations.`,
-    {text: `My top 10 DM conversations contain ${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of the DM messages in my Discord Wrapped.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'Of my DM messages are in 10 conversations'}]);
+    {text: `${pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal)} of my Discord DMs go to just 10 people.`, headline: pct(dms.slice(0, 10).reduce((a, c) => a + c.count, 0), dmTotal), sub: 'Of my DM messages are in 10 conversations'}]);
   if (ys.length > 2) {
     const a = full[0] || ys[0], b = ys.at(-1), wa = Y[a].words / Y[a].total, wb = Y[b].words / Y[b].total;
     if (Math.abs(wb - wa) > .8) out.push(['wpm', `<strong>Your messages averaged ${wa.toFixed(1)} words in ${a}</strong> and ${wb.toFixed(1)} in ${b}.`,
-      {text: `My Discord messages averaged ${wa.toFixed(1)} words in ${a} and ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `Per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
+      {text: `My Discord messages went from ${wa.toFixed(1)} words on average in ${a} to ${wb.toFixed(1)} in ${b}.`, headline: `${wa.toFixed(1)} → ${wb.toFixed(1)} words`, sub: `Per Discord message, ${a} to ${b}`, chart: 'wpm-chart'}]);
   }
   if (D.domains[0]) out.push(['links', `<strong>You linked to ${esc(D.domains[0][0])} most often,</strong> with ${fmt(D.domains[0][1])} links. Your report contains ${fmt(T.urls)} links to ${fmt(T.distinctDomains)} sites.`,
     {text: `I've shared ${fmt(D.domains[0][1])} links to ${D.domains[0][0]} on Discord.`, headline: D.domains[0][0], sub: `${fmt(D.domains[0][1])} links I've shared on Discord`}]);
@@ -1341,7 +1344,7 @@ function overview() {
   $('hero-sub').textContent = `${longDate(T.first)} – ${longDate(T.last)} · ${fmt(T.channels)} channels · times in ${D.tz}`;
   const since = T.first.slice(0, 4), stat = (n, what) => ({text: `I've ${what} on Discord since ${since}.`, headline: fmt(n), sub: `${what.replace(/^\S+ [\d,.]+ /, '')} on Discord since ${since}`});
   $('counts').innerHTML = metric(fmt(T.messages), 'messages', stat(T.messages, `sent ${fmt(T.messages)} messages`)) + metric(fmt(T.words), 'words', stat(T.words, `typed ${fmt(T.words)} words`)) + metric(fmt(T.characters), 'characters', stat(T.characters, `typed ${fmt(T.characters)} characters`))
-    + metric(fmt(T.activeDays), `days with messages out of ${fmt(T.calendarDays)}`, {text: `I sent messages on ${fmt(T.activeDays)} of the ${fmt(T.calendarDays)} days covered by my Discord Wrapped.`, headline: pct(T.activeDays, T.calendarDays), sub: `Of days in my report with at least one message`, chart: 'calendar'})
+    + metric(fmt(T.activeDays), `days with messages out of ${fmt(T.calendarDays)}`, {text: `I've sent Discord messages on ${fmt(T.activeDays)} of the last ${fmt(T.calendarDays)} days.`, headline: pct(T.activeDays, T.calendarDays), sub: `Of days in my report with at least one message`, chart: 'calendar'})
     + metric(fmt(T.urls), 'links', stat(T.urls, `shared ${fmt(T.urls)} links`)) + metric(fmt(T.attachmentLinks), 'attachments', stat(T.attachmentLinks, `sent ${fmt(T.attachmentLinks)} attachments`));
   findings();
   legend('group-legend', GROUPS);
@@ -1492,7 +1495,7 @@ $('search-form').addEventListener('submit', async e => {
   if (!r.total) { $('search-out').innerHTML = `<p>No messages match "${esc(r.query)}" in this report. Try another phrase.</p>`; return; }
   const ms = Object.keys(D.months);
   const peakYear = Object.entries(r.years).sort((a, b) => b[1] - a[1])[0][0];
-  lastSearchShare = {text: `My Discord Wrapped has ${fmt(r.total)} messages matching "${r.query}". The most matches were in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} matching messages · Most in ${peakYear}`, chart: 'search-chart'};
+  lastSearchShare = {text: `I've said “${r.query}” ${fmt(r.total)} times on Discord, most of all in ${peakYear}.`, headline: `“${quoteOf(r.query, 40)}”`, sub: `${fmt(r.total)} matching messages · Most in ${peakYear}`, chart: 'search-chart'};
   $('search-out').innerHTML = `<div class="sechead"><span></span><button class="share-btn" type="button" data-share-section="search">Share</button></div><div class="metrics">${metric(fmt(r.total), 'messages', lastSearchShare)}${metric(longDate(r.first.at.slice(0, 10)), 'first match')}${metric(peakYear, 'busiest year', lastSearchShare)}</div><div id="search-chart"></div><h3>Where you said it</h3><div class="rank" id="search-ranks" data-private></div><h3>Messages${r.total > r.results.length ? ` (${r.results.length} of ${fmt(r.total)}, spread over time)` : ''}</h3><div class="messages">${r.results.map(m => messageCard(m, r.query)).join('')}</div>`;
   const draw = () => $('search-chart') && lines('search-chart', ms, [{name: r.query, values: ms.map(m => r.months[m] || 0)}], {height: 200, title: `Messages containing ${r.query} per month`, tickLabel: m => m.slice(0, 4)});
   draw(); ranks('search-ranks', r.channels, 8);
@@ -1528,12 +1531,13 @@ function channels() {
 function fame() {
   const F = D.fame, card = (title, m, extra = '', share) => m ? `<article ${shareAttr(share || {text: `${title.replace('Your', 'My')} on Discord (${m.at.slice(0, 10)}): “${quoteOf(m.text || '', 200)}”`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${title.replace('Your', 'my')} on Discord · ${longDate(m.at.slice(0, 10))}`})}><h3>${title}</h3><blockquote>${esc((m.text || 'Attachment only').slice(0, 1200))}</blockquote><small data-private>${esc(m.at)} · ${esc(m.channel)}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noreferrer">Open in Discord</a>` : ''}${extra}</small></article>` : '';
   const pk = D.peakDays[0], bm = D.bursts.bestMinute, ls = D.bursts.largestSessions[0];
-  $('fame').innerHTML = card('First message in this report', F.first) + card('Latest message in this report', F.last) +
+  const said = (lead, m) => m && {text: `${lead} “${quoteOf(m.text || '…', 200)}”!`, headline: `“${quoteOf(m.text || '…', 60)}”`, sub: `${lead.replace(/ was$/, '')} · ${longDate(m.at.slice(0, 10))}`};
+  $('fame').innerHTML = card('First message in this report', F.first, '', said('My first ever message on Discord was', F.first)) + card('Latest message in this report', F.last, '', said('My latest message on Discord was', F.last)) +
     (F.mostRepeated ? `<article ${shareAttr(sectionShare('fame'))}><h3>Your most repeated message</h3><blockquote>${esc(F.mostRepeated.text.slice(0, 300))}</blockquote><small>Sent ${fmt(F.mostRepeated.count)} times</small></article>` : '') +
-    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest message in Discord Wrapped has ${fmt([...F.longest.text].length)} characters.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `Longest message · "${quoteOf(F.longest.text, 50)}"`}) +
-    `<article ${shareAttr({text: `My fastest minute in Discord Wrapped had ${fmt(bm.count)} messages.`, headline: `${fmt(bm.count)} messages`, sub: 'Messages in 60 seconds'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
-    (ls ? `<article ${shareAttr({text: `I sent ${fmt(ls[0])} Discord messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'Messages without a 30-minute break'})}><h3>Most messages in a session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · about ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
-    (pk ? `<article ${shareAttr({text: `My busiest day in Discord Wrapped was ${longDate(pk.date)}, with ${fmt(pk.count)} messages.`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`})}><h3>Busiest day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
+    card('Your longest message', F.longest, F.longest ? ` · ${fmt([...F.longest.text].length)} characters` : '', F.longest && {text: `My longest Discord message ever was ${fmt([...F.longest.text].length)} characters long.`, headline: `${fmt([...F.longest.text].length)} characters`, sub: `Longest message · "${quoteOf(F.longest.text, 50)}"`}) +
+    `<article ${shareAttr({text: `My Discord record: ${fmt(bm.count)} messages in 60 seconds!`, headline: `${fmt(bm.count)} messages`, sub: 'Messages in 60 seconds'})}><h3>Fastest minute</h3><p><strong style="font-size:28px">${fmt(bm.count)}</strong> messages in 60 seconds</p><small data-private>${esc(bm.at)} · ${esc(bm.channel || '')}</small></article>` +
+    (ls ? `<article ${shareAttr({text: `My longest Discord session: ${fmt(ls[0])} messages without a 30-minute break.`, headline: `${fmt(ls[0])} messages`, sub: 'Messages without a 30-minute break'})}><h3>Most messages in a session</h3><p><strong style="font-size:28px">${fmt(ls[0])}</strong> messages without a 30-minute break</p><small>Started ${esc(ls[2])} · about ${fmt(Math.round(ls[1] / 60))} hours</small></article>` : '') +
+    (pk ? `<article ${shareAttr({text: `My biggest day on Discord: ${fmt(pk.count)} messages on ${longDate(pk.date)}!`, headline: `${fmt(pk.count)} messages in a day`, sub: `My busiest day, ${longDate(pk.date)}`})}><h3>Busiest day</h3><p><strong style="font-size:28px">${fmt(pk.count)}</strong> messages on ${longDate(pk.date)}</p><small data-private>${esc(pk.contexts.map(c => c[0]).join(', '))}</small></article>` : '');
 }
 
 /* ---------- roast ---------- */
@@ -1623,7 +1627,11 @@ call('restore').then(info => info ? show(info) : ($('status').innerHTML = '')).c
 // A copy opened from disk has no host, so it falls back to the main domain.
 const SITE = /^https?:$/.test(location.protocol) ? location.origin : 'https://discordwrapped.app';
 const SITE_HOST = new URL(SITE).host;
-const REPLY_TEXT = `Make your own Discord Wrapped. Your package stays in your browser. ${SITE}`;
+// Every post ends with an invitation to the site; platforms that bury links get it as a reply instead.
+const CTA = `Check yours on ${SITE_HOST}`;
+const withoutCta = t => t.replace(CTA, '').trim();
+const ensureLink = t => t.includes(SITE_HOST) ? t : `${t}\n\n${SITE}`;
+const REPLY_TEXT = `Check yours on ${SITE}. It runs in your browser, so your messages never leave your device.`;
 const enc = encodeURIComponent;
 const shareCtx = new Map();
 let shareSeq = 0;
@@ -1719,7 +1727,7 @@ function openShare(ctx, rect) {
   const canNative = !!navigator.share;
   pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close sharing">×</button></div>
     <img class="sp-img" alt="Share card showing ${esc(ctx.headline)}. ${esc(ctx.sub || '')}">
-    <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(ctx.text)}</textarea></label>
+    <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(`${ctx.text} ${CTA}`)}</textarea></label>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
     <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
@@ -1760,7 +1768,9 @@ function sharePlatform(p) {
     localStorage.setItem('du-mastodon', server);
   }
   const text = postText(), copied = p.linkPost ? Promise.resolve(false) : copyImage().then(() => true, () => false);
-  window.open(p.compose(p.derank || p.linkPost ? text : `${text}\n\n${SITE}`, server), '_blank', 'noopener');
+  // Mastodon only links addresses that start with https://.
+  const post = p.derank || p.linkPost ? withoutCta(text) : p.needsServer ? ensureLink(text).replace(CTA, `Check yours on ${SITE}`) : ensureLink(text);
+  window.open(p.compose(post, server), '_blank', 'noopener');
   copied.then(ok => {
     const image = p.linkPost ? '' : ok ? `<li>Paste the copied image into your post with ⌘V or Ctrl+V.</li>` : `<li>Couldn't copy the image. Choose "Download image" and attach it to your post.</li>`;
     if (!p.derank) { stepOut(image ? `<ol>${image}</ol>` : ''); return; }
@@ -1776,14 +1786,14 @@ pop.addEventListener('click', async e => {
   const act = b.dataset.act;
   try {
     if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
-    else if (act === 'copy-text') { await navigator.clipboard.writeText(`${postText()}\n\n${SITE}`); stepOut('<p>Text and link copied.</p>'); }
+    else if (act === 'copy-text') { await navigator.clipboard.writeText(ensureLink(postText())); stepOut('<p>Text and link copied.</p>'); }
     else if (act === 'copy-reply') { await navigator.clipboard.writeText(REPLY_TEXT); b.textContent = 'Reply copied'; }
     else if (act === 'download') {
       const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(await current.card), download: `discord-wrapped-${slug()}.png`});
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     } else if (act === 'native') {
       const file = new File([await current.card], `discord-wrapped-${slug()}.png`, {type: 'image/png'});
-      const data = {text: postText(), url: SITE};
+      const data = {text: ensureLink(postText())};
       await navigator.share(navigator.canShare?.({files: [file]}) ? {...data, files: [file]} : data);
     } else if (act === 'open-reply') {
       const url = PLATFORMS.find(p => p.id === b.dataset.platformReply).reply(pop.querySelector('.sp-post').value, REPLY_TEXT);
@@ -1804,7 +1814,7 @@ function contextFromSelection() {
   const range = sel.getRangeAt(0), node = range.commonAncestorContainer, el = node.nodeType === 1 ? node : node.parentElement;
   if (!el?.closest('#report') || el.closest('#share-pop, input, textarea, select, [data-private]')) return null;
   const owner = el.closest('[data-share]');
-  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `"${quoteOf(text, 200)}"\n\nFrom my Discord Wrapped.`, headline: `"${quoteOf(text)}"`, sub: 'From my Discord Wrapped'};
+  const ctx = owner ? shareCtx.get(owner.dataset.share) : {text: `“${quoteOf(text, 200)}”, from my Discord history.`, headline: `"${quoteOf(text)}"`, sub: 'From my Discord Wrapped'};
   return ctx && {ctx, rect: range.getBoundingClientRect()};
 }
 document.addEventListener('pointerup', e => {
@@ -1830,8 +1840,8 @@ function sectionShare(id) {
   const T = D.totals, Y = D.years, ys = Object.keys(Y).sort();
   const busiest = ys.reduce((a, y) => Y[y].total > Y[a].total ? y : a, ys[0]);
   const since = T.first.slice(0, 4);
-  if (id === 'overview') return {text: `My Discord Wrapped contains ${fmt(T.messages)} messages. ${busiest} was my busiest year.`, headline: `${fmt(T.messages)} messages`, sub: `Busiest year ${busiest}`, chart: 'year-chart'};
-  if (id === 'rhythm') return {text: `I sent ${pct(T.lateNight, T.messages)} of the messages in my Discord Wrapped between midnight and 6 am.`, headline: 'When I sent messages', sub: `${pct(T.lateNight, T.messages)} sent between midnight and 6 am`, chart: 'heat-chart'};
+  if (id === 'overview') return {text: `I've sent ${fmt(T.messages)} messages on Discord since ${since}. ${busiest} was my loudest year!`, headline: `${fmt(T.messages)} messages`, sub: `Busiest year ${busiest}`, chart: 'year-chart'};
+  if (id === 'rhythm') return {text: `${pct(T.lateNight, T.messages)} of my Discord messages were sent between midnight and 6 am. Night owl confirmed.`, headline: 'When I sent messages', sub: `${pct(T.lateNight, T.messages)} sent between midnight and 6 am`, chart: 'heat-chart'};
   if (id === 'people') return {text: 'Where my Discord messages went: servers, DMs and group chats, year by year.', headline: 'Servers, DMs and group DMs', sub: 'Share of my messages by year', chart: 'share-chart'};
   if (id === 'words') {
     const y = rateYears().filter(y => D.wordYears[y]?.length).at(-1), w = D.wordYears[y]?.[0];
@@ -1839,7 +1849,7 @@ function sectionShare(id) {
   }
   if (id === 'fame') {
     const r = D.fame.mostRepeated;
-    return r && {text: `My most repeated message in Discord Wrapped is "${quoteOf(r.text, 100)}". I sent it ${fmt(r.count)} times.`, headline: `"${quoteOf(r.text, 60)}"`, sub: `My most repeated message · Sent ${fmt(r.count)} times`};
+    return r && {text: `The message I've sent most on Discord is “${quoteOf(r.text, 100)}”: ${fmt(r.count)} times!`, headline: `"${quoteOf(r.text, 60)}"`, sub: `My most repeated message · Sent ${fmt(r.count)} times`};
   }
   if (id === 'search') return lastSearchShare;
   return null;
