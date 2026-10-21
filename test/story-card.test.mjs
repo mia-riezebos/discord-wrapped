@@ -16,7 +16,8 @@ const report = {
   streaks: [[41, '2025-03-01', '2025-04-10']],
   days: [],
   range: {from: '2025-01-01', to: '2025-12-31'},
-  hourly: Array(24).fill(0), peakDays: [], bursts: {bestMinute: {count: 0}}, guilds: [], channels: [],
+  hourly: Array(24).fill(0), peakDays: [], guilds: [], channels: [],
+  words: [], expressions: [], emoji: [], domains: [], lengths: [], fame: {first: null, longest: null}, bursts: {bestMinute: {count: 0}, largestSessions: []},
 };
 const stories = buildStories(report, YEAR);
 const messages = stories.find(s => s.id === 'messages');
