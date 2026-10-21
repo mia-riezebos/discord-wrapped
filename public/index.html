@@ -47,7 +47,7 @@
   color-scheme: light dark;
   --bg: #f7f7f9; --surface: #ffffff; --fg: #17181c; --muted: #61646e; --border: #e1e2e8; --soft: #eef0f6;
   --accent: #4f5bd5; --accent-fg: #ffffff;
-  --c1: #4f5bd5; --c2: #d6409f; --c3: #1f9d63; --c4: #d48a00; --c5: #0e8fc7;
+  --c1: #4f5bd5; --c2: #d6409f; --c3: #1f9d63; --c4: #c07d00; --c5: #0e8fc7;
   /* Text on each palette colour field, at least 4.5:1. */
   --on-c1: #ffffff; --on-c2: #000000; --on-c3: #17181c; --on-c4: #17181c; --on-c5: #17181c;
   --radius: 10px; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -1787,7 +1787,7 @@ async function show(info) {
   saved = info; reports.clear();
   await analyse();
   $('landing').classList.add('hidden'); $('report').classList.remove('hidden'); document.body.classList.add('has-report');
-  window.scrollTo(0, 0); renderAll(); savedNotice();
+  window.scrollTo(0, 0); renderAll(); savedNotice(); prefetchThemes();
 }
 async function open(source) {
   $('status').innerHTML = '<div>Opening package…</div>';
@@ -1974,7 +1974,10 @@ async function playReel(opts) {
   let stories = await themeStories(theme, buildStories(D, P), {report: D, period: P, reportOf});
   if (opts.only) stories = stories.filter(s => s.id === opts.only);
   if (!stories.length) return console.warn(`No story ${opts.only} ${P.in}`);
-  const note = !id || theme.id === id ? '' : canLoadThemes ? `The ${id} look didn't load, so this reel plays in the standard look.` : `The ${id} look plays on discordwrapped.app.`;
+  const note = !id || theme.id === id ? ''
+    : !canLoadThemes ? `The ${id} look plays on discordwrapped.app.`
+    : document.documentElement.classList.contains('offline') ? `The ${id} look isn't saved on this device yet, so this reel plays in the standard look.`
+    : `The ${id} look didn't load, so this reel plays in the standard look.`;
   openReel({stories, theme, title: reelTitle(), ending: reelEnding(P), note, ...reelShare, ...opts});
 }
 $('p-play').onclick = e => playReel({opener: e.currentTarget});
@@ -1983,9 +1986,20 @@ $('hero-play').onclick = $('p-play').onclick;
 document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel, ending: reelEnding(P, b.dataset.reel), opener: b}));
 
 /* ---------- themes ---------- */
-// Years with their own theme; build.py fills this in from src/themes/. A saved copy (file://) can't load them.
-const THEME_YEARS = [];
+// Years with their own theme and the files each loads; build.py fills this in from src/themes/. A saved copy (file://)
+// can't load them.
+const THEME_FILES = {};
+const THEME_YEARS = Object.keys(THEME_FILES).map(Number);
 const canLoadThemes = /^https?:$/.test(location.protocol);
+// Once a package is open, the service worker saves the themes for its years while the browser is idle, so they play
+// offline too. Safari has no requestIdleCallback, so it waits a few seconds instead.
+const IDLE_WAIT = 5000;
+function prefetchThemes() {
+  const files = themePrefetch(D.bounds, THEME_FILES, navigator.connection);
+  if (!files.length || !canLoadThemes || !('serviceWorker' in navigator)) return;
+  const idle = window.requestIdleCallback || (f => setTimeout(f, IDLE_WAIT));
+  idle(() => navigator.serviceWorker.ready.then(reg => reg.active.postMessage({save: files})), {timeout: IDLE_WAIT});
+}
 // ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
 // its year; any other (the example) on whichever year is selected. Undocumented.
 const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');
@@ -3944,6 +3958,17 @@ export function themeCss(theme) {
     ...theme.fonts.map(f => `@font-face { font-family: "${f.family}"; src: url("${f.src}") format("woff2"); font-weight: ${f.weight || 400}; font-display: swap; }`),
     theme.css,
   ].join('\n');
+}
+
+/**
+ * The year-theme files to save ahead of time for a package whose messages span `bounds` ({first, last} dates):
+ * every file of each themed year inside it, once. `files` is {year: [url]}; `connection` is navigator.connection,
+ * and with data saver on nothing is saved.
+ */
+export function themePrefetch(bounds, files, connection) {
+  if (connection?.saveData) return [];
+  const from = +bounds.first.slice(0, 4), to = +bounds.last.slice(0, 4);
+  return [...new Set(Object.entries(files).filter(([year]) => +year >= from && +year <= to).flatMap(([, f]) => f))];
 }
 
 /* Kinetic, the default theme: heavy sentence-case type that drops, stacks, rolls and gets swept away, on full-frame

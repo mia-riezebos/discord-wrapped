@@ -46,7 +46,7 @@ async function show(info) {
   saved = info; reports.clear();
   await analyse();
   $('landing').classList.add('hidden'); $('report').classList.remove('hidden'); document.body.classList.add('has-report');
-  window.scrollTo(0, 0); renderAll(); savedNotice();
+  window.scrollTo(0, 0); renderAll(); savedNotice(); prefetchThemes();
 }
 async function open(source) {
   $('status').innerHTML = '<div>Opening package…</div>';
@@ -233,7 +233,10 @@ async function playReel(opts) {
   let stories = await themeStories(theme, buildStories(D, P), {report: D, period: P, reportOf});
   if (opts.only) stories = stories.filter(s => s.id === opts.only);
   if (!stories.length) return console.warn(`No story ${opts.only} ${P.in}`);
-  const note = !id || theme.id === id ? '' : canLoadThemes ? `The ${id} look didn't load, so this reel plays in the standard look.` : `The ${id} look plays on discordwrapped.app.`;
+  const note = !id || theme.id === id ? ''
+    : !canLoadThemes ? `The ${id} look plays on discordwrapped.app.`
+    : document.documentElement.classList.contains('offline') ? `The ${id} look isn't saved on this device yet, so this reel plays in the standard look.`
+    : `The ${id} look didn't load, so this reel plays in the standard look.`;
   openReel({stories, theme, title: reelTitle(), ending: reelEnding(P), note, ...reelShare, ...opts});
 }
 $('p-play').onclick = e => playReel({opener: e.currentTarget});
@@ -242,9 +245,20 @@ $('hero-play').onclick = $('p-play').onclick;
 document.querySelectorAll('[data-reel]').forEach(b => b.onclick = () => playReel({section: b.dataset.reel, ending: reelEnding(P, b.dataset.reel), opener: b}));
 
 /* ---------- themes ---------- */
-// Years with their own theme; build.py fills this in from src/themes/. A saved copy (file://) can't load them.
-const THEME_YEARS = [];
+// Years with their own theme and the files each loads; build.py fills this in from src/themes/. A saved copy (file://)
+// can't load them.
+const THEME_FILES = {};
+const THEME_YEARS = Object.keys(THEME_FILES).map(Number);
 const canLoadThemes = /^https?:$/.test(location.protocol);
+// Once a package is open, the service worker saves the themes for its years while the browser is idle, so they play
+// offline too. Safari has no requestIdleCallback, so it waits a few seconds instead.
+const IDLE_WAIT = 5000;
+function prefetchThemes() {
+  const files = themePrefetch(D.bounds, THEME_FILES, navigator.connection);
+  if (!files.length || !canLoadThemes || !('serviceWorker' in navigator)) return;
+  const idle = window.requestIdleCallback || (f => setTimeout(f, IDLE_WAIT));
+  idle(() => navigator.serviceWorker.ready.then(reg => reg.active.postMessage({save: files})), {timeout: IDLE_WAIT});
+}
 // ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
 // its year; any other (the example) on whichever year is selected. Undocumented.
 const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');

@@ -51,3 +51,16 @@ test('pages, icons and year themes come from the cache', () => {
   assert.equal(intercepts(handlers, 'https://discordwrapped.app/themes/2024/index.js'), true);
   assert.equal(intercepts(handlers, 'https://discordwrapped.app/robots.txt'), false);
 });
+
+test('year-theme files the page sends are saved, skipping ones already saved', async () => {
+  const saved = new Map([['/themes/define.js', 'old']]), fetched = [];
+  const cache = {match: async u => saved.get(u), add: async u => { fetched.push(u); saved.set(u, 'new'); }};
+  const handlers = {};
+  const self = {addEventListener: (type, fn) => { handlers[type] = fn; }, skipWaiting() {}};
+  vm.runInNewContext(read('../public/sw.js'), {self, URL, console, location: new URL('https://discordwrapped.app/sw.js'), caches: {open: async () => cache}});
+  let done;
+  handlers.message({data: {save: ['/themes/define.js', '/themes/2025/index.js']}, waitUntil: p => { done = p; }});
+  await done;
+  assert.deepEqual(fetched, ['/themes/2025/index.js']);
+  assert.equal(saved.get('/themes/define.js'), 'old');
+});

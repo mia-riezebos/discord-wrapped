@@ -87,3 +87,14 @@ export function themeCss(theme) {
     theme.css,
   ].join('\n');
 }
+
+/**
+ * The year-theme files to save ahead of time for a package whose messages span `bounds` ({first, last} dates):
+ * every file of each themed year inside it, once. `files` is {year: [url]}; `connection` is navigator.connection,
+ * and with data saver on nothing is saved.
+ */
+export function themePrefetch(bounds, files, connection) {
+  if (connection?.saveData) return [];
+  const from = +bounds.first.slice(0, 4), to = +bounds.last.slice(0, 4);
+  return [...new Set(Object.entries(files).filter(([year]) => +year >= from && +year <= to).flatMap(([, f]) => f))];
+}

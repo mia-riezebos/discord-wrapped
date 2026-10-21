@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {STORY_SECTIONS} from '../src/stories.js';
-import {loadTheme, themeCss, themeStories} from '../src/theme.js';
+import {loadTheme, themeCss, themePrefetch, themeStories} from '../src/theme.js';
 import {defineTheme} from '../src/themes/define.js';
 
 // theme.js finds STORY_SECTIONS in the page's shared scope.
@@ -123,4 +123,13 @@ test('the example theme loads every scene, its stylesheet and its year story', a
   // Without messages the year before, the story has nothing to compare.
   const alone = await themeStories(t, core.slice(0, 1), {report: report('2025'), period: {kind: 'year', label: '2025'}, reportOf: async () => ({empty: true})});
   assert.deepEqual(alone.map(s => s.id), ['messages']);
+});
+
+test('only the themes for years in the package are saved ahead, and none with data saver on', () => {
+  const files = {2019: ['/themes/define.js', '/themes/2019/index.js'], 2021: ['/themes/define.js', '/themes/2021/index.js', '/themes/2021/face.woff2'], 2024: ['/themes/define.js', '/themes/2024/index.js']};
+  const bounds = {first: '2020-03-14', last: '2022-01-02'};
+  assert.deepEqual(themePrefetch(bounds, files, undefined), ['/themes/define.js', '/themes/2021/index.js', '/themes/2021/face.woff2']);
+  assert.deepEqual(themePrefetch({first: '2019-12-31', last: '2024-01-01'}, files, {saveData: false}), ['/themes/define.js', '/themes/2019/index.js', '/themes/2021/index.js', '/themes/2021/face.woff2', '/themes/2024/index.js']);
+  assert.deepEqual(themePrefetch(bounds, files, {saveData: true}), []);
+  assert.deepEqual(themePrefetch({first: '2025-01-01', last: '2025-06-30'}, files, undefined), []);
 });

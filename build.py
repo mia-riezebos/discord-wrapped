@@ -7,8 +7,10 @@ read = lambda name: (src / name).read_text()
 SCRIPTS = ('worker.js', 'redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')
 assert all('</script' not in read(f).lower() for f in SCRIPTS)
 partials = {f'<!--{name.upper()}-->\n': read(f'partials/{name}.html') for name in ('header', 'footer', 'rails')}
-# Years with their own theme: the src/themes/ folders named for a year. Other folders (the example) only play in preview.
-THEME_YEARS = sorted(int(p.name) for p in (src / 'themes').iterdir() if p.is_dir() and re.fullmatch(r'\d{4}', p.name))
+# Years with their own theme, the src/themes/ folders named for a year, and the files each loads, which the page saves
+# for offline use. Other folders (the example) only play in preview.
+THEME_FILES = {p.name: ['/themes/define.js'] + sorted('/' + f.relative_to(src).as_posix() for f in p.rglob('*') if f.is_file() and not f.name.startswith('.'))
+               for p in sorted((src / 'themes').iterdir()) if p.is_dir() and re.fullmatch(r'\d{4}', p.name)}
 
 def page(template, out, scripts):
     html = read(template)
@@ -17,7 +19,7 @@ def page(template, out, scripts):
     html = html.replace('/*STYLE*/', read('style.css')).replace('/*WORKER*/', read('worker.js'))
     # Each page's script is one module, so the files share one scope.
     html = html.replace(scripts[0], '\n'.join(read(f) for f in scripts[1]))
-    html = html.replace('const THEME_YEARS = [];', f'const THEME_YEARS = {json.dumps(THEME_YEARS)};')
+    html = html.replace('const THEME_FILES = {};', f'const THEME_FILES = {json.dumps(THEME_FILES)};')
     path = root / 'public' / out
     path.parent.mkdir(exist_ok=True)
     path.write_text(html)

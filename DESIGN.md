@@ -95,4 +95,8 @@ data stay as they are. A theme replaces scenes, never facts, and may reword a co
 Anything that fails falls back to Kinetic: a missing or broken scene plays Kinetic's, a theme that fails to load
 plays the whole reel in Kinetic with one line saying so, and a broken year story is skipped. A saved copy of the page
 always plays Kinetic. `?theme=<year>&story=<id>` previews one story; `src/themes/example/` (a newspaper front page)
-is the worked example, reachable only through that preview.
+is the worked example, reachable only through that preview. `pnpm check` runs the theme guard over Kinetic and every theme, and fails the
+build when one sets a token outside the colours and `--display`, gives text under 4.5:1 or chart marks and the focus
+ring under 3:1 against `--bg`, `--surface` (and `--soft` for text) in light or dark, hides an outline, or moves
+anything other than through `element.animate()`. The themes for the years in an opened package are saved for offline
+use while the browser is idle; offline, a year whose look isn't saved yet plays in Kinetic with one line saying so.
