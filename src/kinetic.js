@@ -127,16 +127,18 @@ export const KINETIC = (() => {
       reveal(stage, s, r, c) {
         sweep(stage);
         const F = wipe(stage, revCol(c.i), 'up', 150);
-        if (s.value > 1) {
-          // A ticker of every date in the streak scrolls up behind the number.
-          const tick = hide(el('div', 'k-ticker', null, F)), start = Date.parse(s.data.from + 'T00:00:00Z');
-          tick.textContent = Array.from({length: Math.min(s.value, 800)}, (_, k) => new Date(start + k * 864e5).toLocaleDateString(undefined, {day: 'numeric', month: 'short', timeZone: 'UTC'})).join('\n');
-          tick.animate([{transform: 'translateY(100cqh)'}, {transform: 'translateY(calc(-100% + 30cqh))'}], {duration: 3200, delay: 300, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
-        }
-        const box = el('div', 'k-stack k-center', null, F);
+        const box = el('div', 'k-stack k-center k-fill', null, F);
         odometer(box, num(s.value), {at: 300, dur: 2600}).style.fontSize = fit(num(s.value), 86, 0.62, 50);
         slideIn(el('p', 'k-unit', s.value === 1 ? 'day' : 'days in a row', box), 2900);
         slideIn(el('p', 'k-sub', s.value > 1 ? `${s.data.fromText} to ${s.data.toText}.` : s.answer, box), 3200);
+        if (s.value > 1) {
+          // Every date of the streak rolls up in the space left under the answer, ending on its last day. It takes the
+          // stack's remaining height, so it never runs behind the header or the number.
+          const tick = hide(el('div', 'k-ticker', null, hide(el('div', 'k-ticker-box', null, box))));
+          const end = Date.parse(s.data.to + 'T00:00:00Z'), n = Math.min(s.value, 800);
+          tick.textContent = Array.from({length: n}, (_, k) => new Date(end - (n - 1 - k) * 864e5).toLocaleDateString(undefined, {day: 'numeric', month: 'short', timeZone: 'UTC'})).join('\n');
+          tick.animate([{transform: 'translateY(100%)'}, {transform: 'none'}], {duration: 3200, delay: 300, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'both'});
+        }
       },
     },
   };

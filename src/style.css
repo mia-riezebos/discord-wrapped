@@ -389,7 +389,9 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
 .k-sep { display: inline-block; }
 .k-unit { font-size: 12cqw; font-weight: 850; letter-spacing: -.035em; line-height: 1; }
 .k-sub { font-size: 6cqw; font-weight: 750; line-height: 1.2; }
-.k-ticker { position: absolute; left: 0; right: 0; top: 0; text-align: center; white-space: pre; font-size: 9cqw; font-weight: 800; line-height: 1.1; opacity: .22; }
+.k-fill { bottom: 15cqh; }
+.k-ticker-box { position: relative; flex: 1; min-height: 0; align-self: stretch; overflow: hidden; mask-image: linear-gradient(transparent, #000 60%); }
+.k-ticker { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; white-space: pre; font-size: 7cqw; font-weight: 800; line-height: 1.1; opacity: .3; }
 .k-word { max-width: 100%; font-weight: 900; letter-spacing: -.04em; line-height: 1.05; white-space: nowrap; }
 .k-word span { display: inline-block; white-space: pre; }
 .k-bars { position: absolute; left: 7cqw; right: 7cqw; bottom: 14cqh; height: 26cqh; display: flex; align-items: flex-end; gap: 1.5cqw; }
