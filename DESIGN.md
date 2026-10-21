@@ -50,9 +50,12 @@ Radius 8 px for controls, 14 px for cards. Depth comes from borders. Only the sh
 
 ## Share cards
 
-1200 × 675 canvas in the current theme. The headline shrinks to fit two lines, the subline is one fact, and the
-graphic is the section's chart or, for ranked lists, the list as bars with the shared row in the accent colour. A
-shared bump-chart word keeps its colour while the other words fade. The site host is bottom left.
+One builder (`src/card.js`) draws every card in the current theme, in two shapes: 16:9 (1200 × 675) for posts and
+9:16 (1080 × 1920) for stories. The share popover offers both and starts on 9:16 on phones. The headline shrinks to
+fit two lines, the subline is one fact, and the graphic is the section's chart or, for ranked lists, the list as bars
+with the shared row in the accent colour. A shared bump-chart word keeps its colour while the other words fade. The
+9:16 card centres its content and keeps it clear of the bottom of the screen. The footer is the site host alone,
+bottom left.
 
 ## Motion
 

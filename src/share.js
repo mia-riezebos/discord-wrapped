@@ -52,90 +52,62 @@ async function svgImage(svg, focus) {
   try { await img.decode(); } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
   return {img, w: +svg.getAttribute('width'), h: +svg.getAttribute('height')};
 }
-function wrapLines(g, text, maxWidth, maxLines) {
-  const words = text.split(' '), out = [];
-  let line = '';
-  for (const w of words) {
-    const next = line ? line + ' ' + w : w;
-    if (g.measureText(next).width > maxWidth && line) { out.push(line); line = w; } else line = next;
-  }
-  if (line) out.push(line);
-  if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
-  return out;
+// A share context as a card model. The chart is rasterised here; a chart that fails to load leaves it off the card.
+async function cardModel(ctx) {
+  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg');
+  let chart = null;
+  if (chartSvg) try { const {img, w, h} = await svgImage(chartSvg, ctx.focus); chart = {image: img, width: w, height: h}; } catch { /* no chart */ }
+  const bars = ctx.bars && !chartSvg ? {items: ctx.bars.items.map(([n, v]) => [n, v, fmt(v)]), highlight: ctx.bars.highlight} : null;
+  return {hero: ctx.headline, fact: ctx.sub, chart, bars, host: SITE_HOST};
 }
-async function renderCard(ctx) {
-  const W = 1200, H = 675, P = 64, c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d'), css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const font = getComputedStyle(document.body).fontFamily;
-  g.fillStyle = css('--surface'); g.fillRect(0, 0, W, H);
-  g.fillStyle = css('--accent'); g.fillRect(0, 0, W, 10);
-  g.textBaseline = 'alphabetic';
-  g.fillStyle = css('--muted'); g.font = `600 26px ${font}`;
-  g.fillText('Discord Wrapped', P, 74);
-  const chartSvg = ctx.chart && $(ctx.chart)?.querySelector('svg'), graphic = chartSvg || ctx.bars;
-  // Headline shrinks until it fits on two lines; charts leave less room.
-  let size = graphic ? 76 : 120, lines;
-  do { g.font = `700 ${size}px ${font}`; lines = wrapLines(g, ctx.headline, W - 2 * P, 2); size -= 4; }
-  while (lines.some(l => g.measureText(l).width > W - 2 * P) && size > 30);
-  g.fillStyle = css('--fg');
-  let y = 74 + size * 1.25;
-  for (const l of lines) { g.fillText(l, P, y); y += size * 1.1; }
-  if (ctx.sub) {
-    g.font = `400 34px ${font}`; g.fillStyle = css('--muted');
-    for (const l of wrapLines(g, ctx.sub, W - 2 * P, 2)) { y += 4; g.fillText(l, P, y); y += 42; }
-  }
-  if (chartSvg) {
-    try {
-      const {img, w, h} = await svgImage(chartSvg, ctx.focus), top = y + 10, boxH = H - 80 - top, boxW = W - 2 * P;
-      const k = Math.min(boxW / w, boxH / h);
-      if (boxH > 60) g.drawImage(img, P, top, w * k, h * k);
-    } catch { /* The card still works without its chart. */ }
-  }
-  if (ctx.bars && !chartSvg) drawBars(g, ctx.bars, P, y + 10, W - 2 * P, H - 80 - (y + 10), font, css);
-  g.font = `600 28px ${font}`; g.fillStyle = css('--accent');
-  g.fillText(SITE_HOST, P, H - 36);
-  g.font = `400 22px ${font}`; g.fillStyle = css('--muted'); g.textAlign = 'right';
-  g.fillText('Package processed in your browser', W - P, H - 38);
-  return new Promise(r => c.toBlob(r, 'image/png'));
-}
-
-// A ranked list as horizontal bars, the shared row in the accent colour and the rest muted.
-function drawBars(g, {items, highlight}, x, top, w, h, font, css) {
-  if (h < 60 || !items.length) return;
-  const rows = items.length, gap = 6, rh = Math.min(34, (h - gap * (rows - 1)) / rows), labelW = Math.min(360, w * .36), max = Math.max(...items.map(r => r[1]));
-  g.textBaseline = 'middle';
-  items.forEach(([name, v], i) => {
-    const y = top + i * (rh + gap), on = i === highlight;
-    g.font = `${on ? 700 : 400} ${Math.round(rh * .62)}px ${font}`; g.fillStyle = css(on ? '--fg' : '--muted'); g.textAlign = 'left';
-    let label = name; while (label.length > 3 && g.measureText(label).width > labelW - 16) label = label.slice(0, -2) + '…';
-    g.fillText(label, x, y + rh / 2);
-    g.fillStyle = css(on ? '--accent' : '--soft');
-    g.beginPath(); g.roundRect(x + labelW, y + 3, Math.max(4, (w - labelW - 120) * v / max), rh - 6, 4); g.fill();
-    g.fillStyle = css(on ? '--fg' : '--muted'); g.textAlign = 'right';
-    g.fillText(fmt(v), x + w, y + rh / 2);
-  });
-  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+const pageTheme = () => {
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  return {font: getComputedStyle(document.body).fontFamily, colors: Object.fromEntries(['surface', 'fg', 'muted', 'accent', 'soft'].map(k => [k, css('--' + k)]))};
+};
+async function renderCard(ctx, shape) {
+  const {canvas} = drawCard(await cardModel(ctx), shape, pageTheme(), null);
+  return new Promise(r => canvas.toBlob(r, 'image/png'));
 }
 
 /* popover */
 const pop = $('share-pop');
 let current = null, anchor = null;
+// 9:16 for stories on phones, 16:9 for posts elsewhere; a choice holds for the rest of the visit.
+let cardShape = null;
+const SHAPES = [['tall', '9:16'], ['wide', '16:9']];
 function openShare(ctx, rect) {
-  current = {ctx, card: renderCard(ctx)};
-  const canNative = !!navigator.share;
+  current = {ctx};
+  const canNative = !!navigator.share, shape = cardShape || (innerWidth < 600 ? 'tall' : 'wide');
   pop.innerHTML = `<div class="sp-head"><strong>Share</strong><button type="button" class="sp-close" aria-label="Close sharing">×</button></div>
     <img class="sp-img" alt="Share card showing ${esc(ctx.headline)}. ${esc(ctx.sub || '')}">
+    <fieldset class="seg sp-shape"><legend class="sr-only">Image shape</legend>${SHAPES.map(([v, t]) => `<label><input type="radio" name="sp-shape" value="${v}"${v === shape ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
     <label class="sp-label">Post text<textarea class="sp-text" rows="3">${esc(`${ctx.text} ${CTA}`)}</textarea></label>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}">Share to ${p.name}</button>`).join('')}</div>
     <div class="sp-actions">${canNative ? '<button type="button" data-act="native" class="primary">Share…</button>' : ''}<button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
-  current.card.then(b => { if (b && current?.ctx === ctx) pop.querySelector('.sp-img').src = URL.createObjectURL(b); });
+  showCard(shape);
   addEventListener('resize', () => current && place(), {once: true});
   pop.classList.remove('hidden');
   place(rect);
   pop.querySelector('.sp-text').focus({preventScroll: true});
 }
+// Renders the open context at a shape; a later call wins if an earlier render is still running.
+function showCard(shape) {
+  const cur = current, card = renderCard(cur.ctx, shape), img = pop.querySelector('.sp-img');
+  Object.assign(cur, {card, shape});
+  img.classList.toggle('tall', shape === 'tall');
+  card.then(b => {
+    if (!b || current !== cur || cur.card !== card) return;
+    if (img.src) URL.revokeObjectURL(img.src);
+    img.src = URL.createObjectURL(b);
+  });
+}
+pop.addEventListener('change', e => {
+  if (e.target.name !== 'sp-shape' || !current) return;
+  cardShape = e.target.value;
+  showCard(cardShape);
+  place();
+});
 function place(rect = anchor) {
   anchor = rect;
   if (innerWidth < 600 || !rect) { pop.classList.add('sheet'); pop.style.left = pop.style.top = ''; return; }
