@@ -1,5 +1,13 @@
 # discord-wrapped
 
+## 0.2.1
+
+### Patch Changes
+
+- d110f8d: The site now also answers at discordwrapped.app and www.discordwrapped.app.
+- c68c1b2: The FAQ and Advertise page speak in my own voice instead of calling me Mia.
+- 03c8d08: Share posts read like posts now, such as "My first ever message on Discord was “bro”! Check yours on discordwrapped.app". Curly and straight apostrophes count as the same word, so "it's" and "it’s" no longer split in the top words chart, and searching either finds both.
+
 ## 0.2.0
 
 ### Minor Changes
