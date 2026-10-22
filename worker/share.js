@@ -19,9 +19,12 @@ const json = (body, status = 200) => Response.json(body, {status, headers: {'cac
 
 /**
  * POST /api/share?title=&description= with a PNG body (at most 2 MB): stores it and answers 201
- * {id, url, deleteKey}. The delete key is only ever returned here; R2 keeps its SHA-256.
+ * {id, url, deleteKey}, or 429 past the SHARE_UPLOADS limit for the visitor's IP. The delete key is only ever
+ * returned here; R2 keeps its SHA-256.
  */
 export async function upload(request, env, origin) {
+  const {success} = await env.SHARE_UPLOADS.limit({key: request.headers.get('cf-connecting-ip') || 'unknown'});
+  if (!success) return json({error: 'too many uploads'}, 429);
   if (Number(request.headers.get('content-length')) > MAX_BYTES) return json({error: 'too large'}, 413);
   const body = new Uint8Array(await request.arrayBuffer());
   if (body.byteLength > MAX_BYTES) return json({error: 'too large'}, 413);
