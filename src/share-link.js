@@ -1,6 +1,6 @@
 /* Share links: uploads a share image to the site (POST /api/share) and returns its /s/<id> link, which platforms
    unfurl into that image. Each image version uploads once; each upload's delete key is kept in this browser. Pure apart
-   from the fetch and storage it's given, so the tests can import it. */
+   from the origin, fetch and storage it's given, so the tests can import it. */
 const SHARE_KEYS = 'du-shares';
 
 /**
@@ -24,6 +24,18 @@ export function shareLinks({origin = globalThis.location?.origin, fetch = global
     link(blob, meta = {}) {
       if (!made.has(blob)) made.set(blob, upload(blob, meta).then(url => url ?? (made.delete(blob), null)));
       return made.get(blob);
+    },
+    /** How many uploads from this browser are still recorded. */
+    count: () => saved().length,
+    /** Deletes every recorded upload; resolves to how many couldn't be deleted, which stay recorded for a retry. */
+    async deleteAll() {
+      const left = [];
+      for (const s of saved()) {
+        const ok = await fetch(`/api/share/${s.id}`, {method: 'DELETE', headers: {'x-delete-key': s.deleteKey}}).then(r => r.ok, () => false);
+        if (!ok) left.push(s);
+      }
+      storage.setItem(SHARE_KEYS, JSON.stringify(left));
+      return left.length;
     },
   };
 }

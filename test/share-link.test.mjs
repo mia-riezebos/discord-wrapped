@@ -45,6 +45,24 @@ test('a new image version uploads again', async () => {
   assert.equal(calls.length, 2);
 });
 
+test('deleting sends each recorded upload its own key and forgets them', async () => {
+  const {fetch, calls} = server(created(1), created(2), {status: 204}, {status: 204});
+  const storage = memory(), links = shareLinks({origin: SITE, fetch, storage});
+  await links.link(png()); await links.link(png());
+  assert.equal(links.count(), 2);
+  assert.equal(await links.deleteAll(), 0);
+  assert.deepEqual(calls.slice(2).map(c => [c.url, c.init.method, c.init.headers['x-delete-key']]), [['/api/share/id1', 'DELETE', 'key1'], ['/api/share/id2', 'DELETE', 'key2']]);
+  assert.equal(links.count(), 0);
+});
+
+test('uploads that could not be deleted stay recorded for another try', async () => {
+  const {fetch} = server(created(1), created(2), {status: 204}, new TypeError('offline'));
+  const storage = memory(), links = shareLinks({origin: SITE, fetch, storage});
+  await links.link(png()); await links.link(png());
+  assert.equal(await links.deleteAll(), 1);
+  assert.deepEqual(JSON.parse(storage.getItem('du-shares')), [{id: 'id2', deleteKey: 'key2'}]);
+});
+
 test('a refused or failed upload resolves to null and is tried again next time', async () => {
   const {fetch, calls} = server({status: 429}, new TypeError('offline'), created(3));
   const storage = memory(), links = shareLinks({origin: SITE, fetch, storage}), blob = png();
