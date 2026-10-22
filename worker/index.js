@@ -1,6 +1,9 @@
-/* Serves the static site and forwards sponsor requests to the shared sponsor service over a service binding,
-   so the page only ever talks to its own origin. */
+/* Serves the static site, stores share images for share links (share.js), and forwards sponsor requests to the
+   shared sponsor service over a service binding, so the page only ever talks to its own origin. */
+import {SHARE_ID, remove, upload} from './share.js';
+
 const SPONSOR_PATHS = /^\/api\/(ads(\/\d+\/image)?|availability|footer(\/[^/]+\/logo)?)$/;
+const SHARE_ITEM = /^\/api\/share\/([^/]+)$/;
 
 export default {
   async fetch(request, env) {
@@ -11,6 +14,9 @@ export default {
       upstream.searchParams.set('site', env.SPONSOR_SITE);
       return env.SPONSORS.fetch(upstream, {headers: {accept: request.headers.get('accept') ?? '*/*'}});
     }
+    if (url.pathname === '/api/share' && request.method === 'POST') return upload(request, env, url.origin);
+    const item = url.pathname.match(SHARE_ITEM);
+    if (item && SHARE_ID.test(item[1]) && request.method === 'DELETE') return remove(request, env, item[1]);
     if (url.pathname.startsWith('/api/')) return new Response('Not found', {status: 404});
     return env.ASSETS.fetch(request);
   },
