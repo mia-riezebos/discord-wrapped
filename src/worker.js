@@ -63,7 +63,13 @@ async function openZip(file) {
       const start = e.off + 30 + h.getUint16(26, true) + h.getUint16(28, true);
       const blob = file.slice(start, start + e.csize);
       if (e.method === 0) return blob.text();
-      if (e.method === 8) return new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+      // A file may not inflate past the size the package declares for it, so a malformed zip can't fill memory.
+      let size = 0;
+      const capped = new TransformStream({transform(chunk, out) {
+        if ((size += chunk.byteLength) > e.usize) throw new Error(`${name} is larger than the package says.`);
+        out.enqueue(chunk);
+      }});
+      if (e.method === 8) return new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw')).pipeThrough(capped)).text();
       throw new Error(`${name} uses unsupported compression method ${e.method}.`);
     },
   };
@@ -151,11 +157,11 @@ async function parsePackage(source) {
     const type = typeof meta.type === 'number' ? (TYPE_NAMES[meta.type] || 'TYPE_' + meta.type) : String(meta.type || 'UNKNOWN');
     const group = type === 'DM' ? 'DMs' : type === 'GROUP_DM' ? 'Group DMs' : 'Servers';
     let guild = meta.guild || null, guildId = guild?.id ? String(guild.id) : null;
-    const label = String(index[cid] || '');
+    const label = String(Object.hasOwn(index, cid) && index[cid] || '');
     if (group === 'Servers' && !guild && label.startsWith('Unknown channel in ')) guild = {name: label.slice('Unknown channel in '.length)};
     const name = meta.name || label.replace(/^Direct Message with /, '').replace(/#0$/, '') || (group === 'DMs' ? 'Unknown DM' : `${type} ${cid}`);
     const ci = channels.length;
-    channels.push({id: cid, name, type, group, guild: guild?.name || '', guildId, contextKey: guildId || (guild ? 'name:' + guild.name : null), current: guildId ? guildId in serverIndex : false});
+    channels.push({id: cid, name, type, group, guild: guild?.name || '', guildId, contextKey: guildId || (guild ? 'name:' + guild.name : null), current: guildId ? Object.hasOwn(serverIndex, guildId) : false});
     for (const r of rows) {
       const id = String(r.ID ?? r.id ?? '');
       if (id && seen.has(id)) { duplicates++; continue; }

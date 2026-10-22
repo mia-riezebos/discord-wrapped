@@ -72,3 +72,46 @@ test('a refused or failed upload resolves to null and is tried again next time',
   assert.equal(calls.length, 3);
   assert.deepEqual(JSON.parse(storage.getItem('du-shares')), [{id: 'id3', deleteKey: 'key3'}]);
 });
+
+test('an image uploaded while another tab is deleting keeps its key, and the next delete removes it', async () => {
+  const storage = memory(), stored = new Set();
+  let release, n = 0;
+  const held = new Promise(r => { release = r; });
+  const fetch = async (url, init) => {
+    if (init.method === 'POST') {
+      const id = `id${++n}`;
+      stored.add(id);
+      return {ok: true, status: 201, json: async () => ({id, deleteKey: `key${n}`})};
+    }
+    if (url === '/api/share/id1') await held;
+    stored.delete(url.split('/').pop());
+    return {ok: true, status: 204};
+  };
+  const tabA = shareLinks({origin: SITE, fetch, storage}), tabB = shareLinks({origin: SITE, fetch, storage});
+  await tabA.link(png());
+  const deleting = tabA.deleteAll();
+  await tabB.link(png());
+  release();
+  assert.equal(await deleting, 0);
+  assert.deepEqual(JSON.parse(storage.getItem('du-shares')), [{id: 'id2', deleteKey: 'key2'}]);
+  assert.equal(await tabA.deleteAll(), 0);
+  assert.equal(stored.size, 0);
+});
+
+test("an upload whose key can't be saved is deleted again, and fails loudly if that delete fails too", async () => {
+  const full = {...memory(), setItem() { throw new DOMException('full', 'QuotaExceededError'); }};
+  const deleted = server(created(1), {status: 204});
+  assert.equal(await shareLinks({origin: SITE, fetch: deleted.fetch, storage: full}).link(png()), null);
+  assert.deepEqual([deleted.calls[1].url, deleted.calls[1].init.method, deleted.calls[1].init.headers['x-delete-key']], ['/api/share/id1', 'DELETE', 'key1']);
+  const stranded = server(created(1), new TypeError('offline'));
+  await assert.rejects(shareLinks({origin: SITE, fetch: stranded.fetch, storage: full}).link(png()), /can't be deleted from this browser/);
+});
+
+test('sharing an image again after deleting uploads it again', async () => {
+  const {fetch, calls} = server(created(1), {status: 204}, created(2));
+  const links = shareLinks({origin: SITE, fetch, storage: memory()}), blob = png();
+  await links.link(blob);
+  await links.deleteAll();
+  assert.equal(await links.link(blob), 'https://discordwrapped.app/s/id2');
+  assert.equal(calls.length, 3);
+});
