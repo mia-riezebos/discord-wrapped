@@ -29,9 +29,11 @@ p { margin: 8px 0; }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
 
 /* landing */
-.landing { min-height: calc(100vh - 57px); display: grid; place-items: center; padding: 40px 0; }
-.landing .wrap { max-width: 680px; }
-.lede { font-size: 17px; color: var(--muted); margin-bottom: 28px; }
+/* The landing shares the report's column and left edge, so opening a report doesn't move the title sideways; its
+   content keeps a narrower measure inside that column. */
+.landing { min-height: calc(100vh - 57px); padding: 40px 0; box-sizing: border-box; }
+.landing .wrap > * { max-width: 640px; }
+.lede { color: var(--muted); margin-bottom: 28px; }
 .drop { border: 2px dashed var(--border); border-radius: 16px; background: var(--surface); padding: 36px 24px; text-align: center; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
 .drop.over { border-color: var(--accent); background: var(--soft); }
 .drop strong { display: block; font-size: 18px; margin-bottom: 6px; }
