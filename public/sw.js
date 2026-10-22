@@ -1,6 +1,6 @@
 /* Service worker: keeps the site working offline after the first visit. build.py writes the release into VERSION and
    the files to save at install into SHELL, so every release changes this file's bytes and the browser installs it. */
-const VERSION = "0.4.0-1aee81640e";
+const VERSION = "0.4.0-c1b07fbddc";
 const SHELL = ["/", "/advertise", "/manifest.webmanifest", "/icons/apple-touch-icon.png", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png", "/icons/icon.svg"];
 const CACHE = `dw-${VERSION}`;
 
@@ -19,8 +19,9 @@ self.addEventListener('message', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
-  // Sponsors (/api/) stay live, and cross-origin requests (the AI library and model) keep their own cache.
-  if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  // Sponsors and share uploads (/api/) and share pages (/s/) stay live, and cross-origin requests (the AI library and
+  // model) keep their own cache.
+  if (req.method !== 'GET' || url.origin !== location.origin || /^\/(api|s)\//.test(url.pathname)) return;
   const path = url.pathname.replace(/(\/index)?\.html$/, '').replace(/(.)\/$/, '$1') || '/';
   // Year themes (/themes/<year>/) aren't in SHELL: they are saved on first use, or ahead of time by the theme prefetch.
   const theme = path.startsWith('/themes/');

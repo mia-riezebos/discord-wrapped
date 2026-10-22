@@ -261,7 +261,8 @@ function prefetchThemes() {
 }
 // ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
 // its year; any other (the example) on whichever year is selected. Undocumented.
-const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');
+// Ids are folder names under /themes/, so anything else (a path) is ignored.
+const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme')?.match(/^[\w-]+$/)?.[0];
 // A year's theme applies only while that year is selected.
 function themeId(p) {
   if (p.kind !== 'year') return null;
@@ -383,7 +384,7 @@ function stacked(target, labels, series, {height = 240, title, onPick, selected,
     labels.forEach((name, i) => {
       let acc = 0; const x = L + i * step;
       series.forEach((ser, j) => { const v = ser.values[i], bh = ph * v / max; s += `<rect x="${x + step * .14}" y="${T + ph - ph * (acc + v) / max}" width="${step * .72}" height="${bh}" fill="${COLORS[j]}" opacity="${selected === undefined || selected === i ? 1 : .45}"/>`; acc += v; });
-      s += `<rect class="hit" x="${x}" y="${T}" width="${step}" height="${ph}" data-i="${i}" data-tip="${esc(tipNames[i])} · ${fmt(totals[i])} total · ${series.map(se => `${se.name} ${fmt(se.values[i])}`).join(' · ')}"/>`;
+      s += `<rect class="hit" x="${x}" y="${T}" width="${step}" height="${ph}" data-i="${i}" data-tip="${esc(tipNames[i])} · ${fmt(totals[i])} total · ${series.map(se => `${esc(se.name)} ${fmt(se.values[i])}`).join(' · ')}"/>`;
       if (i % every === 0) s += `<text class="tick" x="${x + step / 2}" y="${h - 8}" text-anchor="middle">${esc(name)}</text>`;
     });
     return s;
@@ -402,7 +403,7 @@ function lines(target, labels, series, {height = 240, title, format = fmt, tickL
     const ticks = Math.min(n, Math.max(2, Math.floor(pw / 80)));
     for (let k = 0; k < ticks; k++) { const i = Math.round(k * (n - 1) / (ticks - 1 || 1)); s += `<text class="tick" x="${x(i)}" y="${h - 8}" text-anchor="${k === 0 ? 'start' : k === ticks - 1 ? 'end' : 'middle'}">${esc(tickLabel(labels[i]))}</text>`; }
     const half = n > 1 ? pw / (n - 1) / 2 : pw / 2;
-    labels.forEach((lab, i) => s += `<rect class="hit" x="${x(i) - half}" y="${T}" width="${half * 2}" height="${ph}" data-i="${i}" data-tip="${esc(lab)} · ${series.map(se => (series.length > 1 ? se.name + ' ' : '') + format(se.values[i])).join(' · ')}"/>`);
+    labels.forEach((lab, i) => s += `<rect class="hit" x="${x(i) - half}" y="${T}" width="${half * 2}" height="${ph}" data-i="${i}" data-tip="${esc(lab)} · ${series.map(se => (series.length > 1 ? esc(se.name) + ' ' : '') + format(se.values[i])).join(' · ')}"/>`);
     return s;
   }, [['', ...series.map(se => se.name)], labels.map((lab, i) => [lab, ...series.map(se => format(se.values[i]))])]);
   if (onHover) $(target).onpointerover = e => { const i = e.target.dataset?.i; if (i !== undefined) onHover(+i); };
@@ -725,7 +726,7 @@ $('ai-run').onclick = async () => {
     const model = $('ai-model').value;
     if (engineModel !== model) {
       status.textContent = 'Loading the AI model…'; bar.classList.remove('hidden');
-      const webllm = await import('https://esm.run/@mlc-ai/web-llm@0.2.82');
+      const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.82/lib/index.js');
       const report = r => { status.textContent = 'Loading the AI model…'; bar.firstElementChild.style.width = (100 * (r.progress || 0)) + '%'; };
       if (engine) { await engine.reload(model); } else engine = await webllm.CreateMLCEngine(model, {initProgressCallback: report});
       engineModel = model;

@@ -5,10 +5,24 @@
 // A copy opened from disk has no host, so it falls back to the main domain.
 const SITE = /^https?:$/.test(location.protocol) ? location.origin : 'https://discordwrapped.app';
 const SITE_HOST = new URL(SITE).host;
-// Every post ends with an invitation to the site, as a full link so platforms link it and show its preview.
+// Every post ends with an invitation to the site, as a full link so platforms link it and show its preview. With a
+// share link (share-link.js) that link is the image's own page, which platforms unfurl into the image.
 const CTA = `Check yours on ${SITE_HOST}`;
 const withoutCta = t => t.replace(CTA, '').trim();
-const withLink = t => (t.includes(SITE_HOST) ? t : `${t}\n\n${SITE}`).replace(CTA, `Check yours on ${SITE}`);
+const withLink = (t, link = SITE) => (t.includes(CTA) || link === SITE && t.includes(SITE_HOST) ? t : `${t}\n\n${link}`).replace(CTA, `Check yours on ${link}`);
+const shared = shareLinks({origin: SITE});
+// Whether sharing to a platform or copying the link uploads the image for its preview: on unless turned off.
+const UPLOAD_KEY = 'du-share-upload';
+const uploadOn = () => localStorage.getItem(UPLOAD_KEY) !== 'off';
+// "Delete shared images" in the Your data menu, shown once this browser has uploaded any.
+const deleteShares = $('delete-shares');
+$('data-menu').addEventListener('toggle', () => { deleteShares.hidden = !shared.count(); });
+deleteShares.addEventListener('click', async () => {
+  const n = shared.count();
+  if (!confirm(`Delete the ${n === 1 ? 'image' : `${n} images`} you shared from this browser? Links to ${n === 1 ? 'it' : 'them'} will open the home page instead.`)) return;
+  const left = await shared.deleteAll();
+  if (left) alert(`Couldn't delete ${left === 1 ? 'one image' : `${left} images`}. Check your connection and try again.`);
+});
 const enc = encodeURIComponent;
 const shareCtx = new Map();
 let shareSeq = 0;
@@ -27,7 +41,7 @@ const PLATFORMS = [
   {id: 'threads', name: 'Threads', brand: '#000', compose: t => `https://www.threads.com/intent/post?text=${enc(t)}`},
   {id: 'mastodon', name: 'Mastodon', brand: '#6364ff', compose: (t, server) => `https://${server}/share?text=${enc(t)}`, needsServer: true},
   {id: 'linkedin', name: 'LinkedIn', brand: '#0a66c2', compose: t => `https://www.linkedin.com/feed/?shareActive=true&text=${enc(t)}`},
-  {id: 'reddit', name: 'Reddit', brand: '#ff4500', linkPost: true, compose: t => `https://www.reddit.com/submit?url=${enc(SITE)}&title=${enc(t)}`},
+  {id: 'reddit', name: 'Reddit', brand: '#ff4500', linkPost: true, compose: (t, server, link) => `https://www.reddit.com/submit?url=${enc(link)}&title=${enc(t)}`},
   {id: 'whatsapp', name: 'WhatsApp', brand: '#128c7e', compose: t => `https://wa.me/?text=${enc(t)}`},
 ];
 // Brand marks on a 24-unit grid: Simple Icons (CC0), and LinkedIn's "in" drawn here since Simple Icons dropped it.
@@ -184,6 +198,7 @@ function openShare(ctx, rect) {
     <div class="sp-label"><span id="sp-post-label">Post text</span><button type="button" class="sp-edit" data-act="edit">Edit text</button></div>
     <p class="sp-post" role="group" aria-labelledby="sp-post-label" aria-describedby="sp-hint"></p>
     ${canNative ? `<div class="sp-native"><button type="button" data-act="native" class="primary" aria-disabled="true">${SHARE_ICON}Share…</button></div>` : ''}
+    <label class="inline sp-upload"><input type="checkbox" data-upload${uploadOn() ? ' checked' : ''}> Upload the image for link previews</label>
     <div class="sp-platforms">${PLATFORMS.map(p => `<button type="button" data-platform="${p.id}"><span class="sp-icon" style="background:${p.brand}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[p.id]}"/></svg></span><span class="sr-only">Share to </span>${p.name}</button>`).join('')}</div>
     <div class="sp-actions"><button type="button" data-act="copy-image">Copy image</button><button type="button" data-act="download">Download image</button><button type="button" data-act="copy-text">Copy text and link</button></div>
     <div class="sp-step" aria-live="polite"></div>`;
@@ -284,6 +299,7 @@ pop.addEventListener('keydown', e => {
 });
 pop.addEventListener('change', e => {
   if (!current) return;
+  if ('upload' in e.target.dataset) return localStorage.setItem(UPLOAD_KEY, e.target.checked ? 'on' : 'off');
   if (e.target.dataset.hide) return redact(setToggle(current.red, e.target.dataset.hide, e.target.checked));
   if (e.target.name !== 'sp-shape') return;
   cardShape = e.target.value;
@@ -310,6 +326,17 @@ function copyImage() {
   if (!window.ClipboardItem || !navigator.clipboard?.write) return Promise.reject(new Error('no image clipboard'));
   return navigator.clipboard.write([new ClipboardItem({'image/png': current.card})]);
 }
+// Resolves to the link the post should carry: the image's share link when uploading is on and works, else the site.
+function linkFor() {
+  if (!uploadOn()) return Promise.resolve(SITE);
+  const meta = {title: cardSummary(), description: withoutCta(postText())};
+  return current.card.then(blob => blob && shared.link(blob, meta).catch(e => { alert(e.message); return null; })).then(url => url || SITE, () => SITE);
+}
+// Writes text that's still being worked out, keeping the click's user activation where the browser allows it.
+function copyText(text) {
+  if (!window.ClipboardItem || !navigator.clipboard?.write) return text.then(t => navigator.clipboard.writeText(t));
+  return navigator.clipboard.write([new ClipboardItem({'text/plain': text.then(t => new Blob([t], {type: 'text/plain'}))})]);
+}
 const slug = () => quoteOf(cardSummary().split('. ')[0].replaceAll(HIDDEN, ''), 40).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'card';
 
 function sharePlatform(p) {
@@ -322,8 +349,14 @@ function sharePlatform(p) {
   }
   const text = postText(), copied = p.linkPost ? Promise.resolve(false) : copyImage().then(() => true, () => false);
   // Reddit takes the link as the post's own URL.
-  const post = p.linkPost ? withoutCta(text) : withLink(text);
-  window.open(p.compose(post, server), '_blank', 'noopener');
+  const compose = link => p.compose(p.linkPost ? withoutCta(text) : withLink(text, link), server, link);
+  if (!uploadOn()) window.open(compose(SITE), '_blank', 'noopener');
+  else {
+    // Open the tab during the click, so it isn't blocked as a popup, and send it to the post once the upload is done.
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
+    linkFor().then(link => tab ? tab.location.replace(compose(link)) : window.open(compose(link), '_blank', 'noopener'));
+  }
   copied.then(ok => {
     const image = p.linkPost ? '' : ok ? `<li>Paste the copied image into your post with ⌘V or Ctrl+V.</li>` : `<li>Couldn't copy the image. Choose "Download image" and attach it to your post.</li>`;
     stepOut(image ? `<ol>${image}</ol>` : '');
@@ -338,7 +371,7 @@ pop.addEventListener('click', async e => {
   const act = b.dataset.act;
   try {
     if (act === 'copy-image') { await copyImage(); stepOut('<p>Image copied.</p>'); }
-    else if (act === 'copy-text') { await navigator.clipboard.writeText(withLink(postText())); stepOut('<p>Text and link copied.</p>'); }
+    else if (act === 'copy-text') { const text = postText(); await copyText(linkFor().then(link => withLink(text, link))); stepOut('<p>Text and link copied.</p>'); }
     else if (act === 'zoom') {
       current.zoomed = !current.zoomed;
       b.setAttribute('aria-pressed', current.zoomed);

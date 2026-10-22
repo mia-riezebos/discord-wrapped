@@ -33,12 +33,16 @@ test('the first visit saves both pages, the manifest and the icons', () => {
   assert.ok(SHELL.every(u => !u.startsWith('/api/')));
 });
 
-test('sponsor requests and other sites always go to the network', () => {
+test('sponsor requests, share links and other sites always go to the network', () => {
   const {handlers} = loadWorker();
   assert.equal(intercepts(handlers, 'https://discordwrapped.app/api/ads'), false);
   assert.equal(intercepts(handlers, 'https://discordwrapped.app/api/footer/acme/logo'), false);
   // Even a page load of /api/ never falls back to the saved site.
   assert.equal(intercepts(handlers, 'https://discordwrapped.app/api/availability', {mode: 'navigate'}), false);
+  // Share pages and their images are rendered by the Worker, and work only online.
+  assert.equal(intercepts(handlers, 'https://discordwrapped.app/s/k3J9xQ2mPa', {mode: 'navigate'}), false);
+  assert.equal(intercepts(handlers, 'https://discordwrapped.app/s/k3J9xQ2mPa.png'), false);
+  assert.equal(intercepts(handlers, 'https://discordwrapped.app/api/share/k3J9xQ2mPa'), false);
   assert.equal(intercepts(handlers, 'https://esm.run/@mlc-ai/web-llm'), false);
   assert.equal(intercepts(handlers, 'https://discordwrapped.app/', {method: 'POST'}), false);
 });
