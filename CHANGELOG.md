@@ -1,5 +1,20 @@
 # discord-wrapped
 
+## 0.5.0
+
+### Minor Changes
+
+- ea8e0b3: "Delete shared images" in Your data deletes every image this browser uploaded for share links, and the FAQ says what sharing uploads and for how long.
+- ea8e0b3: Sharing to a platform or copying the link uploads the image you see, so the link previews show it. Uncheck "Upload the image for link previews" to share with the plain site link instead.
+- ea8e0b3: Share links open a page with the shared image and a "See yours" link, and platforms show that image as the link preview.
+- ea8e0b3: The site can store share images for share links: uploads are PNG only, at most 2 MB, and expire after 90 days.
+
+### Patch Changes
+
+- ea8e0b3: "Delete shared images" no longer misses an image shared from another tab while it runs, and a deleted image stops showing on its link within minutes.
+- eb5fb5c: Opening a report no longer shifts the page: the home page shares the report's left edge and text size, and the side ads stay in the same spot.
+- ea8e0b3: Share image uploads are limited to 5 a minute per visitor.
+
 ## 0.4.0
 
 ### Minor Changes
