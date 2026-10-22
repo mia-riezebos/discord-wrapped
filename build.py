@@ -4,7 +4,7 @@ from pathlib import Path
 root = Path(__file__).parent
 src = root / 'src'
 read = lambda name: (src / name).read_text()
-SCRIPTS = ('worker.js', 'redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')
+SCRIPTS = ('worker.js', 'redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share-link.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')
 assert all('</script' not in read(f).lower() for f in SCRIPTS)
 partials = {f'<!--{name.upper()}-->\n': read(f'partials/{name}.html') for name in ('header', 'footer', 'rails')}
 # Years with their own theme, the src/themes/ folders named for a year, and the files each loads, which the page saves
@@ -25,7 +25,7 @@ def page(template, out, scripts):
     path.write_text(html)
     print(path, len(html.encode()), 'bytes')
 
-page('index.html', 'index.html', ('/*APP*/', ('redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'offline.js')))
+page('index.html', 'index.html', ('/*APP*/', ('redaction.js', 'share-copy.js', 'app.js', 'card.js', 'share-link.js', 'share.js', 'stories.js', 'guess.js', 'story-card.js', 'player.js', 'themes/define.js', 'theme.js', 'kinetic.js', 'ads-schedule.js', 'ads.js', 'offline.js')))
 page('advertise.html', 'advertise.html', ('/*ADVERTISE*/', ('ads-schedule.js', 'ads.js', 'advertise.js', 'offline.js')))
 (root / 'public' / 'manifest.webmanifest').write_text(read('manifest.webmanifest'))
 # Year themes load lazily from /themes/<id>/ and import /themes/define.js, so they ship as files, not inline.
