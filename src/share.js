@@ -14,6 +14,15 @@ const shared = shareLinks({origin: SITE});
 // Whether sharing to a platform or copying the link uploads the image for its preview: on unless turned off.
 const UPLOAD_KEY = 'du-share-upload';
 const uploadOn = () => localStorage.getItem(UPLOAD_KEY) !== 'off';
+// "Delete shared images" in the Your data menu, shown once this browser has uploaded any.
+const deleteShares = $('delete-shares');
+$('data-menu').addEventListener('toggle', () => { deleteShares.hidden = !shared.count(); });
+deleteShares.addEventListener('click', async () => {
+  const n = shared.count();
+  if (!confirm(`Delete the ${n === 1 ? 'image' : `${n} images`} you shared from this browser? Links to ${n === 1 ? 'it' : 'them'} will open the home page instead.`)) return;
+  const left = await shared.deleteAll();
+  if (left) alert(`Couldn't delete ${left === 1 ? 'one image' : `${left} images`}. Check your connection and try again.`);
+});
 const enc = encodeURIComponent;
 const shareCtx = new Map();
 let shareSeq = 0;
