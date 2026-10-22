@@ -16,6 +16,9 @@
     { "name": "SHARE_DELETES", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
   ],
   "vars": { "SPONSOR_SITE": "discordwrapped.app" },
+  // Workers Logs: every invocation and console line, searchable in the dashboard. Static assets served without the
+  // Worker aren't invocations, so they don't appear here.
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": true } },
   // Only the domains below serve the site.
   "workers_dev": false,
   "preview_urls": false,
