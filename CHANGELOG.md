@@ -1,5 +1,12 @@
 # discord-wrapped
 
+## 0.5.2
+
+### Patch Changes
+
+- 8deafae: Add a `favicon.ico` so browsers and link previews that look for one find the app icon instead of a 404.
+- faa7711: Turn on Workers Logs, so every Worker request and error is searchable in the Cloudflare dashboard.
+
 ## 0.5.1
 
 ### Patch Changes
