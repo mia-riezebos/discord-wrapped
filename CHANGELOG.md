@@ -1,5 +1,11 @@
 # discord-wrapped
 
+## 0.5.1
+
+### Patch Changes
+
+- 7c31796: The home page now fills the same column as the report, so it no longer sits off to the left.
+
 ## 0.5.0
 
 ### Minor Changes
