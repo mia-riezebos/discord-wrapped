@@ -10,6 +10,8 @@
   "services": [{ "binding": "SPONSORS", "service": "sponsors" }],
   // Share images for share links; the bucket's lifecycle rule (expire-90d) deletes each one after 90 days.
   "r2_buckets": [{ "binding": "SHARES", "bucket_name": "discord-wrapped-shares" }],
+  // Uploads per visitor IP; Cloudflare's limiter counts over at most a minute.
+  "ratelimits": [{ "name": "SHARE_UPLOADS", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
   "vars":{ "SPONSOR_SITE": "discordwrapped.app" },
   "routes": [
     { "pattern": "discordwrapped.app", "custom_domain": true },
