@@ -1,9 +1,11 @@
-/* Serves the static site, stores share images for share links (share.js), and forwards sponsor requests to the
-   shared sponsor service over a service binding, so the page only ever talks to its own origin. */
+/* Serves the static site, stores share images for share links (share.js) and renders their pages (page.js), and
+   forwards sponsor requests to the shared sponsor service over a service binding, so the page only ever talks to its own origin. */
+import {image, page} from './page.js';
 import {SHARE_ID, remove, upload} from './share.js';
 
 const SPONSOR_PATHS = /^\/api\/(ads(\/\d+\/image)?|availability|footer(\/[^/]+\/logo)?)$/;
 const SHARE_ITEM = /^\/api\/share\/([^/]+)$/;
+const SHARE_PAGE = /^\/s\/([^/]*?)(\.png)?$/;
 
 export default {
   async fetch(request, env) {
@@ -17,6 +19,11 @@ export default {
     if (url.pathname === '/api/share' && request.method === 'POST') return upload(request, env, url.origin);
     const item = url.pathname.match(SHARE_ITEM);
     if (item && SHARE_ID.test(item[1]) && request.method === 'DELETE') return remove(request, env, item[1]);
+    if (url.pathname.startsWith('/s/')) {
+      const [, id, png] = url.pathname.match(SHARE_PAGE) ?? [];
+      if (!SHARE_ID.test(id ?? '')) return Response.redirect(`${url.origin}/`, 302);
+      return (png ? image : page)(env, id, url.origin);
+    }
     if (url.pathname.startsWith('/api/')) return new Response('Not found', {status: 404});
     return env.ASSETS.fetch(request);
   },

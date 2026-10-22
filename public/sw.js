@@ -19,8 +19,9 @@ self.addEventListener('message', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
-  // Sponsors (/api/) stay live, and cross-origin requests (the AI library and model) keep their own cache.
-  if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  // Sponsors and share uploads (/api/) and share pages (/s/) stay live, and cross-origin requests (the AI library and
+  // model) keep their own cache.
+  if (req.method !== 'GET' || url.origin !== location.origin || /^\/(api|s)\//.test(url.pathname)) return;
   const path = url.pathname.replace(/(\/index)?\.html$/, '').replace(/(.)\/$/, '$1') || '/';
   // Year themes (/themes/<year>/) aren't in SHELL: they are saved on first use, or ahead of time by the theme prefetch.
   const theme = path.startsWith('/themes/');
