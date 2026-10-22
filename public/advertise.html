@@ -334,7 +334,8 @@ label.sp-upload { margin-top: 10px; color: var(--muted); font-size: 13px; }
 @media (pointer: coarse) { .sp-actions button { min-height: 40px; } .sp-native button { min-height: 48px; } }
 
 /* sponsor rails: only where there is room beside the content column. Each rail spans the frame, and its slots
-   stick centred in the space under the sticky bars until they meet the footer. --stack is the slots' height. */
+   stick centred under the header (the same spot with or without a report), pushed below the sticky bars only when
+   they would overlap, until they meet the footer. --stack is the slots' height. */
 .frame { position: relative; }
 .rail { display: none; }
 @media (min-width: 1480px) {
@@ -342,7 +343,7 @@ label.sp-upload { margin-top: 10px; color: var(--muted); font-size: 13px; }
   body.has-report .rail { --top: calc(var(--header-h, 57px) + var(--period-h, 0px)); }
   .rail.left { left: calc(50% - 520px - 184px); }
   .rail.right { right: calc(50% - 520px - 184px); }
-  .rail-stick { position: sticky; top: max(var(--top) + 16px, (100vh + var(--top) - var(--stack)) / 2); display: flex; flex-direction: column; gap: 16px; }
+  .rail-stick { position: sticky; top: max(var(--top) + 16px, (100vh + var(--header-h, 57px) - var(--stack)) / 2); display: flex; flex-direction: column; gap: 16px; }
 }
 @media (max-height: 1000px) { .rail { --stack: 600px; } .rail .slot-square { display: none; } }
 @media print { .rail { display: none !important; } }
