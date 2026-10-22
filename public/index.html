@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; manifest-src 'self'; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; manifest-src 'self'; connect-src 'self' blob: data: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
+<!-- The AI library is npm's published file, and the browser refuses it if it doesn't match this hash. -->
+<script type="importmap">{"integrity": {"https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.82/lib/index.js": "sha384-2Tjus67Z6N7N+ljqQWnpSEcinnggT4SKOBml1BGnUXSbSGg7q1FgUxJOnIKyn0W4"}}</script>
 <title>Discord Wrapped | Your Discord stats and message history</title>
 <meta name="description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
 <link rel="canonical" href="https://discordwrapped.app/">
@@ -920,7 +922,13 @@ async function openZip(file) {
       const start = e.off + 30 + h.getUint16(26, true) + h.getUint16(28, true);
       const blob = file.slice(start, start + e.csize);
       if (e.method === 0) return blob.text();
-      if (e.method === 8) return new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+      // A file may not inflate past the size the package declares for it, so a malformed zip can't fill memory.
+      let size = 0;
+      const capped = new TransformStream({transform(chunk, out) {
+        if ((size += chunk.byteLength) > e.usize) throw new Error(`${name} is larger than the package says.`);
+        out.enqueue(chunk);
+      }});
+      if (e.method === 8) return new Response(blob.stream().pipeThrough(new DecompressionStream('deflate-raw')).pipeThrough(capped)).text();
       throw new Error(`${name} uses unsupported compression method ${e.method}.`);
     },
   };
@@ -1008,11 +1016,11 @@ async function parsePackage(source) {
     const type = typeof meta.type === 'number' ? (TYPE_NAMES[meta.type] || 'TYPE_' + meta.type) : String(meta.type || 'UNKNOWN');
     const group = type === 'DM' ? 'DMs' : type === 'GROUP_DM' ? 'Group DMs' : 'Servers';
     let guild = meta.guild || null, guildId = guild?.id ? String(guild.id) : null;
-    const label = String(index[cid] || '');
+    const label = String(Object.hasOwn(index, cid) && index[cid] || '');
     if (group === 'Servers' && !guild && label.startsWith('Unknown channel in ')) guild = {name: label.slice('Unknown channel in '.length)};
     const name = meta.name || label.replace(/^Direct Message with /, '').replace(/#0$/, '') || (group === 'DMs' ? 'Unknown DM' : `${type} ${cid}`);
     const ci = channels.length;
-    channels.push({id: cid, name, type, group, guild: guild?.name || '', guildId, contextKey: guildId || (guild ? 'name:' + guild.name : null), current: guildId ? guildId in serverIndex : false});
+    channels.push({id: cid, name, type, group, guild: guild?.name || '', guildId, contextKey: guildId || (guild ? 'name:' + guild.name : null), current: guildId ? Object.hasOwn(serverIndex, guildId) : false});
     for (const r of rows) {
       const id = String(r.ID ?? r.id ?? '');
       if (id && seen.has(id)) { duplicates++; continue; }
@@ -2028,7 +2036,8 @@ function prefetchThemes() {
 }
 // ?theme=<id>&story=<story id> previews a theme on the saved report and plays that one story. A year theme shows on
 // its year; any other (the example) on whichever year is selected. Undocumented.
-const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme');
+// Ids are folder names under /themes/, so anything else (a path) is ignored.
+const preview = new URLSearchParams(location.search), previewTheme = preview.get('theme')?.match(/^[\w-]+$/)?.[0];
 // A year's theme applies only while that year is selected.
 function themeId(p) {
   if (p.kind !== 'year') return null;
@@ -2150,7 +2159,7 @@ function stacked(target, labels, series, {height = 240, title, onPick, selected,
     labels.forEach((name, i) => {
       let acc = 0; const x = L + i * step;
       series.forEach((ser, j) => { const v = ser.values[i], bh = ph * v / max; s += `<rect x="${x + step * .14}" y="${T + ph - ph * (acc + v) / max}" width="${step * .72}" height="${bh}" fill="${COLORS[j]}" opacity="${selected === undefined || selected === i ? 1 : .45}"/>`; acc += v; });
-      s += `<rect class="hit" x="${x}" y="${T}" width="${step}" height="${ph}" data-i="${i}" data-tip="${esc(tipNames[i])} · ${fmt(totals[i])} total · ${series.map(se => `${se.name} ${fmt(se.values[i])}`).join(' · ')}"/>`;
+      s += `<rect class="hit" x="${x}" y="${T}" width="${step}" height="${ph}" data-i="${i}" data-tip="${esc(tipNames[i])} · ${fmt(totals[i])} total · ${series.map(se => `${esc(se.name)} ${fmt(se.values[i])}`).join(' · ')}"/>`;
       if (i % every === 0) s += `<text class="tick" x="${x + step / 2}" y="${h - 8}" text-anchor="middle">${esc(name)}</text>`;
     });
     return s;
@@ -2169,7 +2178,7 @@ function lines(target, labels, series, {height = 240, title, format = fmt, tickL
     const ticks = Math.min(n, Math.max(2, Math.floor(pw / 80)));
     for (let k = 0; k < ticks; k++) { const i = Math.round(k * (n - 1) / (ticks - 1 || 1)); s += `<text class="tick" x="${x(i)}" y="${h - 8}" text-anchor="${k === 0 ? 'start' : k === ticks - 1 ? 'end' : 'middle'}">${esc(tickLabel(labels[i]))}</text>`; }
     const half = n > 1 ? pw / (n - 1) / 2 : pw / 2;
-    labels.forEach((lab, i) => s += `<rect class="hit" x="${x(i) - half}" y="${T}" width="${half * 2}" height="${ph}" data-i="${i}" data-tip="${esc(lab)} · ${series.map(se => (series.length > 1 ? se.name + ' ' : '') + format(se.values[i])).join(' · ')}"/>`);
+    labels.forEach((lab, i) => s += `<rect class="hit" x="${x(i) - half}" y="${T}" width="${half * 2}" height="${ph}" data-i="${i}" data-tip="${esc(lab)} · ${series.map(se => (series.length > 1 ? esc(se.name) + ' ' : '') + format(se.values[i])).join(' · ')}"/>`);
     return s;
   }, [['', ...series.map(se => se.name)], labels.map((lab, i) => [lab, ...series.map(se => format(se.values[i]))])]);
   if (onHover) $(target).onpointerover = e => { const i = e.target.dataset?.i; if (i !== undefined) onHover(+i); };
@@ -2492,7 +2501,7 @@ $('ai-run').onclick = async () => {
     const model = $('ai-model').value;
     if (engineModel !== model) {
       status.textContent = 'Loading the AI model…'; bar.classList.remove('hidden');
-      const webllm = await import('https://esm.run/@mlc-ai/web-llm@0.2.82');
+      const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.82/lib/index.js');
       const report = r => { status.textContent = 'Loading the AI model…'; bar.firstElementChild.style.width = (100 * (r.progress || 0)) + '%'; };
       if (engine) { await engine.reload(model); } else engine = await webllm.CreateMLCEngine(model, {initProgressCallback: report});
       engineModel = model;
@@ -2768,42 +2777,53 @@ function scribble(g, x, y, w, h, ink, seed) {
 
 /* Share links: uploads a share image to the site (POST /api/share) and returns its /s/<id> link, which platforms
    unfurl into that image. Each image version uploads once; each upload's delete key is kept in this browser. Pure apart
-   from the origin, fetch and storage it's given, so the tests can import it. */
+   from the origin, fetch, storage and locks it's given, so the tests can import it. */
 const SHARE_KEYS = 'du-shares';
 
 /**
  * shareLinks({origin}).link(blob, {title, description}) resolves to the image's share link, or null when the upload fails
  * (offline, rate-limited, refused); callers then use the plain site link. The same Blob resolves to the same link,
  * and a failed upload is tried again on the next call. Uploads are recorded as [{id, deleteKey}] under SHARE_KEYS.
+ * It rejects only when an upload's key couldn't be recorded and the upload couldn't be deleted again either, so this
+ * browser can no longer delete it.
  */
-export function shareLinks({origin = globalThis.location?.origin, fetch = globalThis.fetch, storage = globalThis.localStorage} = {}) {
-  const made = new WeakMap();
+export function shareLinks({origin = globalThis.location?.origin, fetch = globalThis.fetch, storage = globalThis.localStorage, locks = globalThis.navigator?.locks} = {}) {
+  let made = new WeakMap();
   const saved = () => JSON.parse(storage.getItem(SHARE_KEYS) || '[]');
+  // Every read-modify-write of SHARE_KEYS holds this lock, so tabs uploading and deleting at once keep each other's keys.
+  const update = async change => {
+    const write = async () => storage.setItem(SHARE_KEYS, JSON.stringify(change(saved())));
+    return locks ? locks.request(SHARE_KEYS, write) : write();
+  };
+  const remove = s => fetch(`/api/share/${s.id}`, {method: 'DELETE', headers: {'x-delete-key': s.deleteKey}}).then(r => r.ok, () => false);
   async function upload(blob, {title = '', description = ''}) {
+    const res = await fetch(`/api/share?${new URLSearchParams({title, description})}`, {method: 'POST', body: blob, headers: {'content-type': 'image/png'}}).catch(() => null);
+    if (!res?.ok) return null;
+    const share = await res.json();
     try {
-      const res = await fetch(`/api/share?${new URLSearchParams({title, description})}`, {method: 'POST', body: blob, headers: {'content-type': 'image/png'}});
-      if (!res.ok) return null;
-      const {id, deleteKey} = await res.json();
-      storage.setItem(SHARE_KEYS, JSON.stringify([...saved(), {id, deleteKey}]));
-      return `${origin}/s/${id}`;
-    } catch { return null; }
+      await update(list => [...list, share]);
+    } catch {
+      // An upload whose key isn't recorded could never be deleted from here, so it's deleted straight away instead.
+      if (await remove(share)) return null;
+      throw new Error("Couldn't save this image's delete key, so it can't be deleted from this browser. It's removed automatically after 90 days.");
+    }
+    return `${origin}/s/${share.id}`;
   }
   return {
     link(blob, meta = {}) {
-      if (!made.has(blob)) made.set(blob, upload(blob, meta).then(url => url ?? (made.delete(blob), null)));
+      if (!made.has(blob)) made.set(blob, upload(blob, meta).then(url => url ?? (made.delete(blob), null), e => { made.delete(blob); throw e; }));
       return made.get(blob);
     },
     /** How many uploads from this browser are still recorded. */
     count: () => saved().length,
     /** Deletes every recorded upload; resolves to how many couldn't be deleted, which stay recorded for a retry. */
     async deleteAll() {
-      const left = [];
-      for (const s of saved()) {
-        const ok = await fetch(`/api/share/${s.id}`, {method: 'DELETE', headers: {'x-delete-key': s.deleteKey}}).then(r => r.ok, () => false);
-        if (!ok) left.push(s);
-      }
-      storage.setItem(SHARE_KEYS, JSON.stringify(left));
-      return left.length;
+      const list = saved(), gone = new Set();
+      for (const s of list) if (await remove(s)) gone.add(s.id);
+      // Images shared again after this upload a fresh copy, rather than reusing a deleted link.
+      made = new WeakMap();
+      await update(current => current.filter(s => !gone.has(s.id)));
+      return list.length - gone.size;
     },
   };
 }
@@ -3140,7 +3160,7 @@ function copyImage() {
 function linkFor() {
   if (!uploadOn()) return Promise.resolve(SITE);
   const meta = {title: cardSummary(), description: withoutCta(postText())};
-  return current.card.then(blob => blob && shared.link(blob, meta)).then(url => url || SITE, () => SITE);
+  return current.card.then(blob => blob && shared.link(blob, meta).catch(e => { alert(e.message); return null; })).then(url => url || SITE, () => SITE);
 }
 // Writes text that's still being worked out, keeping the click's user activation where the browser allows it.
 function copyText(text) {
@@ -4688,12 +4708,14 @@ export function createRotation(ads, rand) {
 // Rails sit outside the content column and only appear on wide screens, so they never cover the report
 // and never end up in share images (those are drawn separately on a canvas).
 const adEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+// Sponsor links are https; anything else from the sponsor service goes nowhere.
+const adHref = url => adEsc(/^https:\/\//i.test(url) ? url : '#');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const PLACEMENT_FALLBACK = {tall: {width: 160, height: 600, seconds: 20}, square: {width: 160, height: 160, seconds: 15}};
 
 const adMarkup = ad => ad.kind === 'text'
-  ? `<a class="ad-text" href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
-  : `<a href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${adEsc(ad.image.src)}" srcset="${adEsc(ad.image.src2x)} 2x" width="${ad.width}" height="${ad.height}" alt="${adEsc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsored · ${adEsc(ad.sponsor)}</span>`;
+  ? `<a class="ad-text" href="${adHref(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
+  : `<a href="${adHref(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${adEsc(ad.image.src)}" srcset="${adEsc(ad.image.src2x)} 2x" width="${Number(ad.width)}" height="${Number(ad.height)}" alt="${adEsc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsored · ${adEsc(ad.sponsor)}</span>`;
 const emptySlot = `<a class="ad-empty" href="/advertise"><strong>Display your ad here</strong><span>by sponsoring me on GitHub</span></a>`;
 
 async function startRails() {
@@ -4734,7 +4756,7 @@ async function startFooterGrid() {
     if (r.ok) data = await r.json();
   } catch { document.documentElement.classList.add('offline'); }
   const levels = (data?.levels ?? []).filter(l => l.sponsors.length);
-  host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${l.columns}">${l.sponsors.map(s => `<li><a href="${adEsc(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
+  host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${Number(l.columns)}">${l.sponsors.map(s => `<li><a href="${adHref(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
     <p class="muted">${levels.length ? 'Thank you. ' : ''}<a href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor monthly on GitHub</a> to appear here.</p>`;
 }
 

@@ -15,9 +15,10 @@ function limiter(allowed = Infinity) {
   const seen = new Map();
   return {async limit({key}) { seen.set(key, (seen.get(key) ?? 0) + 1); return {success: seen.get(key) <= allowed}; }};
 }
-const site = allowed => ({SHARES: bucket(), SHARE_UPLOADS: limiter(allowed)});
+const site = allowed => ({SHARES: bucket(), SHARE_UPLOADS: limiter(allowed), SHARE_DELETES: limiter()});
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-const call = (env, path, init) => worker.fetch(new Request(`https://discordwrapped.app${path}`, init), env);
+// Cloudflare names the visitor's address on every request it forwards.
+const call = (env, path, init = {}) => worker.fetch(new Request(`https://discordwrapped.app${path}`, {duplex: 'half', ...init, headers: {'cf-connecting-ip': '192.0.2.1', ...init.headers}}), env);
 const post = (env, body, query = '?title=58%2C827%20messages&description=Mine') => call(env, `/api/share${query}`, {method: 'POST', body});
 
 test('a PNG upload is stored under a random id and returns its share link and delete key', async () => {
@@ -56,6 +57,16 @@ test('a PNG over 2 MB is refused', async () => {
   assert.equal(env.SHARES.objects.size, 0);
 });
 
+test('a body without a length stops being read once it passes 2 MB', async () => {
+  const env = site(), CHUNK = 256 * 1024;
+  let pulled = 0;
+  const body = new ReadableStream({pull(c) { if (++pulled > 64) c.close(); else c.enqueue(new Uint8Array(CHUNK)); }});
+  const res = await post(env, body);
+  assert.equal(res.status, 413);
+  assert.ok(pulled <= 2 * 1024 * 1024 / CHUNK + 2, `read ${pulled} of 64 chunks`);
+  assert.equal(env.SHARES.objects.size, 0);
+});
+
 test('long titles and descriptions are cut to size', async () => {
   const env = site();
   const {id} = await (await post(env, PNG, `?title=${'a'.repeat(500)}&description=${'b'.repeat(500)}`)).json();
@@ -84,9 +95,28 @@ test('past the rate limit, uploads from the same address are refused and others 
   assert.equal(env.SHARES.objects.size, 2);
 });
 
+test('IPv6 addresses in one /64 share a limit, and a request with no address is refused', async () => {
+  const env = site(1);
+  const from = ip => call(env, '/api/share', {method: 'POST', body: PNG, headers: {'cf-connecting-ip': ip}});
+  assert.equal((await from('2001:db8:1:2::1')).status, 201);
+  assert.equal((await from('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).status, 429);
+  assert.equal((await from('2001:db8:1:3::1')).status, 201);
+  const anonymous = await worker.fetch(new Request('https://discordwrapped.app/api/share', {method: 'POST', body: PNG}), env);
+  assert.equal(anonymous.status, 429);
+});
+
+test("the Worker's own responses forbid sniffing and framing", async () => {
+  const env = site();
+  for (const res of [await post(env, PNG), await call(env, '/api/nothing'), await call(env, '/s/short')]) {
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+    assert.match(res.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  }
+});
+
 test('other share paths and methods are not found', async () => {
   const env = site();
   assert.equal((await call(env, '/api/share')).status, 404);
   assert.equal((await call(env, '/api/share/../x', {method: 'DELETE'})).status, 404);
   assert.equal((await call(env, '/api/share/short', {method: 'DELETE'})).status, 404);
+  assert.equal((await call(env, '/s/k3J9xQ2mPa', {method: 'POST'})).status, 405);
 });

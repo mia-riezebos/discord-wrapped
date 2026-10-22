@@ -2,12 +2,14 @@
 // Rails sit outside the content column and only appear on wide screens, so they never cover the report
 // and never end up in share images (those are drawn separately on a canvas).
 const adEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+// Sponsor links are https; anything else from the sponsor service goes nowhere.
+const adHref = url => adEsc(/^https:\/\//i.test(url) ? url : '#');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const PLACEMENT_FALLBACK = {tall: {width: 160, height: 600, seconds: 20}, square: {width: 160, height: 160, seconds: 15}};
 
 const adMarkup = ad => ad.kind === 'text'
-  ? `<a class="ad-text" href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
-  : `<a href="${adEsc(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${adEsc(ad.image.src)}" srcset="${adEsc(ad.image.src2x)} 2x" width="${ad.width}" height="${ad.height}" alt="${adEsc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsored · ${adEsc(ad.sponsor)}</span>`;
+  ? `<a class="ad-text" href="${adHref(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><strong>${adEsc(ad.headline)}</strong>${ad.body ? `<span>${adEsc(ad.body)}</span>` : ''}<small>${adEsc(ad.name)}</small></a><span class="ad-by">Sponsored</span>`
+  : `<a href="${adHref(ad.href)}" target="_blank" rel="sponsored noopener noreferrer"><img src="${adEsc(ad.image.src)}" srcset="${adEsc(ad.image.src2x)} 2x" width="${Number(ad.width)}" height="${Number(ad.height)}" alt="${adEsc(ad.alt)}" loading="lazy"></a><span class="ad-by">Sponsored · ${adEsc(ad.sponsor)}</span>`;
 const emptySlot = `<a class="ad-empty" href="/advertise"><strong>Display your ad here</strong><span>by sponsoring me on GitHub</span></a>`;
 
 async function startRails() {
@@ -48,7 +50,7 @@ async function startFooterGrid() {
     if (r.ok) data = await r.json();
   } catch { document.documentElement.classList.add('offline'); }
   const levels = (data?.levels ?? []).filter(l => l.sponsors.length);
-  host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${l.columns}">${l.sponsors.map(s => `<li><a href="${adEsc(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
+  host.innerHTML = `<h2 id="footer-sponsors-title">Sponsors</h2>${levels.map(l => `<ul class="sponsor-level level-${adEsc(l.level)}" style="--cols:${Number(l.columns)}">${l.sponsors.map(s => `<li><a href="${adHref(s.url)}" rel="external sponsored">${s.logo ? `<img src="${adEsc(s.logo)}" alt="${adEsc(s.name)}" loading="lazy">` : adEsc(s.name)}</a></li>`).join('')}</ul>`).join('')}
     <p class="muted">${levels.length ? 'Thank you. ' : ''}<a href="https://github.com/sponsors/mia-riezebos" rel="external">Sponsor monthly on GitHub</a> to appear here.</p>`;
 }
 

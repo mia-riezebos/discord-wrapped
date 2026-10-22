@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Message data cannot leave the page: the only allowed network hosts serve the optional AI library and model weights. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://esm.run https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; manifest-src 'self'; connect-src 'self' blob: data: https://esm.run https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; manifest-src 'self'; connect-src 'self' blob: data: https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
+<!-- The AI library is npm's published file, and the browser refuses it if it doesn't match this hash. -->
+<script type="importmap">{"integrity": {"https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.82/lib/index.js": "sha384-2Tjus67Z6N7N+ljqQWnpSEcinnggT4SKOBml1BGnUXSbSGg7q1FgUxJOnIKyn0W4"}}</script>
 <title>Discord Wrapped | Your Discord stats and message history</title>
 <meta name="description" content="See your Discord stats, message history and top words from your data package. Free and open source. Your package stays in your browser and is never uploaded.">
 <link rel="canonical" href="https://discordwrapped.app/">

@@ -3,10 +3,16 @@
 const ESCAPES = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
 const escape = text => text.replace(/[&<>"']/g, c => ESCAPES[c]);
 const home = origin => Response.redirect(`${origin}/`, 302);
+// The bucket's lifecycle rule deletes shares after 90 days; this keeps that promise if the rule is ever lost.
+const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+const live = object => object && Date.now() - object.uploaded.getTime() < MAX_AGE_MS ? object : null;
+// Short, so a deleted share stops showing soon after; copies that platforms already fetched are theirs to expire.
+const CACHE = 'public, max-age=300';
+const PAGE_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 /** GET /s/<id>: the page, with the title and description stored with the upload. */
 export async function page(env, id, origin) {
-  const object = await env.SHARES.head(id);
+  const object = live(await env.SHARES.head(id));
   if (!object) return home(origin);
   const {title = '', description = ''} = object.customMetadata ?? {};
   const [t, d] = [title || 'Discord Wrapped', description].map(escape);
@@ -41,12 +47,12 @@ a { background: var(--accent); color: var(--accent-fg); padding: 10px 18px; bord
 </body>
 </html>
 `;
-  return new Response(html, {headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300'}});
+  return new Response(html, {headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP}});
 }
 
-/** GET /s/<id>.png: the stored image. Ids never change content, so it caches for a year. */
+/** GET /s/<id>.png: the stored image. */
 export async function image(env, id, origin) {
-  const object = await env.SHARES.get(id);
+  const object = live(await env.SHARES.get(id));
   if (!object) return home(origin);
-  return new Response(object.body, {headers: {'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable'}});
+  return new Response(object.body, {headers: {'content-type': 'image/png', 'cache-control': CACHE}});
 }

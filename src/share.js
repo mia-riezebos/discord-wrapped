@@ -330,7 +330,7 @@ function copyImage() {
 function linkFor() {
   if (!uploadOn()) return Promise.resolve(SITE);
   const meta = {title: cardSummary(), description: withoutCta(postText())};
-  return current.card.then(blob => blob && shared.link(blob, meta)).then(url => url || SITE, () => SITE);
+  return current.card.then(blob => blob && shared.link(blob, meta).catch(e => { alert(e.message); return null; })).then(url => url || SITE, () => SITE);
 }
 // Writes text that's still being worked out, keeping the click's user activation where the browser allows it.
 function copyText(text) {

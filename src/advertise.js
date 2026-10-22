@@ -17,16 +17,16 @@ async function loadAvailability() {
     if (!r.ok) throw new Error();
     const data = await r.json();
     document.getElementById('price-rows').innerHTML = Object.values(data.placements).map(p =>
-      `<tr><td>${advEsc(p.name)}</td><td>${p.width} × ${p.height} px</td>${p.prices.map(x => `<td class="num">$${x.dollars}</td>`).join('')}</tr>`).join('');
+      `<tr><td>${advEsc(p.name)}</td><td>${Number(p.width)} × ${Number(p.height)} px</td>${p.prices.map(x => `<td class="num">$${Number(x.dollars)}</td>`).join('')}</tr>`).join('');
     for (const [key, p] of Object.entries(data.placements)) {
       const cap = document.querySelector(`[data-cap="${key}"]`);
       if (cap) cap.textContent = p.cap;
     }
     runs.innerHTML = Object.values(data.placements).flatMap(p => p.prices.map(x => `<article class="run">
       <h3>${advEsc(p.name)} · ${weeks(x.days)}</h3>
-      <p class="run-price">$${x.dollars}</p>
-      <p class="muted">Next opening: ${advEsc(openingText(p.nextOpening[x.days]))}${p.free ? ` · ${p.free} of ${p.cap} slots free now` : ' · full right now'}</p>
-      <a class="button primary" href="${SPONSORS_PAGE}" rel="external">Pay $${x.dollars} on GitHub</a>
+      <p class="run-price">$${Number(x.dollars)}</p>
+      <p class="muted">Next opening: ${advEsc(openingText(p.nextOpening[x.days]))}${p.free ? ` · ${Number(p.free)} of ${Number(p.cap)} slots free now` : ' · full right now'}</p>
+      <a class="button primary" href="${SPONSORS_PAGE}" rel="external">Pay $${Number(x.dollars)} on GitHub</a>
     </article>`)).join('');
   } catch {
     runs.innerHTML = `<p class="muted">We couldn’t load the next openings. Email <a href="mailto:sponsor@mia.cx">sponsor@mia.cx</a> for available dates.</p>`;
