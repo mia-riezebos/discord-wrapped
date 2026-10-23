@@ -1,5 +1,11 @@
 # discord-wrapped
 
+## 0.5.3
+
+### Patch Changes
+
+- 2c49959: Opening a share link now takes people straight to the home page. Chats and social sites still show the shared image as the link preview.
+
 ## 0.5.2
 
 ### Patch Changes
