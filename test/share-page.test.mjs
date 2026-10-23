@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {test} from 'node:test';
 import worker from '../worker/index.js';
 
@@ -27,8 +28,16 @@ test('the share page carries preview tags with the escaped title and description
   assert.equal(meta(html, 'twitter:card'), 'summary_large_image');
   assert.equal(meta(html, 'twitter:image'), `https://discordwrapped.app/s/${ID}.png`);
   assert.match(html, /<title>Me &lt;&quot;&amp;&gt; you<\/title>/);
-  assert.match(html, /<a href="\/">See yours<\/a>/);
-  assert.doesNotMatch(html, /<script/);
+});
+
+test('a person opening the share page is sent to the home page, by the only script the page allows', async () => {
+  const res = await call(`/s/${ID}`);
+  const html = await res.text();
+  const scripts = [...html.matchAll(/<script>(.*?)<\/script>/g)].map(m => m[1]);
+  assert.deepEqual(scripts, ["location.replace('/')"]);
+  const hash = createHash('sha256').update(scripts[0]).digest('base64');
+  assert.match(res.headers.get('content-security-policy'), new RegExp(`script-src 'sha256-${hash.replace(/[+/]/g, '\\$&')}'`));
+  assert.match(html, /<a href="\/">/, 'without scripts, a link home');
 });
 
 test('the image is served with a short cache, so a deleted one stops showing soon', async () => {

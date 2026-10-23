@@ -1,5 +1,6 @@
-/* The share page a share link opens: /s/<id> is a script-free page whose og and twitter tags make platforms show the
-   shared image as the preview, and /s/<id>.png is that image. Missing or expired ids go to the home page. */
+/* The share page a share link opens: /s/<id> is a page whose og and twitter tags make platforms show the shared image
+   as the preview, and /s/<id>.png is that image. Link crawlers don't run scripts, so they read the tags; people's
+   browsers run the one-line redirect and land on the home page. Missing or expired ids go to the home page. */
 const ESCAPES = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
 const escape = text => text.replace(/[&<>"']/g, c => ESCAPES[c]);
 const home = origin => Response.redirect(`${origin}/`, 302);
@@ -8,7 +9,9 @@ const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 const live = object => object && Date.now() - object.uploaded.getTime() < MAX_AGE_MS ? object : null;
 // Short, so a deleted share stops showing soon after; copies that platforms already fetched are theirs to expire.
 const CACHE = 'public, max-age=300';
-const PAGE_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+const REDIRECT = "location.replace('/')";
+// The hash allows exactly REDIRECT and no other script; update both together.
+const PAGE_CSP = "default-src 'none'; script-src 'sha256-qBjLReXPsRLHPao6+8nICoVlbEWZcc/Os2pcXx5BCa0='; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 /** GET /s/<id>: the page, with the title and description stored with the upload. */
 export async function page(env, id, origin) {
@@ -32,18 +35,10 @@ export async function page(env, id, origin) {
 <meta property="og:image" content="${image}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="${image}">
-<style>
-:root { color-scheme: light dark; --bg: #f7f7f9; --fg: #17181c; --accent: #4f5bd5; --accent-fg: #ffffff; }
-@media (prefers-color-scheme: dark) { :root { --bg: #111216; --fg: #ecedf1; --accent: #8790ff; --accent-fg: #0d0e14; } }
-body { margin: 0; min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 20px; padding: 24px; box-sizing: border-box;
-  background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-img { max-width: min(100%, 720px); max-height: 80vh; border-radius: 14px; }
-a { background: var(--accent); color: var(--accent-fg); padding: 10px 18px; border-radius: 8px; font-weight: 600; text-decoration: none; }
-</style>
+<script>${REDIRECT}</script>
 </head>
 <body>
-<img src="/s/${id}.png" alt="${t}">
-<a href="/">See yours</a>
+<a href="/">Open Discord Wrapped</a>
 </body>
 </html>
 `;
