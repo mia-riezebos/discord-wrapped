@@ -1,5 +1,11 @@
 # discord-wrapped
 
+## 0.5.4
+
+### Patch Changes
+
+- 85db943: Links to Discord Wrapped shared on X now credit @miadotcx as the creator.
+
 ## 0.5.3
 
 ### Patch Changes
