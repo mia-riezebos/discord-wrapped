@@ -34,6 +34,7 @@ export async function page(env, id, origin) {
 <meta property="og:url" content="${url}">
 <meta property="og:image" content="${image}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@miadotcx">
 <meta name="twitter:image" content="${image}">
 <script>${REDIRECT}</script>
 </head>
