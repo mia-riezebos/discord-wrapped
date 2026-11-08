@@ -983,19 +983,21 @@ function hostOf(u) {
 async function parsePackage(source) {
   const archive = source.kind === 'zip' ? await openZip(source.file) : openFolder(source.files);
   const lower = archive.names.map(n => n.toLowerCase());
-  const indexAt = lower.findIndex(n => /(^|\/)messages\/index\.json$/.test(n));
-  const anyChannel = lower.findIndex(n => /(^|\/)messages\/[^/]+\/channel\.json$/.test(n));
-  if (indexAt < 0 && anyChannel < 0) throw new Error('No Messages folder found. Choose the package.zip Discord emailed you, or its unzipped folder.');
-  const ref = lower[indexAt >= 0 ? indexAt : anyChannel];
-  const prefixLen = ref.search(/messages\//);
-  const prefix = ref.slice(0, prefixLen);
+  // Discord names the package's folders in the account's language (Messages is Berichten in Dutch), so they're found
+  // by what they hold: Messages holds c<id>/channel.json, Servers holds <id>/ folders, Account holds user.json.
+  const found = lower.map(n => /^(.*?)([^/]+\/)c\d+\/channel\.json$/.exec(n)).find(Boolean);
+  if (!found) throw new Error('No Messages folder found. Choose the package.zip Discord emailed you, or its unzipped folder.');
+  const [, prefix, messages] = found;
+  const inside = lower.filter(n => n.startsWith(prefix)).map(n => n.slice(prefix.length));
+  const servers = inside.map(n => /^[^/]+\/(?=\d+\/)/.exec(n)?.[0]).find(Boolean);
+  const account = inside.find(n => /^[^/]+\/user\.json$/.test(n));
   const byLower = new Map(archive.names.map((n, i) => [lower[i], n]));
   const readJSON = async l => byLower.has(l) ? JSON.parse(await archive.read(byLower.get(l))) : null;
-  const index = (await readJSON(prefix + 'messages/index.json')) || {};
-  const serverIndex = (await readJSON(prefix + 'servers/index.json')) || {};
-  let user = (await readJSON(prefix + 'account/user.json')) || null;
+  const index = (await readJSON(prefix + messages + 'index.json')) || {};
+  const serverIndex = (servers && await readJSON(prefix + servers + 'index.json')) || {};
+  let user = (account && await readJSON(prefix + account)) || null;
   if (user) user = {id: user.id, username: user.global_name || user.username};
-  const dirs = lower.filter(n => n.startsWith(prefix + 'messages/') && n.endsWith('/channel.json')).map(n => n.slice(0, -'channel.json'.length)).sort();
+  const dirs = lower.filter(n => n.startsWith(prefix + messages) && n.endsWith('/channel.json')).map(n => n.slice(0, -'channel.json'.length)).sort();
   const sections = [...new Set(archive.names.filter((n, i) => lower[i].startsWith(prefix)).map(n => n.slice(prefix.length).split('/')[0]).filter(s => s && !s.includes('.')))];
 
   const channels = [], seen = new Set(), errors = [];
