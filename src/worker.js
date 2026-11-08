@@ -121,33 +121,23 @@ function hostOf(u) {
 
 async function parsePackage(source) {
   const archive = source.kind === 'zip' ? await openZip(source.file) : openFolder(source.files);
-  // Discord names the package's folders and files in the account's language (Messages is Berichten in Dutch), so
-  // they're found by shape: channel folders are c<id>/, the folder holding them is Messages, the folder holding <id>/
-  // folders is Servers, and each keeps its index as its only top-level JSON file.
-  const found = archive.names.map(n => /^(.*?)([^/]+\/)c\d+\/[^/]+\.(?:json|csv)$/i.exec(n)).find(Boolean);
+  const lower = archive.names.map(n => n.toLowerCase());
+  // Discord names the package's folders in the account's language (Messages is Berichten in Dutch), so they're found
+  // by what they hold: Messages holds c<id>/channel.json, Servers holds <id>/ folders, Account holds user.json.
+  const found = lower.map(n => /^(.*?)([^/]+\/)c\d+\/channel\.json$/.exec(n)).find(Boolean);
   if (!found) throw new Error('No Messages folder found. Choose the package.zip Discord emailed you, or its unzipped folder.');
-  const [, prefix, messagesFolder] = found;
-  const inside = archive.names.filter(n => n.startsWith(prefix)).map(n => n.slice(prefix.length));
-  const readJSON = async name => JSON.parse(await archive.read(prefix + name));
-  const topJSON = inside.filter(n => /^[^/]+\/[^/]+\.json$/i.test(n));
-  const indexIn = async folder => { const f = folder && topJSON.find(n => n.startsWith(folder)); return f ? readJSON(f) : {}; };
-  const serversFolder = inside.map(n => /^[^/]+\/(?=\d+\/)/.exec(n)?.[0]).find(Boolean);
-  const index = await indexIn(messagesFolder);
-  const serverIndex = await indexIn(serversFolder);
-  // Account/user.json: the remaining top-level JSON file that describes a user, tried first by its English name.
-  let user = null;
-  for (const f of topJSON.filter(n => !n.startsWith(messagesFolder) && !n.startsWith(serversFolder)).sort((a, b) => /\/user\.json$/i.test(b) - /\/user\.json$/i.test(a))) {
-    const json = await readJSON(f);
-    if (json?.id && json.username) { user = {id: json.id, username: json.global_name || json.username}; break; }
-  }
-  // Each channel folder holds its details (channel.json, an object) and its messages (messages.json, an array, or CSV).
-  const files = new Map();
-  for (const n of inside) {
-    const dir = n.startsWith(messagesFolder) && /\.(?:json|csv)$/i.test(n) && /^[^/]+\/c\d+\//i.exec(n)?.[0];
-    if (dir) files.set(dir, [...files.get(dir) || [], n]);
-  }
-  const dirs = [...files.keys()].sort();
-  const sections = [...new Set(inside.map(n => n.split('/')[0]).filter(s => s && !s.includes('.')))];
+  const [, prefix, messages] = found;
+  const inside = lower.filter(n => n.startsWith(prefix)).map(n => n.slice(prefix.length));
+  const servers = inside.map(n => /^[^/]+\/(?=\d+\/)/.exec(n)?.[0]).find(Boolean);
+  const account = inside.find(n => /^[^/]+\/user\.json$/.test(n));
+  const byLower = new Map(archive.names.map((n, i) => [lower[i], n]));
+  const readJSON = async l => byLower.has(l) ? JSON.parse(await archive.read(byLower.get(l))) : null;
+  const index = (await readJSON(prefix + messages + 'index.json')) || {};
+  const serverIndex = (servers && await readJSON(prefix + servers + 'index.json')) || {};
+  let user = (account && await readJSON(prefix + account)) || null;
+  if (user) user = {id: user.id, username: user.global_name || user.username};
+  const dirs = lower.filter(n => n.startsWith(prefix + messages) && n.endsWith('/channel.json')).map(n => n.slice(0, -'channel.json'.length)).sort();
+  const sections = [...new Set(archive.names.filter((n, i) => lower[i].startsWith(prefix)).map(n => n.slice(prefix.length).split('/')[0]).filter(s => s && !s.includes('.')))];
 
   const channels = [], seen = new Set(), errors = [];
   const ts = [], ch = [], text = [], ids = [], att = [];
@@ -155,16 +145,14 @@ async function parsePackage(source) {
   for (let d = 0; d < dirs.length; d++) {
     if (d % 50 === 0) progress('Reading messages', d, dirs.length);
     const dir = dirs[d];
-    let meta = null, rows = null;
+    let meta;
+    try { meta = await readJSON(dir + 'channel.json'); } catch (e) { errors.push([dir, 'channel.json: ' + e.message]); continue; }
+    let rows = null;
     try {
-      for (const f of files.get(dir)) {
-        if (/\.csv$/i.test(f)) { rows = parseCSV(await archive.read(prefix + f)); continue; }
-        // Quote numeric IDs first: snowflakes exceed 2^53 and would collide as JS numbers.
-        const json = JSON.parse((await archive.read(prefix + f)).replace(/("ID"\s*:\s*)(\d+)/g, '$1"$2"'));
-        if (Array.isArray(json)) rows = json; else meta = json;
-      }
+      // Quote numeric IDs first: snowflakes exceed 2^53 and would collide as JS numbers.
+      if (byLower.has(dir + 'messages.json')) rows = JSON.parse((await archive.read(byLower.get(dir + 'messages.json'))).replace(/("ID"\s*:\s*)(\d+)/g, '$1"$2"'));
+      else if (byLower.has(dir + 'messages.csv')) rows = parseCSV(await archive.read(byLower.get(dir + 'messages.csv')));
     } catch (e) { errors.push([dir, e.message]); continue; }
-    if (!meta) { errors.push([dir, 'no channel file']); continue; }
     if (!rows) { errors.push([dir, 'no messages file']); continue; }
     messageFiles++;
     const cid = String(meta.id);

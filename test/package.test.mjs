@@ -13,14 +13,14 @@ const call = async (type, payload) => {
 };
 const folder = entries => ({kind: 'folder', files: Object.entries(entries).map(([path, json]) => ({path, file: new Blob([JSON.stringify(json)])}))});
 
-test('reads a package whose folders and files Discord named in Dutch', async () => {
+test('reads a package whose folders Discord named in Dutch', async () => {
   await call('load', folder({
-    'pakket/Account/gebruiker.json': {id: '1', username: 'mia', global_name: 'Mia'},
+    'pakket/Account/user.json': {id: '1', username: 'mia', global_name: 'Mia'},
     'pakket/Servers/index.json': {'900000000000000000': 'Cozy Corner'},
-    'pakket/Servers/900000000000000000/gilde.json': {id: '900000000000000000'},
+    'pakket/Servers/900000000000000000/guild.json': {id: '900000000000000000'},
     'pakket/Berichten/index.json': {'800000000000000000': 'general in Cozy Corner'},
-    'pakket/Berichten/c800000000000000000/kanaal.json': {id: '800000000000000000', type: 0, name: 'general', guild: {id: '900000000000000000', name: 'Cozy Corner'}},
-    'pakket/Berichten/c800000000000000000/berichten.json': [
+    'pakket/Berichten/c800000000000000000/channel.json': {id: '800000000000000000', type: 0, name: 'general', guild: {id: '900000000000000000', name: 'Cozy Corner'}},
+    'pakket/Berichten/c800000000000000000/messages.json': [
       {ID: '1000000000000000000', Timestamp: '2022-05-01 12:00:00', Contents: 'hoi', Attachments: ''},
       {ID: '1000000000000000001', Timestamp: '2022-05-01 12:00:00', Contents: 'hallo', Attachments: ''},
     ],
