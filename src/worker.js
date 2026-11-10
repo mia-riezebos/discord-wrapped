@@ -498,6 +498,30 @@ function search({query, wholeWord, limit = 150}) {
 }
 const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
+/* ---------- phrases ---------- */
+const PHRASES = 100, PASTE_WORDS = 12;
+// The top runs of `size` words, counted once per message that contains them. Runs made only of stop words ("in the")
+// are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats, pastes and
+// templates would otherwise fill the list with every window of the same text.
+function phrases({size}) {
+  const C = STORE.cache, V = C.view, cache = V.phrases ||= {};
+  if (cache[size]) return cache[size];
+  const counts = new Map(), seen = new Set(), openings = new Set();
+  for (const i of V.sel) {
+    const toks = C.tokensOf[i], opening = toks.slice(0, PASTE_WORDS).join(' ');
+    if (openings.has(opening)) continue;
+    openings.add(opening);
+    seen.clear();
+    for (let j = 0; j + size <= toks.length; j++) {
+      const run = toks.slice(j, j + size);
+      if (run.every(w => STOP.has(w))) continue;
+      const p = run.join(' ');
+      if (!seen.has(p)) { seen.add(p); inc(counts, p); }
+    }
+  }
+  return cache[size] = top([...counts].filter(e => e[1] > 1), PHRASES);
+}
+
 /* ---------- roast candidates (no inference) ---------- */
 function candidates({seed = 1, count = 30}) {
   const S = STORE, C = S.cache, V = C.view;
@@ -562,6 +586,7 @@ self.onmessage = async e => {
     else if (type === 'view') { setView(payload); result = true; }
     else if (type === 'search') result = search(payload);
     else if (type === 'candidates') result = candidates(payload);
+    else if (type === 'phrases') result = phrases(payload);
     send({type: 'result', id, result});
   } catch (err) {
     send({type: 'error', id, message: err?.message || String(err)});

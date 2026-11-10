@@ -30,3 +30,14 @@ test('reads a package whose folders Discord named in Dutch', async () => {
   assert.equal(D.validation.currentServers, 1);
   assert.deepEqual(D.user, {id: '1', username: 'Mia'});
 });
+
+test('phrases count each message once, skip stop-word runs, and count a repeated message once', async () => {
+  const texts = ['banana bread banana bread', 'banana bread is great', 'i love banana bread', 'i love banana bread!', 'i am so', 'i am so tired'];
+  await call('load', folder({
+    'package/Account/user.json': {id: '1', username: 'mia'},
+    'package/Messages/c800000000000000000/channel.json': {id: '800000000000000000', type: 1, recipients: ['1', '2']},
+    'package/Messages/c800000000000000000/messages.json': texts.map((Contents, i) => ({ID: String(1000000000000000000n + BigInt(i)), Timestamp: '2022-05-01 12:00:00', Contents, Attachments: ''})),
+  }));
+  await call('aggregate', {tz: 'UTC', topics: []});
+  assert.deepEqual(await call('phrases', {size: 2}), [['banana bread', 3]]);
+});

@@ -768,6 +768,16 @@ dialog.reel::backdrop { background: rgb(0 0 0 / .72); }
         <div><h3>Your words</h3><div class="rank" id="word-ranks"></div></div>
         <div><h3>Things you say most</h3><p class="muted">Whole messages of 40 characters or fewer.</p><div class="rank" id="expr-ranks"></div></div>
       </div>
+      <h3>Your phrases</h3>
+      <p class="muted">Words you use together, counted once per message.</p>
+      <fieldset class="seg" id="phrase-size"><legend class="sr-only">Phrase length</legend>
+        <label><input type="radio" name="phrase-size" value="2" checked><span>2 words</span></label>
+        <label><input type="radio" name="phrase-size" value="3"><span>3 words</span></label>
+        <label><input type="radio" name="phrase-size" value="4"><span>4 words</span></label>
+        <label><input type="radio" name="phrase-size" value="5"><span>5 words</span></label>
+      </fieldset>
+      <div class="rank" id="phrase-ranks" aria-live="polite"></div>
+      <button id="phrase-all" type="button" hidden></button>
       <div class="twocol">
         <div><h3>Where your links go</h3><div class="rank" id="link-ranks"></div></div>
         <div><h3>Custom emoji</h3><div class="rank" id="emoji-ranks"></div></div>
@@ -1359,6 +1369,30 @@ function search({query, wholeWord, limit = 150}) {
 }
 const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
+/* ---------- phrases ---------- */
+const PHRASES = 100, PASTE_WORDS = 12;
+// The top runs of `size` words, counted once per message that contains them. Runs made only of stop words ("in the")
+// are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats, pastes and
+// templates would otherwise fill the list with every window of the same text.
+function phrases({size}) {
+  const C = STORE.cache, V = C.view, cache = V.phrases ||= {};
+  if (cache[size]) return cache[size];
+  const counts = new Map(), seen = new Set(), openings = new Set();
+  for (const i of V.sel) {
+    const toks = C.tokensOf[i], opening = toks.slice(0, PASTE_WORDS).join(' ');
+    if (openings.has(opening)) continue;
+    openings.add(opening);
+    seen.clear();
+    for (let j = 0; j + size <= toks.length; j++) {
+      const run = toks.slice(j, j + size);
+      if (run.every(w => STOP.has(w))) continue;
+      const p = run.join(' ');
+      if (!seen.has(p)) { seen.add(p); inc(counts, p); }
+    }
+  }
+  return cache[size] = top([...counts].filter(e => e[1] > 1), PHRASES);
+}
+
 /* ---------- roast candidates (no inference) ---------- */
 function candidates({seed = 1, count = 30}) {
   const S = STORE, C = S.cache, V = C.view;
@@ -1423,6 +1457,7 @@ self.onmessage = async e => {
     else if (type === 'view') { setView(payload); result = true; }
     else if (type === 'search') result = search(payload);
     else if (type === 'candidates') result = candidates(payload);
+    else if (type === 'phrases') result = phrases(payload);
     send({type: 'result', id, result});
   } catch (err) {
     send({type: 'error', id, message: err?.message || String(err)});
@@ -1700,6 +1735,10 @@ const SHARE_COPY = (() => {
         ? `${quote(v.word)} was my most-used word on Discord ${p.in}. ${sent(p, 'used')} it ${times(v.n, v.nRaw)}!`
         : `${quote(v.word)} was my number ${v.rank} word on Discord ${p.in}, used ${times(v.n, v.nRaw)}.`,
       quote(v.word, 40), caption(`Number ${v.rank} word · ${times(v.n, v.nRaw)}`, p)),
+
+    'rank.phrase': (v, p) => card(
+      `I used ${quote(v.phrase)} in ${v.n} Discord ${noun(v.nRaw, 'message')} ${p.in}.`,
+      quote(v.phrase, 40), caption(`Number ${v.rank} ${v.size}-word phrase · In ${v.n} ${noun(v.nRaw, 'message')}`, p)),
 
     'rank.expression': (v, p) => card(
       `${sent(p)} ${quote(v.text)} ${times(v.n, v.nRaw)} ${p.in}. A whole message, every time.`,
@@ -2375,10 +2414,24 @@ function words() {
   $('topics-input').value = topicsText;
   ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i, markQuote)}));
   ranks('expr-ranks', D.expressions.map(([t, n]) => [discordText(t), n]), 12, fmt, (text, n, i) => share('rank.expression', {text: D.expressions[i][0], rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(plainText(t), 24))}”`)}));
+  phrasesShowAll = false; phrases();
   ranks('link-ranks', D.domains, 10, fmt, (domain, n, i) => share('rank.link', {domain, rank: i + 1, n}, {bars: rankBars(D.domains, i)}));
   const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
   ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
 }
+// Phrases are counted in the worker on request, for the chosen length. The latest request wins.
+const PHRASE_ROWS = 12;
+let phrasesShowAll = false, phraseRequest = 0;
+async function phrases() {
+  const request = ++phraseRequest, size = +document.querySelector('input[name="phrase-size"]:checked').value;
+  const items = await call('phrases', {size});
+  if (request !== phraseRequest) return;
+  ranks('phrase-ranks', items, phrasesShowAll ? items.length : PHRASE_ROWS, fmt, (phrase, n, i) => share('rank.phrase', {phrase, size, rank: i + 1, n}, {bars: rankBars(items, i, markQuote)}));
+  $('phrase-all').hidden = items.length <= PHRASE_ROWS;
+  $('phrase-all').textContent = phrasesShowAll ? 'Show fewer' : `Show all ${items.length}`;
+}
+$('phrase-size').onchange = () => { phrasesShowAll = false; phrases(); };
+$('phrase-all').onclick = () => { phrasesShowAll = !phrasesShowAll; phrases(); };
 // Bump chart: one column per bucket, words placed by rank, lines joining a word across neighbouring columns.
 function bump(target, keys) {
   const U = D.unit, tops = keys.map(k => D.wordPeriods[k].slice(0, 10)), labels = keys.map(k => bucketName(k, U));

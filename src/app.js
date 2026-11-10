@@ -596,10 +596,24 @@ function words() {
   $('topics-input').value = topicsText;
   ranks('word-ranks', D.words, 12, fmt, (word, n, i) => share('rank.word', {word, rank: i + 1, n}, {bars: rankBars(D.words, i, markQuote)}));
   ranks('expr-ranks', D.expressions.map(([t, n]) => [discordText(t), n]), 12, fmt, (text, n, i) => share('rank.expression', {text: D.expressions[i][0], rank: i + 1, n}, {bars: rankBars(D.expressions, i, t => `“${markQuote(quoteOf(plainText(t), 24))}”`)}));
+  phrasesShowAll = false; phrases();
   ranks('link-ranks', D.domains, 10, fmt, (domain, n, i) => share('rank.link', {domain, rank: i + 1, n}, {bars: rankBars(D.domains, i)}));
   const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
   ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
 }
+// Phrases are counted in the worker on request, for the chosen length. The latest request wins.
+const PHRASE_ROWS = 12;
+let phrasesShowAll = false, phraseRequest = 0;
+async function phrases() {
+  const request = ++phraseRequest, size = +document.querySelector('input[name="phrase-size"]:checked').value;
+  const items = await call('phrases', {size});
+  if (request !== phraseRequest) return;
+  ranks('phrase-ranks', items, phrasesShowAll ? items.length : PHRASE_ROWS, fmt, (phrase, n, i) => share('rank.phrase', {phrase, size, rank: i + 1, n}, {bars: rankBars(items, i, markQuote)}));
+  $('phrase-all').hidden = items.length <= PHRASE_ROWS;
+  $('phrase-all').textContent = phrasesShowAll ? 'Show fewer' : `Show all ${items.length}`;
+}
+$('phrase-size').onchange = () => { phrasesShowAll = false; phrases(); };
+$('phrase-all').onclick = () => { phrasesShowAll = !phrasesShowAll; phrases(); };
 // Bump chart: one column per bucket, words placed by rank, lines joining a word across neighbouring columns.
 function bump(target, keys) {
   const U = D.unit, tops = keys.map(k => D.wordPeriods[k].slice(0, 10)), labels = keys.map(k => bucketName(k, U));
