@@ -1371,26 +1371,40 @@ const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
 /* ---------- phrases ---------- */
 const PHRASES = 100, PASTE_WORDS = 12;
-// The top runs of `size` words, counting each use. Uses that overlap or touch count once, so a run of repeats counts
-// once however long it is: "fuck fuck fuck fuck" has one "fuck fuck", "fuck you fuck you" has two. Runs made only of
-// stop words ("in the") are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once:
-// repeats, pastes and templates would otherwise fill the list with every window of the same text.
+// Like WORD_RE, but numbers are words too, so "step 1 … step 2 …" isn't read as a loop.
+const PHRASE_RE = /[\p{L}\p{N}]+(?:'[\p{L}\p{N}]+)?/gu;
+// A loop is a cycle of words said back to back: "fuck fuck", "a lot of a lot of", "fuck fuck fuck you fuck fuck fuck
+// you". Its repeats are the words that match the word one cycle earlier, at least a whole cycle of them in a row.
+// Returns, for each word, where the repeats it's part of end (0 when it's in none).
+function loopEnds(toks) {
+  const n = toks.length, ends = new Int32Array(n);
+  for (let d = 1; d * 2 <= n; d++) {
+    for (let k = d, start = d; k <= n; k++) {
+      if (k < n && toks[k] === toks[k - d]) continue;
+      if (k - start >= d) for (let m = start; m < k; m++) ends[m] = Math.max(ends[m], k);
+      start = k + 1;
+    }
+  }
+  return ends;
+}
+// The top runs of `size` words, counting each use, but each loop only once: a run inside a loop's repeats is not
+// counted. "a lot of a lot of" has one "a lot of"; "a lot of this, a lot of that" has two, and so does
+// "step 1 … step 2 …", which never repeats a whole cycle. Runs made only of stop words ("in the") are skipped.
+// Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats, pastes and templates
+// would otherwise fill the list with every window of the same text.
 function phrases({size}) {
-  const C = STORE.cache, V = C.view, cache = V.phrases ||= {};
+  const S = STORE, V = S.cache.view, cache = V.phrases ||= {};
   if (cache[size]) return cache[size];
-  // lastAt: where each phrase last started in the current message.
-  const counts = new Map(), lastAt = new Map(), openings = new Set();
+  const counts = new Map(), openings = new Set();
   for (const i of V.sel) {
-    const toks = C.tokensOf[i], opening = toks.slice(0, PASTE_WORDS).join(' ');
+    const toks = foldQuotes(cleanText(S.text[i]).toLowerCase()).match(PHRASE_RE) || [], opening = toks.slice(0, PASTE_WORDS).join(' ');
     if (openings.has(opening)) continue;
     openings.add(opening);
-    lastAt.clear();
+    const ends = loopEnds(toks);
     for (let j = 0; j + size <= toks.length; j++) {
+      if (j + size <= ends[j]) continue;
       const run = toks.slice(j, j + size);
-      if (run.every(w => STOP.has(w))) continue;
-      const p = run.join(' ');
-      if (!(j - lastAt.get(p) <= size)) inc(counts, p);
-      lastAt.set(p, j);
+      if (!run.every(w => STOP.has(w))) inc(counts, run.join(' '));
     }
   }
   return cache[size] = top([...counts].filter(e => e[1] > 1), PHRASES);
