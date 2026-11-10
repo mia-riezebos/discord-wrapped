@@ -208,6 +208,27 @@
         <div><h3>Your words</h3><div class="rank" id="word-ranks"></div></div>
         <div><h3>Things you say most</h3><p class="muted">Whole messages of 40 characters or fewer.</p><div class="rank" id="expr-ranks"></div></div>
       </div>
+      <h3>Your phrases</h3>
+      <p class="muted">Words you use together. Choose how many words or tokens per phrase.</p>
+      <div class="controls">
+      <fieldset class="seg" id="phrase-mode"><legend class="sr-only">Split messages into</legend>
+        <label><input type="radio" name="phrase-mode" value="words" checked><span>Words</span></label>
+        <label><input type="radio" name="phrase-mode" value="tokens"><span>GPT-4o tokens</span></label>
+      </fieldset>
+      <fieldset class="seg" id="phrase-size"><legend class="sr-only">Words or tokens per phrase</legend>
+        <label><input type="radio" name="phrase-size" value="2" checked><span>2</span></label>
+        <label><input type="radio" name="phrase-size" value="3"><span>3</span></label>
+        <label><input type="radio" name="phrase-size" value="4"><span>4</span></label>
+        <label><input type="radio" name="phrase-size" value="5"><span>5</span></label>
+        <label><input type="radio" name="phrase-size" value="6"><span>6</span></label>
+        <label><input type="radio" name="phrase-size" value="7"><span>7</span></label>
+        <label><input type="radio" name="phrase-size" value="8"><span>8</span></label>
+        <label><input type="radio" name="phrase-size" value="9"><span>9</span></label>
+        <label><input type="radio" name="phrase-size" value="10"><span>10</span></label>
+      </fieldset>
+      </div>
+      <div class="rank" id="phrase-ranks" aria-live="polite"></div>
+      <button id="phrase-all" type="button" hidden></button>
       <div class="twocol">
         <div><h3>Where your links go</h3><div class="rank" id="link-ranks"></div></div>
         <div><h3>Custom emoji</h3><div class="rank" id="emoji-ranks"></div></div>

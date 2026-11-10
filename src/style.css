@@ -182,6 +182,7 @@ details.data th, details.data td { padding: 5px 6px; }
 
 /* ranks */
 .rank { display: grid; gap: 10px; margin: 10px 0; }
+.rank[aria-busy] { opacity: .5; cursor: progress; }
 .rankrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; font-size: 14px; }
 .rankrow .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rankrow .number { font-variant-numeric: tabular-nums; color: var(--muted); }
