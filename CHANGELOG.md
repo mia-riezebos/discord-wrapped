@@ -1,5 +1,16 @@
 # discord-wrapped
 
+## 0.6.0
+
+### Minor Changes
+
+- 8dc2fca: Words & links now lists your top 100 phrases of 2 to 10 words, or of 2 to 10 GPT-4o tokens. Phrases stay within a sentence. Every use counts, but a loop of words said back to back counts once: "a lot of a lot of a lot of" is one "a lot of", while "a lot of this, a lot of that" is two. Repeated and pasted messages count once, and phrases made only of filler words like "in the" are left out.
+
+### Patch Changes
+
+- 33b4311: Packages whose folders Discord named in another language, such as Berichten instead of Messages, now load.
+- 85db943: Links to Discord Wrapped shared on X now credit @miadotcx as the creator.
+
 ## 0.5.3
 
 ### Patch Changes
