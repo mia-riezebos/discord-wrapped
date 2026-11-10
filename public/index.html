@@ -1370,25 +1370,27 @@ function search({query, wholeWord, limit = 150}) {
 const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
 /* ---------- phrases ---------- */
-// Sentences repeat a phrase up to about 3 times ("a lot of"); past that it's a flood ("shiggy shiggy shiggy…").
-const PHRASES = 100, PASTE_WORDS = 12, MAX_REPEATS = 3;
-// The top runs of `size` words, counting each use, but at most MAX_REPEATS per message. Runs made only of stop words
-// ("in the") are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats,
-// pastes and templates would otherwise fill the list with every window of the same text.
+const PHRASES = 100, PASTE_WORDS = 12;
+// The top runs of `size` words, counting each use. Uses that overlap or touch count once, so a run of repeats counts
+// once however long it is: "fuck fuck fuck fuck" has one "fuck fuck", "fuck you fuck you" has two. Runs made only of
+// stop words ("in the") are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once:
+// repeats, pastes and templates would otherwise fill the list with every window of the same text.
 function phrases({size}) {
   const C = STORE.cache, V = C.view, cache = V.phrases ||= {};
   if (cache[size]) return cache[size];
-  const counts = new Map(), inMessage = new Map(), openings = new Set();
+  // lastAt: where each phrase last started in the current message.
+  const counts = new Map(), lastAt = new Map(), openings = new Set();
   for (const i of V.sel) {
     const toks = C.tokensOf[i], opening = toks.slice(0, PASTE_WORDS).join(' ');
     if (openings.has(opening)) continue;
     openings.add(opening);
-    inMessage.clear();
+    lastAt.clear();
     for (let j = 0; j + size <= toks.length; j++) {
       const run = toks.slice(j, j + size);
       if (run.every(w => STOP.has(w))) continue;
       const p = run.join(' ');
-      if (inc(inMessage, p).get(p) <= MAX_REPEATS) inc(counts, p);
+      if (!(j - lastAt.get(p) <= size)) inc(counts, p);
+      lastAt.set(p, j);
     }
   }
   return cache[size] = top([...counts].filter(e => e[1] > 1), PHRASES);
