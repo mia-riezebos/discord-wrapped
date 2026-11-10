@@ -21,6 +21,14 @@ const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 
 const call = (env, path, init = {}) => worker.fetch(new Request(`https://discordwrapped.app${path}`, {duplex: 'half', ...init, headers: {'cf-connecting-ip': '192.0.2.1', ...init.headers}}), env);
 const post = (env, body, query = '?title=58%2C827%20messages&description=Mine') => call(env, `/api/share${query}`, {method: 'POST', body});
 
+test('staging tells search engines not to index any page; production does not', async () => {
+  const ASSETS = {fetch: async () => new Response('<!doctype html>', {headers: {'content-type': 'text/html'}})};
+  for (const path of ['/', '/s/nope']) {
+    assert.equal((await call({...site(), ASSETS, NOINDEX: true}, path)).headers.get('x-robots-tag'), 'noindex', path);
+    assert.equal((await call({...site(), ASSETS}, path)).headers.get('x-robots-tag'), null, path);
+  }
+});
+
 test('a PNG upload is stored under a random id and returns its share link and delete key', async () => {
   const env = site();
   const res = await post(env, PNG);

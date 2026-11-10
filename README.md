@@ -1,6 +1,6 @@
 # Discord Wrapped
 
-Live at https://discordwrapped.app (also https://wrapped.mia.cx): drop in the `package.zip` from Discord (or the unzipped folder).
+Live at https://discordwrapped.app: drop in the `package.zip` from Discord (or the unzipped folder).
 It works offline after the first visit and can be installed as an app. You can also download `public/index.html` and open it in a browser.
 Everything is computed in the tab: a Web Worker unzips the package with the browser's own `DecompressionStream` and counts everything. The package and its messages are never uploaded; the only upload is the share image behind a share link, which you can turn off in the share sheet.
 The page's Content-Security-Policy only allows network requests to the hosts that serve the optional WebLLM library and model weights.
@@ -23,8 +23,8 @@ package.zip and adds only messages sent after the newest saved message, so messa
 ## Releasing
 
 1. Open a pull request with your change and a changeset (`pnpm changeset`). CI checks the build and that a changeset exists.
-2. After it merges, the Release workflow opens or updates a "chore(release): version discord-wrapped" pull request.
-3. Merging that pull request deploys wrapped.mia.cx and publishes a GitHub release with the changelog.
+2. After it merges, the Release workflow deploys it to https://staging.discordwrapped.app and opens or updates a "chore(release): version discord-wrapped" pull request. Staging keeps its own share images and isn't indexed by search engines.
+3. Merging that pull request deploys discordwrapped.app and publishes a GitHub release with the changelog.
 
 To retry a failed deploy, run the Release workflow by hand with the release merge commit's SHA.
 CI needs two secrets, `CLOUDFLARE_API_TOKEN` and `RELEASE_PR_TOKEN`; run `bash scripts/setup-ci.sh` to create them, and again when either expires.

@@ -85,8 +85,44 @@ jobs:
           create-github-releases: false
           push-git-tags: false
 
+  staging:
+    name: Deploy staging.discordwrapped.app
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      # A newer push to main replaces a staging deploy that hasn't started.
+      group: staging-deploy
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 492214885e7a580ccc1d141dfdb4dc5f
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - name: Deploy
+        # Only this step gets the token, so install, check and test scripts can't read it.
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo '::error::Set the CLOUDFLARE_API_TOKEN secret (run scripts/setup-ci.sh) so CI can deploy.'
+            exit 1
+          fi
+          pnpm exec wrangler deploy --env staging --message "Staging $GITHUB_SHA"
+
   deploy:
-    name: Deploy wrapped.mia.cx
+    name: Deploy discordwrapped.app
     needs: version
     if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
