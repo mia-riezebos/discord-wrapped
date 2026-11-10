@@ -499,24 +499,25 @@ function search({query, wholeWord, limit = 150}) {
 const inc2 = (o, k) => o[k] = (o[k] || 0) + 1;
 
 /* ---------- phrases ---------- */
-const PHRASES = 100, PASTE_WORDS = 12;
-// The top runs of `size` words, counted once per message that contains them. Runs made only of stop words ("in the")
-// are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats, pastes and
-// templates would otherwise fill the list with every window of the same text.
+// Sentences repeat a phrase up to about 3 times ("a lot of"); past that it's a flood ("shiggy shiggy shiggy…").
+const PHRASES = 100, PASTE_WORDS = 12, MAX_REPEATS = 3;
+// The top runs of `size` words, counting each use, but at most MAX_REPEATS per message. Runs made only of stop words
+// ("in the") are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats,
+// pastes and templates would otherwise fill the list with every window of the same text.
 function phrases({size}) {
   const C = STORE.cache, V = C.view, cache = V.phrases ||= {};
   if (cache[size]) return cache[size];
-  const counts = new Map(), seen = new Set(), openings = new Set();
+  const counts = new Map(), inMessage = new Map(), openings = new Set();
   for (const i of V.sel) {
     const toks = C.tokensOf[i], opening = toks.slice(0, PASTE_WORDS).join(' ');
     if (openings.has(opening)) continue;
     openings.add(opening);
-    seen.clear();
+    inMessage.clear();
     for (let j = 0; j + size <= toks.length; j++) {
       const run = toks.slice(j, j + size);
       if (run.every(w => STOP.has(w))) continue;
       const p = run.join(' ');
-      if (!seen.has(p)) { seen.add(p); inc(counts, p); }
+      if (inc(inMessage, p).get(p) <= MAX_REPEATS) inc(counts, p);
     }
   }
   return cache[size] = top([...counts].filter(e => e[1] > 1), PHRASES);
