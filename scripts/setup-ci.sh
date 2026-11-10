@@ -198,11 +198,11 @@ fi
 banner "discord-wrapped: release secrets for $REPO"
 
 stage "Cloudflare: deploy token"
-say "CI deploys wrapped.mia.cx with a Cloudflare API token limited to Workers on mia.cx."
+say "CI deploys discordwrapped.app and staging.discordwrapped.app with a Cloudflare API token limited to Workers."
 open_url "https://dash.cloudflare.com/profile/api-tokens"
 step "Click 'Create Token', then 'Use template' next to 'Edit Cloudflare Workers'."
 step "Account Resources: Include → mia.cx."
-step "Zone Resources: Include → Specific zone → mia.cx, then '+ Add more': Include → Specific zone → discordwrapped.app."
+step "Zone Resources: Include → Specific zone → discordwrapped.app."
 step "Click 'Continue to summary', then 'Create Token', and copy the token."
 ask_secret CLOUDFLARE_API_TOKEN "Paste the Cloudflare token:"
 if curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -255,8 +255,9 @@ stage "Check the secrets"
 say "These secrets are now set on $REPO:"
 gh secret list --repo "$REPO" | sed 's/^/    /'
 say ""
-say "Release flow: merge a pull request with a changeset into main, and CI opens"
-say "'chore(release): version discord-wrapped'. Merging that pull request deploys wrapped.mia.cx."
+say "Release flow: merge a pull request with a changeset into main, and CI deploys it to"
+say "staging.discordwrapped.app and opens 'chore(release): version discord-wrapped'."
+say "Merging that pull request deploys discordwrapped.app."
 pause "Press Enter to finish"
 
 finish

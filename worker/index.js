@@ -38,9 +38,11 @@ async function route(request, env) {
 export default {
   async fetch(request, env) {
     const res = await route(request, env);
-    if (!res) return env.ASSETS.fetch(request);
-    const out = new Response(res.body, res);
-    for (const [name, value] of Object.entries(HEADERS)) if (!out.headers.has(name)) out.headers.set(name, value);
+    // Staging sets NOINDEX and runs the Worker for static files too, so every response can carry it.
+    if (!res && !env.NOINDEX) return env.ASSETS.fetch(request);
+    const base = res ?? await env.ASSETS.fetch(request), out = new Response(base.body, base);
+    if (res) for (const [name, value] of Object.entries(HEADERS)) if (!out.headers.has(name)) out.headers.set(name, value);
+    if (env.NOINDEX) out.headers.set('x-robots-tag', 'noindex');
     return out;
   },
 };

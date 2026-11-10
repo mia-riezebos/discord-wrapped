@@ -24,7 +24,21 @@
   "preview_urls": false,
   "routes": [
     { "pattern": "discordwrapped.app", "custom_domain": true },
-    { "pattern": "www.discordwrapped.app", "custom_domain": true },
-    { "pattern": "wrapped.mia.cx", "custom_domain": true }
-  ]
+    { "pattern": "www.discordwrapped.app", "custom_domain": true }
+  ],
+  // Staging (Worker discord-wrapped-staging): every push to main deploys it. It shows the same sponsor ads, keeps its
+  // own share images and rate limits, and tells search engines not to index it.
+  "env": {
+    "staging": {
+      "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true, "html_handling": "drop-trailing-slash" },
+      "services": [{ "binding": "SPONSORS", "service": "sponsors" }],
+      "r2_buckets": [{ "binding": "SHARES", "bucket_name": "discord-wrapped-shares-staging" }],
+      "ratelimits": [
+        { "name": "SHARE_UPLOADS", "namespace_id": "1003", "simple": { "limit": 5, "period": 60 } },
+        { "name": "SHARE_DELETES", "namespace_id": "1004", "simple": { "limit": 60, "period": 60 } }
+      ],
+      "vars": { "SPONSOR_SITE": "discordwrapped.app", "NOINDEX": true },
+      "routes": [{ "pattern": "staging.discordwrapped.app", "custom_domain": true }]
+    }
+  }
 }
