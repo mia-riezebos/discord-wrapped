@@ -126,7 +126,7 @@ const SHARE_COPY = (() => {
 
     'rank.phrase': (v, p) => card(
       `I said ${quote(v.phrase)} ${times(v.n, v.nRaw)} on Discord ${p.in}.`,
-      quote(v.phrase, 40), caption(`Number ${v.rank} ${v.size}-word phrase · ${times(v.n, v.nRaw)}`, p)),
+      quote(v.phrase, 40), caption(`Number ${v.rank} ${v.size}-${v.unit} phrase · ${times(v.n, v.nRaw)}`, p)),
 
     'rank.expression': (v, p) => card(
       `${sent(p)} ${quote(v.text)} ${times(v.n, v.nRaw)} ${p.in}. A whole message, every time.`,

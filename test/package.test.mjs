@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 
-// The worker runs as a classic script; saving needs IndexedDB, which Node doesn't have.
-const src = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8').replaceAll('await save();', '');
+// The worker runs as a classic script; saving needs IndexedDB, which Node doesn't have. The tokeniser vocabulary is
+// a small stand-in in the CDN module's format: per line, two numbers, then base64 tokens.
+const VOCAB = ['un', 'h', 'unh', 'inged', 'hinged'];
+const vocabModule = `export default ${JSON.stringify({bpe_ranks: `x 0 ${VOCAB.map(t => btoa(t)).join(' ')}\n`})}`;
+const src = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8').replaceAll('await save();', '')
+  .replace(/https:\/\/cdn\.jsdelivr\.net\/npm\/js-tiktoken@[^']+/, `data:text/javascript,${encodeURIComponent(vocabModule)}`);
 const self = {postMessage: m => { if (m.type !== 'progress') self.last = m; }};
 new Function('self', src)(self);
 const call = async (type, payload) => {
@@ -41,6 +45,7 @@ test('phrases count each use but each loop once, skip stop-word runs, and count 
     'ay el ee ay en ay short ay el ee ay en ay short ay el ee ay en ay short', // one loop
     'ay el ee ay en ay short 1 ay el ee ay en ay short 2 ay el ee ay en ay short 3', // three of each
     'i love banana bread', 'i love banana bread!', 'i am so', 'i am so tired',
+    'such a lot. of course', 'what a lot. of them', // phrases stop at a sentence end
   ];
   await call('load', folder({
     'package/Account/user.json': {id: '1', username: 'mia'},
@@ -58,4 +63,17 @@ test('phrases count each use but each loop once, skip stop-word runs, and count 
   assert.equal(two['fuck fuck'], 1 + 1 + 3);
   assert.equal(two['i love'], undefined);
   assert.equal(two['i am'], undefined);
+  assert.equal(two['lot of'], 1 + 3);
+});
+
+test('token phrases split each sentence into the fewest tokens, longer tokens first', async () => {
+  // "un·hinged" and "unh·inged" are both 2 tokens; "un·h·inged" is 3.
+  const texts = ['unhinged', 'so unhinged'];
+  await call('load', folder({
+    'package/Account/user.json': {id: '1', username: 'mia'},
+    'package/Messages/c800000000000000000/channel.json': {id: '800000000000000000', type: 1, recipients: ['1', '2']},
+    'package/Messages/c800000000000000000/messages.json': texts.map((Contents, i) => ({ID: String(1000000000000000000n + BigInt(i)), Timestamp: '2022-05-01 12:00:00', Contents, Attachments: ''})),
+  }));
+  await call('aggregate', {tz: 'UTC', topics: []});
+  assert.deepEqual(await call('phrases', {size: 2, mode: 'tokens'}), [['unh·inged', 2]]);
 });

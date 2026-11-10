@@ -516,27 +516,89 @@ function loopEnds(toks) {
   }
   return ends;
 }
-// The top runs of `size` words, counting each use, but each loop only once: a run inside a loop's repeats is not
-// counted. "a lot of a lot of" has one "a lot of"; "a lot of this, a lot of that" has two, and so does
-// "step 1 … step 2 …", which never repeats a whole cycle. Runs made only of stop words ("in the") are skipped.
-// Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats, pastes and templates
-// would otherwise fill the list with every window of the same text.
-function phrases({size}) {
-  const S = STORE, V = S.cache.view, cache = V.phrases ||= {};
-  if (cache[size]) return cache[size];
+// Phrases stay inside a sentence: they never run across a sentence end or a line break.
+const SENTENCE_END = /[.!?…]+(?=\s|$)|\n+/u, BREAK = '';
+// The sentences of a message, each as its words.
+const sentencesOf = text => foldQuotes(cleanText(text).toLowerCase()).split(SENTENCE_END).map(s => s.match(PHRASE_RE) || []).filter(ws => ws.length);
+// One message's sentences as a single list, with BREAK between them.
+const joinSentences = parts => parts.flatMap((p, k) => k ? [BREAK, ...p] : p);
+
+// Token mode splits each sentence into GPT-4o's (o200k) tokens. Only the vocabulary is used, not its merge rules: a
+// sentence becomes the fewest tokens that spell it. The vocabulary (about 0.9 MB) loads on first use.
+const VOCAB_URL = 'https://cdn.jsdelivr.net/npm/js-tiktoken@1.0.21/ranks/o200k_base/+esm';
+// Tokens are kept as ids into `names`; id 0 is the sentence break. The vocabulary is a prefix tree: `child` maps
+// node * CHARS + a UTF-16 code unit to the next node, and `tokenAt` holds the token id a node spells, or 0.
+const CHARS = 65536;
+let vocab = null;
+async function loadVocab() {
+  const {bpe_ranks} = (await import(VOCAB_URL)).default;
+  const names = [BREAK], extra = new Map(), child = new Map(), tokenAt = [0], utf8 = new TextDecoder();
+  // Each line holds a starting rank, then base64 tokens. Tokens that are part of a character decode to U+FFFD; skip them.
+  for (const line of bpe_ranks.split('\n')) for (const b64 of line.split(' ').slice(2)) {
+    const t = utf8.decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+    if (t.includes('�')) continue;
+    let node = 0;
+    for (let k = 0; k < t.length; k++) {
+      const key = node * CHARS + t.charCodeAt(k);
+      node = child.get(key) ?? child.set(key, tokenAt.push(0) - 1).get(key);
+    }
+    tokenAt[node] = names.push(t) - 1;
+  }
+  return {names, extra, child, tokenAt};
+}
+// The fewest vocabulary tokens that spell `s`, preferring longer tokens when two splits tie, as ids. A character the
+// vocabulary lacks becomes a token of its own (kept in `extra`).
+function splitTokens(s, {names, extra, child, tokenAt}) {
+  const n = s.length, count = new Int32Array(n + 1), len = new Int32Array(n), id = new Int32Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    len[i] = s.codePointAt(i) > 0xffff ? 2 : 1; count[i] = count[i + len[i]] + 1;
+    for (let L = 1, node = 0; i + L <= n; L++) {
+      node = child.get(node * CHARS + s.charCodeAt(i + L - 1));
+      if (node === undefined) break;
+      if (tokenAt[node] && count[i + L] + 1 <= count[i]) { count[i] = count[i + L] + 1; len[i] = L; id[i] = tokenAt[node]; }
+    }
+  }
+  const out = [];
+  for (let i = 0; i < n; i += len[i]) {
+    if (id[i]) { out.push(id[i]); continue; }
+    const c = s.slice(i, i + len[i]);
+    out.push(extra.get(c) ?? extra.set(c, names.push(c) - 1).get(c));
+  }
+  return out;
+}
+// How a run of tokens reads: as text, with a dot where a word is split ("un·hinged").
+const showTokens = run => run.map((t, k) => k && !t.startsWith(' ') && !run[k - 1].endsWith(' ') ? '·' + t : t).join('').trim();
+// Filler can't carry a phrase on its own: stop words, spaces, and numbers.
+const isFiller = t => { const w = t.trim(); return !w || STOP.has(w) || /^\p{N}+$/u.test(w); };
+
+// The top runs of `size` words or tokens (mode 'words' or 'tokens'), counting each use, but each loop only once: a
+// run inside a loop's repeats is not counted. "a lot of a lot of" has one "a lot of"; "a lot of this, a lot of that"
+// has two, and so does "step 1 … step 2 …", which never repeats a whole cycle. Runs made only of stop words
+// ("in the") are skipped. Messages that open with the same words (up to PASTE_WORDS of them) count once: repeats,
+// pastes and templates would otherwise fill the list with every window of the same text.
+async function phrases({size, mode = 'words'}) {
+  const S = STORE, C = S.cache, V = C.view, cache = V.phrases ||= {}, key = mode + size;
+  if (cache[key]) return cache[key];
+  const byToken = mode === 'tokens';
+  if (byToken) vocab ||= loadVocab().catch(err => { vocab = null; throw err; });
+  const voc = byToken && await vocab, tokenized = byToken && (C.tokenized ||= []), brk = byToken ? 0 : BREAK;
   const counts = new Map(), openings = new Set();
   for (const i of V.sel) {
-    const toks = foldQuotes(cleanText(S.text[i]).toLowerCase()).match(PHRASE_RE) || [], opening = toks.slice(0, PASTE_WORDS).join(' ');
+    const sentences = sentencesOf(S.text[i]), opening = sentences.flat().slice(0, PASTE_WORDS).join(' ');
     if (openings.has(opening)) continue;
     openings.add(opening);
+    const toks = !byToken ? joinSentences(sentences)
+      : tokenized[i] ||= Int32Array.from(joinSentences(sentences.map(ws => splitTokens(ws.join(' '), voc))));
     const ends = loopEnds(toks);
     for (let j = 0; j + size <= toks.length; j++) {
       if (j + size <= ends[j]) continue;
-      const run = toks.slice(j, j + size);
-      if (!run.every(w => STOP.has(w))) inc(counts, run.join(' '));
+      const slice = toks.slice(j, j + size);
+      if (slice.includes(brk)) continue;
+      const run = byToken ? Array.from(slice, id => voc.names[id]) : slice;
+      if (!run.every(isFiller)) inc(counts, byToken ? showTokens(run) : run.join(' '));
     }
   }
-  return cache[size] = top([...counts].filter(e => e[1] > 1), PHRASES);
+  return cache[key] = top([...counts].filter(e => e[1] > 1), PHRASES);
 }
 
 /* ---------- roast candidates (no inference) ---------- */
@@ -603,7 +665,7 @@ self.onmessage = async e => {
     else if (type === 'view') { setView(payload); result = true; }
     else if (type === 'search') result = search(payload);
     else if (type === 'candidates') result = candidates(payload);
-    else if (type === 'phrases') result = phrases(payload);
+    else if (type === 'phrases') result = await phrases(payload);
     send({type: 'result', id, result});
   } catch (err) {
     send({type: 'error', id, message: err?.message || String(err)});

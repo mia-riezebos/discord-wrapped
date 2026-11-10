@@ -601,18 +601,30 @@ function words() {
   const emoji = D.emoji.map(([n, v]) => [':' + n + ':', v]);
   ranks('emoji-ranks', emoji, 10, fmt, (name, n, i) => share('rank.emoji', {name, rank: i + 1, n}, {bars: rankBars(emoji, i)}));
 }
-// Phrases are counted in the worker on request, for the chosen length. The latest request wins.
+// Phrases are counted in the worker on request, for the chosen split and length. The latest request wins; the list
+// dims while it waits. Tokens need the tokeniser's vocabulary from the CDN, which can fail offline.
 const PHRASE_ROWS = 12;
 let phrasesShowAll = false, phraseRequest = 0;
 async function phrases() {
-  const request = ++phraseRequest, size = +document.querySelector('input[name="phrase-size"]:checked').value;
-  const items = await call('phrases', {size});
+  const request = ++phraseRequest, list = $('phrase-ranks');
+  const size = +document.querySelector('input[name="phrase-size"]:checked').value, mode = document.querySelector('input[name="phrase-mode"]:checked').value;
+  list.ariaBusy = 'true';
+  let items;
+  try { items = await call('phrases', {size, mode}); }
+  catch {
+    if (request !== phraseRequest) return;
+    list.ariaBusy = null; $('phrase-all').hidden = true;
+    list.innerHTML = '<p class="muted">Couldn’t load the GPT-4o tokeniser. Check your connection and try again.</p>';
+    return;
+  }
   if (request !== phraseRequest) return;
-  ranks('phrase-ranks', items, phrasesShowAll ? items.length : PHRASE_ROWS, fmt, (phrase, n, i) => share('rank.phrase', {phrase, size, rank: i + 1, n}, {bars: rankBars(items, i, markQuote)}));
+  list.ariaBusy = null;
+  const unit = mode === 'tokens' ? 'token' : 'word';
+  ranks('phrase-ranks', items, phrasesShowAll ? items.length : PHRASE_ROWS, fmt, (phrase, n, i) => share('rank.phrase', {phrase, size, unit, rank: i + 1, n}, {bars: rankBars(items, i, markQuote)}));
   $('phrase-all').hidden = items.length <= PHRASE_ROWS;
   $('phrase-all').textContent = phrasesShowAll ? 'Show fewer' : `Show all ${items.length}`;
 }
-$('phrase-size').onchange = () => { phrasesShowAll = false; phrases(); };
+$('phrase-size').onchange = $('phrase-mode').onchange = () => { phrasesShowAll = false; phrases(); };
 $('phrase-all').onclick = () => { phrasesShowAll = !phrasesShowAll; phrases(); };
 // Bump chart: one column per bucket, words placed by rank, lines joining a word across neighbouring columns.
 function bump(target, keys) {
